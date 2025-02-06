@@ -1,0 +1,14 @@
+abstract model Id {
+    id String @default(uuid()) @id @unique
+}
+
+abstract model CreatedAt {
+    createdAt DateTime @db.Timestamptz() @default(now())
+}
+
+abstract model UpdatedAt {
+    updatedAt DateTime @db.Timestamptz() @updatedAt
+}
+
+abstract model Base extends Id, CreatedAt,UpdatedAt {
+}
