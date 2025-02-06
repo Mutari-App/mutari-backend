@@ -1,15 +1,35 @@
-# Use the Node official image
-# https://hub.docker.com/_/node
-FROM node:lts
+# Gunakan Node.js sebagai base image
+FROM node:18-alpine AS builder
 
-# Create and change to the app directory.
+# Set working directory
 WORKDIR /app
 
-# Copy local code to the container image
-COPY . ./
+# Copy package.json dan install dependencies
+COPY package*.json ./
+RUN npm install --only=production
 
-# Install packages
-RUN npm ci
+# Copy semua file proyek ke container
+COPY . .
 
-# Serve the app
+# Generate Prisma Client
+RUN npx prisma generate
+
+# Build aplikasi
+RUN npm run build
+
+# Gunakan stage baru untuk menjalankan aplikasi
+FROM node:18-alpine AS runner
+WORKDIR /app
+
+# Copy hasil build dari tahap sebelumnya
+COPY --from=builder /app /app
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Expose port aplikasi
+EXPOSE 3000
+
+# Jalankan aplikasi
 CMD ["npm", "run", "start:prod"]
