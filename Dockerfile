@@ -1,24 +1,37 @@
-# Use Node.js 20.11.1 base image
-FROM node:20.11.1-alpine
+# Gunakan Node.js sebagai base image untuk build
+FROM node:18-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
+# Copy package.json dan install dependencies
 COPY package*.json ./
+RUN npm install --only=production
 
-# Install dependencies
-RUN npm cache clean --force
-RUN npm install --legacy-peer-deps
-
-# Copy the rest of the application code
+# Copy semua file proyek ke container
 COPY . .
 
-# Generate Prisma Client code
+# 🔹 Generate Prisma Client
 RUN npx prisma generate
 
-# Expose the port the app runs on, here, I was using port 3001
+# 🔹 Build aplikasi NestJS
+RUN npm run build
+
+# Gunakan stage baru untuk menjalankan aplikasi
+FROM node:18-alpine AS runner
+WORKDIR /app
+
+# Copy hasil build dari tahap builder
+COPY --from=builder /app/node_modules /app/node_modules
+COPY --from=builder /app/dist /app/dist
+COPY --from=builder /app/package.json /app/package.json
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3001
+
+# Expose port aplikasi
 EXPOSE 3001
 
-# Command to run the app
-CMD [  "npm", "run", "start:migrate:prod" ]
+# 🔹 Pastikan perintah run benar
+CMD ["node", "dist/main"]
