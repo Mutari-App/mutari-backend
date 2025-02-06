@@ -1,35 +1,24 @@
-# Gunakan Node.js sebagai base image
-FROM node:18-alpine AS builder
+# Use Node.js 20.11.1 base image
+FROM node:20.11.1-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Copy package.json dan install dependencies
+# Copy package.json and package-lock.json
 COPY package*.json ./
-RUN npm install --only=production
 
-# Copy semua file proyek ke container
+# Install dependencies
+RUN npm cache clean --force
+RUN npm install --legacy-peer-deps
+
+# Copy the rest of the application code
 COPY . .
 
-# Generate Prisma Client
+# Generate Prisma Client code
 RUN npx prisma generate
 
-# Build aplikasi
-RUN npm run build
+# Expose the port the app runs on, here, I was using port 3001
+EXPOSE 3001
 
-# Gunakan stage baru untuk menjalankan aplikasi
-FROM node:18-alpine AS runner
-WORKDIR /app
-
-# Copy hasil build dari tahap sebelumnya
-COPY --from=builder /app /app
-
-# Set environment variables
-ENV NODE_ENV=production
-ENV PORT=3000
-
-# Expose port aplikasi
-EXPOSE 3000
-
-# Jalankan aplikasi
-CMD ["npm", "run", "start:prod"]
+# Command to run the app
+CMD [  "npm", "run", "start:migrate:prod" ]
