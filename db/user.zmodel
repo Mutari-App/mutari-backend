@@ -1,0 +1,11 @@
+import 'base'
+
+model User extends Base {
+    firstName   String
+    lastName    String?
+    email       String  @unique
+    phoneNumber String?
+    country     String
+    city        String
+}
+
