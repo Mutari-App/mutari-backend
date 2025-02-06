@@ -5,10 +5,18 @@ import { PreRegisterModule } from './pre-register/pre-register.module'
 import { PrismaModule } from './prisma/prisma.module'
 import { APP_FILTER } from '@nestjs/core'
 import { HttpExceptionFilter } from './common/filters/http-exception.filter'
-import { StaticModule } from './static/static.module';
+import { StaticModule } from './static/static.module'
+import { ConfigModule } from '@nestjs/config'
+import { CommonModule } from './common/common.module'
 
 @Module({
-  imports: [PrismaModule, PreRegisterModule, StaticModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    CommonModule,
+    PreRegisterModule,
+    StaticModule,
+  ],
   controllers: [AppController],
   providers: [
     AppService,
