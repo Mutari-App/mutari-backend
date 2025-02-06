@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Copy package.json dan install dependencies
 COPY package*.json ./
-RUN npm install --only=production
+RUN npm install 
 
 # Copy semua file proyek ke container
 COPY . .
