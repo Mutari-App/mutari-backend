@@ -40,9 +40,13 @@ export class PreRegisterService {
       )
     }
 
-    const referredUser = await this.prisma.user.findUnique({
-      where: { referralCode: preRegisterDto.referralCode.toUpperCase() },
-    })
+    let referredUser
+
+    if (!!preRegisterDto.referralCode) {
+      referredUser = await this.prisma.user.findUnique({
+        where: { referralCode: preRegisterDto.referralCode.toUpperCase() },
+      })
+    }
 
     let referralCode: string
     let isDuplicate: boolean
@@ -75,7 +79,7 @@ export class PreRegisterService {
     })
     return this.responseUtil.response(
       {
-        code: HttpStatus.OK,
+        statusCode: HttpStatus.OK,
         message: 'Pre-registration successful',
       },
       { user }
@@ -86,7 +90,7 @@ export class PreRegisterService {
     const count = await this.prisma.user.count({})
     return this.responseUtil.response(
       {
-        code: HttpStatus.OK,
+        statusCode: HttpStatus.OK,
         message: 'Total pre-registered users retrieved successfully.',
       },
       { count }
@@ -100,7 +104,7 @@ export class PreRegisterService {
       })
       if (!user) throw new BadRequestException('Email is not registered.')
 
-      const existedTokens = await prisma.token.findMany({
+      const existedTickets = await prisma.ticket.findMany({
         where: {
           userId: user.id,
         },
@@ -109,29 +113,29 @@ export class PreRegisterService {
         },
       })
 
-      const latestExistedToken = existedTokens[0]
+      const latestExistedTicket = existedTickets[0]
 
-      if (!!latestExistedToken) {
-        const createdAt = new Date(latestExistedToken.createdAt)
+      if (!!latestExistedTicket) {
+        const createdAt = new Date(latestExistedTicket.createdAt)
         const timeDiff = new Date().getTime() - createdAt.getTime()
         const timeLeft =
-          Number(process.env.PRE_REGISTER_TOKEN_REQUEST_DELAY) - timeDiff
+          Number(process.env.PRE_REGISTER_TICKET_REQUEST_DELAY) - timeDiff
         if (timeLeft > 0)
           throw new BadRequestException(
             `Please wait ${Math.floor(timeLeft / 1000)} seconds before requesting another login link`
           )
       }
 
-      if (existedTokens.length >= 5) {
-        const lastExistedToken = existedTokens[existedTokens.length - 1]
-        await prisma.token.delete({
+      if (existedTickets.length >= 5) {
+        const lastExistedTicket = existedTickets[existedTickets.length - 1]
+        await prisma.ticket.delete({
           where: {
-            id: lastExistedToken.id,
+            id: lastExistedTicket.id,
           },
         })
       }
 
-      const token = await prisma.token.create({
+      const ticket = await prisma.ticket.create({
         data: {
           user: {
             connect: {
@@ -215,8 +219,8 @@ export class PreRegisterService {
             </div>
             <h3>Masuk ke Akun Mutari</h3>
             <p>Klik tombol di bawah ini untuk masuk ke akun Mutari Anda.</p>
-            <a href="${process.env.CLIENT_URL}/pre-register/validate/${token.id}" class="button">Masuk Sekarang</a>
-            <p>Link ini hanya berlaku selama <strong>${Number(process.env.PRE_REGISTER_TOKEN_EXPIRES_IN) / 60000} menit</strong>.</p>
+            <a href="${process.env.CLIENT_URL}/pre-register/validate/${ticket.id}" class="button">Masuk Sekarang</a>
+            <p>Link ini hanya berlaku selama <strong>${Number(process.env.PRE_REGISTER_TICKET_EXPIRES_IN) / 60000} menit</strong>.</p>
             <p>Jika Anda tidak meminta login, abaikan email ini.</p>
             <div class="support">
               <p>Butuh bantuan? Hubungi kami di <a href="mailto:support@mutari.id">support@mutari.id</a></p>
@@ -229,36 +233,56 @@ export class PreRegisterService {
         </html>`
       )
       return this.responseUtil.response({
-        code: HttpStatus.OK,
+        statusCode: HttpStatus.OK,
         message: 'Login email sent successfully',
       })
     })
   }
 
-  async validateLogin(tokenId: string) {
+  async validateLogin(ticketId: string) {
     return this.prisma.$transaction(async (prisma) => {
-      const token = await prisma.token.findUnique({
+      const ticket = await prisma.ticket.findUnique({
         where: {
-          id: tokenId,
+          id: ticketId,
+        },
+        select: {
+          createdAt: true,
+          userId: true,
+          user: {
+            select: {
+              email: true,
+            },
+          },
         },
       })
 
-      if (!token)
-        throw new UnauthorizedException('Invalid or expired login token.')
+      if (!ticket)
+        throw new UnauthorizedException('Invalid or expired login ticket.')
 
-      const timeDiff = new Date().getTime() - token.createdAt.getTime()
-      if (timeDiff > Number(process.env.PRE_REGISTER_TOKEN_EXPIRES_IN))
-        throw new UnauthorizedException('Invalid or expired login token.')
+      const timeDiff = new Date().getTime() - ticket.createdAt.getTime()
+      if (timeDiff > Number(process.env.PRE_REGISTER_TICKET_EXPIRES_IN))
+        throw new UnauthorizedException('Invalid or expired login ticket.')
 
-      await prisma.token.deleteMany({
-        where: { userId: token.userId },
+      await prisma.ticket.deleteMany({
+        where: { userId: ticket.userId },
       })
 
-      const accessToken = await this._generateAccessToken(token.userId)
+      const accessToken = await this._generateAccessToken(ticket.userId)
+
+      await prisma.token.create({
+        data: {
+          token: accessToken,
+          user: {
+            connect: {
+              id: ticket.userId,
+            },
+          },
+        },
+      })
 
       return this.responseUtil.response(
-        { code: HttpStatus.OK, message: '' },
-        { accessToken }
+        { statusCode: HttpStatus.OK, message: 'Validate ticket success!' },
+        { email: ticket.user.email, accessToken }
       )
     })
   }
@@ -273,5 +297,26 @@ export class PreRegisterService {
     )
 
     return accessToken
+  }
+
+  async getReferralCode(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        referralCode: true,
+        _count: {
+          select: { referrals: true }, // Menghitung jumlah referrals
+        },
+      },
+    })
+
+    if (!user) throw new BadRequestException('User not found')
+    return this.responseUtil.response(
+      { statusCode: HttpStatus.OK, message: 'Success get Referral Code' },
+      {
+        referralCode: user.referralCode,
+        usedCount: user._count.referrals, // Jumlah orang yang menggunakan referral code ini
+      }
+    )
   }
 }

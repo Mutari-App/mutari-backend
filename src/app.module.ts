@@ -3,12 +3,14 @@ import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { PreRegisterModule } from './pre-register/pre-register.module'
 import { PrismaModule } from './prisma/prisma.module'
-import { APP_FILTER } from '@nestjs/core'
+import { APP_FILTER, APP_GUARD } from '@nestjs/core'
 import { HttpExceptionFilter } from './common/filters/http-exception.filter'
 import { StaticModule } from './static/static.module'
 import { ConfigModule } from '@nestjs/config'
 import { CommonModule } from './common/common.module'
-import { EmailModule } from './email/email.module';
+import { EmailModule } from './email/email.module'
+import { AuthGuard } from './auth/auth.guard'
+import { AuthModule } from './auth/auth.module'
 
 @Module({
   imports: [
@@ -18,6 +20,7 @@ import { EmailModule } from './email/email.module';
     PreRegisterModule,
     StaticModule,
     EmailModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [
@@ -26,6 +29,7 @@ import { EmailModule } from './email/email.module';
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
     },
+    { provide: APP_GUARD, useClass: AuthGuard },
   ],
 })
 export class AppModule {}
