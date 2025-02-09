@@ -6,14 +6,14 @@ import { ResponseInterface } from './utils.interface'
 export class ResponseUtil {
   response(
     {
-      code = HttpStatus.OK,
+      statusCode = HttpStatus.OK,
       message = 'Data retrieved successfully!',
     }: ResponseInterface,
     data?: any
   ) {
     const responsePayload = {
-      code: code,
-      success: code >= 200 && code < 300,
+      statusCode: statusCode,
+      success: statusCode >= 200 && statusCode < 300,
       message: message,
       ...data,
     }
