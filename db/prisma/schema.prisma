@@ -26,4 +26,13 @@ model User {
   referredById String?
   referredBy   User?    @relation("Referral", fields: [referredById], references: [id])
   referrals    User[]   @relation("Referral")
+  tokens       Token[]
+}
+
+model Token {
+  updatedAt DateTime @updatedAt() @db.Timestamptz()
+  createdAt DateTime @default(now()) @db.Timestamptz()
+  id        String   @id() @unique() @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

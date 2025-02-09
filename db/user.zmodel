@@ -13,4 +13,10 @@ model User extends Base {
     referredBy   User?   @relation("Referral", fields: [referredById], references: [id]) // Relasi ke user lain
 
     referrals    User[]  @relation("Referral")
+    tokens       Token[]
+}
+
+model Token extends Base {
+    userId String
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
