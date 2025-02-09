@@ -8,6 +8,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter'
 import { StaticModule } from './static/static.module'
 import { ConfigModule } from '@nestjs/config'
 import { CommonModule } from './common/common.module'
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { CommonModule } from './common/common.module'
     CommonModule,
     PreRegisterModule,
     StaticModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [

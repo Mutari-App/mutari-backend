@@ -1,11 +1,22 @@
 import 'base'
 
 model User extends Base {
-    firstName   String
-    lastName    String?
-    email       String  @unique
-    phoneNumber String?
-    country     String
-    city        String
+    firstName    String
+    lastName     String?
+    email        String  @unique
+    phoneNumber  String?
+    country      String
+    city         String
+    referralCode String  @unique
+
+    referredById String?
+    referredBy   User?   @relation("Referral", fields: [referredById], references: [id]) // Relasi ke user lain
+
+    referrals    User[]  @relation("Referral")
+    tokens       Token[]
 }
 
+model Token extends Base {
+    userId String
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

@@ -23,12 +23,15 @@
     "check-lint": "eslint",
     "test-all": "npm run format && npm run check-format && npm run check-lint && npm run check-types",
     "prepare": "husky install",
+    "migrate:dev": "prisma migrate dev",
+    "generate:migrate:dev": "zenstack generate && npm run migrate:dev",
     "start:migrate:prod": "prisma migrate deploy && npm run start:prod"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^10.0.0",
+    "@nestjs/jwt": "^11.0.0",
     "@nestjs/mapped-types": "*",
     "@nestjs/platform-express": "^10.0.0",
     "@prisma/client": "^6.3.1",
@@ -36,6 +39,8 @@
     "axios": "^1.7.9",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "nanoid": "^3.3.8",
+    "nodemailer": "^6.10.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1"
   },
