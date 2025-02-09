@@ -19,7 +19,7 @@ export class StaticService {
 
     return this.responseUtil.response(
       {
-        code: HttpStatus.OK,
+        statusCode: HttpStatus.OK,
         message: 'Country search results retrieved successfully.',
       },
       { countries }
@@ -39,7 +39,7 @@ export class StaticService {
 
     return this.responseUtil.response(
       {
-        code: HttpStatus.OK,
+        statusCode: HttpStatus.OK,
         message: 'City search results retrieved successfully.',
       },
       { cities }
@@ -61,7 +61,7 @@ export class StaticService {
 
     return this.responseUtil.response(
       {
-        code: HttpStatus.OK,
+        statusCode: HttpStatus.OK,
         message: 'Country code retrieved successfully.',
       },
       { country }

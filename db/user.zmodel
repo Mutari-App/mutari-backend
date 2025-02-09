@@ -3,20 +3,27 @@ import 'base'
 model User extends Base {
     firstName    String
     lastName     String?
-    email        String  @unique
+    email        String   @unique
     phoneNumber  String?
     country      String
     city         String
-    referralCode String  @unique
+    referralCode String   @unique
 
     referredById String?
-    referredBy   User?   @relation("Referral", fields: [referredById], references: [id]) // Relasi ke user lain
+    referredBy   User?    @relation("Referral", fields: [referredById], references: [id]) // Relasi ke user lain
 
-    referrals    User[]  @relation("Referral")
+    referrals    User[]   @relation("Referral")
+    tickets      Ticket[]
     tokens       Token[]
 }
 
-model Token extends Base {
+model Ticket extends Base {
     userId String
     user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Token extends Base {
+    token  String @unique
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
 }
