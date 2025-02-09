@@ -47,7 +47,7 @@ export class PreRegisterController {
   }
 
   @HttpCode(HttpStatus.OK)
-  @Get('/referralCode')
+  @Get('/referral-code')
   async referralCode(@GetUser() user: User) {
     return this.preRegisterService.getReferralCode(user.id)
   }
