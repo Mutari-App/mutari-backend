@@ -219,7 +219,7 @@ export class PreRegisterService {
             </div>
             <h3>Masuk ke Akun Mutari</h3>
             <p>Klik tombol di bawah ini untuk masuk ke akun Mutari Anda.</p>
-            <a href="${process.env.CLIENT_URL}/pre-register/validate/${ticket.id}" class="button">Masuk Sekarang</a>
+            <a href="${process.env.CLIENT_URL}?ticket=${ticket.id}" class="button">Masuk Sekarang</a>
             <p>Link ini hanya berlaku selama <strong>${Number(process.env.PRE_REGISTER_TICKET_EXPIRES_IN) / 60000} menit</strong>.</p>
             <p>Jika Anda tidak meminta login, abaikan email ini.</p>
             <div class="support">
@@ -303,6 +303,7 @@ export class PreRegisterService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
+        email: true,
         referralCode: true,
         _count: {
           select: { referrals: true }, // Menghitung jumlah referrals
@@ -314,6 +315,7 @@ export class PreRegisterService {
     return this.responseUtil.response(
       { statusCode: HttpStatus.OK, message: 'Success get Referral Code' },
       {
+        email: user.email,
         referralCode: user.referralCode,
         usedCount: user._count.referrals, // Jumlah orang yang menggunakan referral code ini
       }
