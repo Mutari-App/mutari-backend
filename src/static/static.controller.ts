@@ -29,11 +29,11 @@ export class StaticController {
 
   @Public()
   @HttpCode(HttpStatus.OK)
-  @Get('cities/:countryCode')
+  @Get('cities/:placeId')
   async getCities(
-    @Param('countryCode') countryCode: string,
+    @Param('placeId') placeId: string,
     @Query('query') query: string
   ) {
-    return this.staticService.searchCities(query, countryCode)
+    return this.staticService.searchCities(query, placeId)
   }
 }

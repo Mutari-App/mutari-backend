@@ -13,21 +13,20 @@ generator client {
 }
 
 model User {
-  updatedAt    DateTime @updatedAt() @db.Timestamptz()
-  createdAt    DateTime @default(now()) @db.Timestamptz()
-  id           String   @id() @unique() @default(uuid())
-  firstName    String
-  lastName     String?
-  email        String   @unique()
-  phoneNumber  String?
-  country      String
-  city         String
-  referralCode String   @unique()
-  referredById String?
-  referredBy   User?    @relation("Referral", fields: [referredById], references: [id])
-  referrals    User[]   @relation("Referral")
-  tickets      Ticket[]
-  tokens       Token[]
+  updatedAt        DateTime @updatedAt() @db.Timestamptz()
+  createdAt        DateTime @default(now()) @db.Timestamptz()
+  id               String   @id() @unique() @default(uuid())
+  firstName        String
+  lastName         String?
+  email            String   @unique()
+  phoneNumber      String?
+  referralCode     String?  @unique()
+  isEmailConfirmed Boolean  @default(false)
+  referredById     String?
+  referredBy       User?    @relation("Referral", fields: [referredById], references: [id])
+  referrals        User[]   @relation("Referral")
+  tickets          Ticket[]
+  tokens           Token[]
 }
 
 model Ticket {

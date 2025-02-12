@@ -26,10 +26,10 @@ export class StaticService {
     )
   }
 
-  async searchCities(query: string, countryCode: string) {
-    console.log(`Searching for cities in country: ${countryCode}`)
+  async searchCities(query: string, placeId: string) {
+    const country = await this._getCountryCode(placeId)
 
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${query}&types=(cities)&components=country:${countryCode}&key=${this.googleApiKey}`
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${query}&types=(cities)&components=country:${country.code}&key=${this.googleApiKey}`
     const response = await axios.get(url)
 
     const cities = response.data.predictions.map((city) => ({
@@ -44,6 +44,22 @@ export class StaticService {
       },
       { cities }
     )
+  }
+
+  async _getCountryCode(placeId: string) {
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=address_components&key=${this.googleApiKey}`
+    const response = await axios.get(url)
+
+    const countryComponent = response.data.result.address_components.find(
+      (component) => component.types.includes('country')
+    )
+
+    const country = {
+      name: countryComponent.long_name, // Nama negara
+      code: countryComponent.short_name, // Kode negara (ID, US, MY, dll.)
+    }
+
+    return country
   }
 
   async getCountryCode(placeId: string) {
