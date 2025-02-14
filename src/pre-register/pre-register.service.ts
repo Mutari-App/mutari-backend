@@ -254,10 +254,7 @@ export class PreRegisterService {
     )
   }
 
-  private async _generateTicket(
-    prisma: Prisma.TransactionClient,
-    userId: string
-  ) {
+  async _generateTicket(prisma: Prisma.TransactionClient, userId: string) {
     const existedTickets = await prisma.ticket.findMany({
       where: {
         userId: userId,

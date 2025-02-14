@@ -25,6 +25,7 @@ export default [
       'Dockerfile',
       'package-lock.json',
       'eslint.config.mjs',
+      'coverage',
     ],
   },
   ...compat.extends(

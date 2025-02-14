@@ -39,6 +39,7 @@
     "axios": "^1.7.9",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "jest-mock-extended": "4.0.0-beta1",
     "nanoid": "^3.3.8",
     "nodemailer": "^6.10.0",
     "reflect-metadata": "^0.1.13",
@@ -80,6 +81,9 @@
     "schema": "./db/prisma/schema.prisma"
   },
   "jest": {
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
+    },
     "moduleFileExtensions": [
       "js",
       "json",
