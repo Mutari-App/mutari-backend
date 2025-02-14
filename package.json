@@ -80,6 +80,10 @@
     "schema": "./db/prisma/schema.prisma"
   },
   "jest": {
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir/$1",
+      "^src/(.*)$": "<rootDir>/$1"
+    },
     "moduleFileExtensions": [
       "js",
       "json",
