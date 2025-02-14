@@ -332,6 +332,8 @@ describe('PreRegisterService', () => {
       } as any
       prisma.ticket.findMany.mockResolvedValue([recentTicket])
 
+      process.env.PRE_REGISTER_TICKET_REQUEST_DELAY = '5000'
+
       await expect(
         service['_generateTicket'](prisma, 'USER123')
       ).rejects.toThrow(BadRequestException)

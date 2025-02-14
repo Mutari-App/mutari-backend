@@ -30,7 +30,7 @@ jobs:
 
       - name: Generate Prisma Client
         run: pnpm prisma generate
-        
+
       - name: Run test
         run: pnpm run test
 
