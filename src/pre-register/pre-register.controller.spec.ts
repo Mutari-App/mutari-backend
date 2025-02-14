@@ -5,7 +5,7 @@ import { PreRegisterDTO } from './dto/pre-register.dto'
 import { LoginDTO } from './dto/login.dto'
 import { User } from '@prisma/client'
 
-fdescribe('PreRegisterController', () => {
+describe('PreRegisterController', () => {
   let controller: PreRegisterController
   let service: PreRegisterService
 
