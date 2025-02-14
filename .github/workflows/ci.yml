@@ -4,7 +4,7 @@ on:
   pull_request:
 
 jobs:
-  test: 
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,20 +23,23 @@ jobs:
           key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-node-modules-
-      
+
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: pnpm install
 
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+        
       - name: Run test
         run: pnpm run test
 
-  test-all:
+  format-lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
@@ -50,11 +53,14 @@ jobs:
           key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-node-modules-
-      
+
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: pnpm install
-        
+
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
       - name: Run test-all
         run: pnpm run test-all
 
@@ -63,7 +69,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
@@ -77,10 +83,13 @@ jobs:
           key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-node-modules-
-      
+
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: pnpm install
+
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
 
       - name: Run build
         run: pnpm run build
