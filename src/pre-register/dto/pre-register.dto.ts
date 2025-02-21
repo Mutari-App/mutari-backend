@@ -1,6 +1,8 @@
 import {
   IsEmail,
+  IsNumberString,
   IsOptional,
+  IsPhoneNumber,
   IsString,
   MaxLength,
   MinLength,
@@ -18,14 +20,8 @@ export class PreRegisterDTO {
   email: string
 
   @IsOptional()
-  @IsString()
+  @IsPhoneNumber('ID')
   phoneNumber?: string
-
-  @IsString()
-  city: string
-
-  @IsString()
-  country: string
 
   @IsOptional()
   @IsString()
