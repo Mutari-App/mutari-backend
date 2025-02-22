@@ -11,7 +11,7 @@ import { ResponseUtil } from 'src/common/utils/response.util'
 import { customAlphabet } from 'nanoid'
 import { EmailService } from 'src/email/email.service'
 import { JwtService } from '@nestjs/jwt'
-import { Prisma } from '@prisma/client'
+import { Prisma, User } from '@prisma/client'
 
 const generatedReferralCode = customAlphabet(
   'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
@@ -20,6 +20,8 @@ const generatedReferralCode = customAlphabet(
 
 @Injectable()
 export class PreRegisterService {
+  private DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL // Simpan di .env
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly responseUtil: ResponseUtil,
@@ -85,6 +87,10 @@ export class PreRegisterService {
         },
       })
 
+      this.sendDiscordWebhook(user, 'pre-registration', {
+        referralCodeUsed: referredUser?.referralCode,
+      })
+
       return user
     })
 
@@ -102,6 +108,76 @@ export class PreRegisterService {
       },
       { user }
     )
+  }
+
+  private async sendDiscordWebhook(
+    user: User,
+    eventType: 'pre-registration' | 'login-validation',
+    extraData: any = {}
+  ) {
+    if (!this.DISCORD_WEBHOOK_URL) {
+      console.log('DISCORD_WEBHOOK_URL not setup yet!')
+      return
+    }
+
+    try {
+      // Format tanggal pendaftaran atau login
+      const eventDate = new Date().toLocaleString('en-US', {
+        timeZone: 'Asia/Jakarta',
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+
+      let messageContent = ''
+
+      if (eventType === 'pre-registration') {
+        messageContent = `
+  >>> 
+  🚀 **New Pre-Registration!** 🎉
+  
+  **User Information:**
+  👤 **Name:** ${user.firstName} ${user.lastName}
+  📧 **Email:** ${user.email}
+  📱 **Phone:** ${user.phoneNumber || 'N/A'}
+  📅 **Registration Date:** ${eventDate}
+  📝 **Referral Code Used:** ${extraData.referralCodeUsed || 'None'}
+  
+  🔹 Keep up the great work! 🚀
+        `
+      } else if (eventType === 'login-validation') {
+        messageContent = `
+  >>> 
+  ✅ **User Email Successfully Validated !** 🔑
+  
+  **User Information:**
+  👤 **Name:** ${user.firstName} ${user.lastName}
+  📧 **Email:** ${user.email}
+  📅 **Validattion Date:** ${eventDate}
+  📝 **Referral Code:** ${user.referralCode || 'None'}
+  
+  🎉 Welcome back, ${user.firstName}! 🚀
+        `
+      }
+
+      const message = { content: messageContent }
+
+      await fetch(this.DISCORD_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(message),
+      })
+
+      console.log(`✅ Webhook sent successfully for ${eventType}`)
+    } catch (error) {
+      console.error(`❌ Failed to send webhook for ${eventType}:`, error)
+    }
   }
 
   async getPreRegisterCount() {
@@ -191,6 +267,11 @@ export class PreRegisterService {
           },
         },
       })
+
+      if (!ticket.user.isEmailConfirmed) {
+        this.sendDiscordWebhook(updatedUser, 'login-validation')
+      }
+
       return {
         email: updatedUser.email,
         name: `${updatedUser.firstName} ${updatedUser.lastName}`,
