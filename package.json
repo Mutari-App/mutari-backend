@@ -63,6 +63,7 @@
     "globals": "^15.14.0",
     "husky": "^8.0.0",
     "jest": "^29.5.0",
+    "jest-fetch-mock": "^3.0.3",
     "prettier": "^3.4.2",
     "prisma": "^6.3.1",
     "sonarqube-scanner": "^4.2.7",

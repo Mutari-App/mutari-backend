@@ -115,6 +115,7 @@ export class PreRegisterService {
     eventType: 'pre-registration' | 'login-validation',
     extraData: any = {}
   ) {
+    console.log(this.DISCORD_WEBHOOK_URL)
     if (!this.DISCORD_WEBHOOK_URL) {
       console.log('DISCORD_WEBHOOK_URL not setup yet!')
       return
