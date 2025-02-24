@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common'
 import { DeepMockProxy, mockDeep } from 'jest-mock-extended'
 import { PrismaClient } from '@prisma/client'
+import fetchMock from 'jest-fetch-mock'
+fetchMock.enableMocks()
 
 describe('PreRegisterService', () => {
   let service: PreRegisterService
@@ -363,6 +365,114 @@ describe('PreRegisterService', () => {
         where: { id: 'TICKET5' },
       })
       expect(prisma.ticket.create).toHaveBeenCalled()
+    })
+  })
+  describe('sendDiscordWebhook', () => {
+    let user
+
+    beforeEach(() => {
+      fetchMock.resetMocks()
+
+      user = {
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john.doe@example.com',
+        phoneNumber: '08123456789',
+        referralCode: 'REF123',
+      }
+    })
+
+    it('should not send webhook if DISCORD_WEBHOOK_URL is not set', async () => {
+      // Mock `DISCORD_WEBHOOK_URL` agar tidak ada
+      Object.defineProperty(service, 'DISCORD_WEBHOOK_URL', {
+        value: undefined,
+      })
+
+      console.log = jest.fn()
+
+      await service['sendDiscordWebhook'](user, 'pre-registration')
+
+      expect(console.log).toHaveBeenCalledWith(
+        'DISCORD_WEBHOOK_URL not setup yet!'
+      )
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('should send webhook for pre-registration', async () => {
+      Object.defineProperty(service, 'DISCORD_WEBHOOK_URL', {
+        value: 'https://discord.com/api/webhooks/test-webhook',
+      })
+
+      fetchMock.mockResponseOnce(JSON.stringify({ success: true }))
+
+      await service['sendDiscordWebhook'](user, 'pre-registration', {
+        referralCodeUsed: 'REF123',
+      })
+
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'https://discord.com/api/webhooks/test-webhook'
+        ),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: expect.any(String),
+        }
+      )
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1]?.body as string)
+      expect(body.content).toContain('🚀 **New Pre-Registration!** 🎉')
+      expect(body.content).toContain('John Doe')
+      expect(body.content).toContain('john.doe@example.com')
+      expect(body.content).toContain('📱 **Phone:** 08123456789')
+      expect(body.content).toContain('📝 **Referral Code Used:** REF123')
+    })
+
+    it('should send webhook for login-validation', async () => {
+      Object.defineProperty(service, 'DISCORD_WEBHOOK_URL', {
+        value: 'https://discord.com/api/webhooks/test-webhook',
+      })
+
+      fetchMock.mockResponseOnce(JSON.stringify({ success: true }))
+
+      await service['sendDiscordWebhook'](user, 'login-validation')
+
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'https://discord.com/api/webhooks/test-webhook'
+        ),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: expect.any(String),
+        }
+      )
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1]?.body as string)
+      expect(body.content).toContain(
+        '✅ **User Email Successfully Validated !** 🔑'
+      )
+      expect(body.content).toContain('John Doe')
+      expect(body.content).toContain('john.doe@example.com')
+    })
+
+    it('should handle errors if fetch fails', async () => {
+      Object.defineProperty(service, 'DISCORD_WEBHOOK_URL', {
+        value: 'https://discord.com/api/webhooks/test-webhook',
+      })
+      fetchMock.mockReject(new Error('Network Error'))
+      console.error = jest.fn()
+
+      await service['sendDiscordWebhook'](user, 'pre-registration')
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          '❌ Failed to send webhook for pre-registration:'
+        ),
+        expect.any(Error)
+      )
     })
   })
 })
