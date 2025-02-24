@@ -459,6 +459,9 @@ describe('PreRegisterService', () => {
     })
 
     it('should handle errors if fetch fails', async () => {
+      Object.defineProperty(service, 'DISCORD_WEBHOOK_URL', {
+        value: 'https://discord.com/api/webhooks/test-webhook',
+      })
       fetchMock.mockReject(new Error('Network Error'))
       console.error = jest.fn()
 
