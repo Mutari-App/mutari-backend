@@ -1,8 +1,7 @@
 import 'user'
+import 'itinerary'
+import 'tour'
 
-// This is a sample model to get you started.
-
-/// A sample data source using local sqlite db.
 datasource db {
     provider = 'postgresql'
     url      = env("DATABASE_URL")
