@@ -1,0 +1,98 @@
+import 'base'
+import 'user'
+import 'tour'
+import 'enum'
+
+model Itinerary extends Base {
+  userId       String
+  title        String
+  description  String?
+  coverImage   String?
+  startDate    DateTime  @db.Timestamptz()
+  endDate      DateTime  @db.Timestamptz()
+  isPublished  Boolean   @default(false)
+  isCompleted  Boolean   @default(false)
+  
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sections     Section[]
+  tags         ItineraryTag[]
+  access       ItineraryAccess[]
+  pendingInvites PendingItineraryInvite[]
+  likes        ItineraryLike[]
+  tours        Tour[]
+}
+
+model Section extends Base {
+  itineraryId  String
+  sectionNumber Int
+  title        String    @default("Hari ke-1")
+  
+  itinerary    Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  blocks       Block[]
+
+  @@unique([itineraryId, sectionNumber])
+}
+
+model Block extends Base {
+  sectionId    String
+  position     Int
+  blockType    BLOCK_TYPE
+  title        String?
+  description  String?
+  startTime    DateTime?  @db.Timestamptz()
+  endTime      DateTime?  @db.Timestamptz()
+  location     String?
+  price        Int?       @default(0)
+  photoUrl     String?
+  
+  section      Section    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([sectionId, position])
+}
+
+model Tag extends Base {
+  name         String    @unique
+  description  String?
+  iconUrl      String?
+  
+  itineraryTags ItineraryTag[]
+}
+
+model ItineraryTag extends Id, CreatedAt {
+  itineraryId  String
+  tagId        String
+  
+  itinerary    Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  tag          Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([itineraryId, tagId])
+}
+
+model ItineraryAccess extends Id, CreatedAt {
+  itineraryId  String
+  userId       String
+  
+  itinerary    Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([itineraryId, userId])
+}
+
+model PendingItineraryInvite extends Base {
+  itineraryId  String
+  email        String    @unique
+  
+  itinerary    Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+
+  @@unique([itineraryId, email])
+}
+
+model ItineraryLike extends Id, CreatedAt {
+  itineraryId  String
+  userId       String
+  
+  itinerary    Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([itineraryId, userId])
+}
