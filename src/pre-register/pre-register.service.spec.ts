@@ -88,8 +88,11 @@ describe('PreRegisterService', () => {
         ...dto,
         updatedAt: new Date(),
         createdAt: new Date(),
+        password: '',
+        photoProfile: '',
         isEmailConfirmed: false,
         referredById: 'REFERRED_USER_ID',
+        loyaltyPoints: 0,
       })
 
       jest.spyOn(service, '_generateTicket').mockResolvedValue({
@@ -135,9 +138,12 @@ describe('PreRegisterService', () => {
         firstName: '',
         lastName: '',
         phoneNumber: '',
+        password: '',
+        photoProfile: '',
         referralCode: '',
         isEmailConfirmed: false,
-        referredById: null,
+        referredById: '',
+        loyaltyPoints: 0,
       })
 
       await expect(service.createPreRegister(dto)).rejects.toThrow(
@@ -185,14 +191,17 @@ describe('PreRegisterService', () => {
       prisma.user.findUnique.mockResolvedValue({
         id: 'USER123',
         email,
-        updatedAt: undefined,
-        createdAt: undefined,
+        updatedAt: new Date(),
+        createdAt: new Date(),
         firstName: '',
         lastName: '',
         phoneNumber: '',
+        password: '',
+        photoProfile: '',
         referralCode: '',
         isEmailConfirmed: false,
         referredById: '',
+        loyaltyPoints: 0,
       })
       jest.spyOn(service, '_generateTicket').mockResolvedValue({
         updatedAt: new Date(),
