@@ -30,7 +30,6 @@ export class ItineraryService {
     if (!itinerary) {
       throw new NotFoundException('Itinerary not found')
     }
-
     return this.prisma.itinerary.delete({
       where: { id },
     })
