@@ -1,9 +1,12 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
+import { PrismaService } from 'src/prisma/prisma.service'
 
 @Injectable()
 export class ItineraryService {
+  constructor(private readonly prisma: PrismaService) {}
+
   create(createItineraryDto: CreateItineraryDto) {
     return 'This action adds a new itinerary'
   }
@@ -20,7 +23,16 @@ export class ItineraryService {
     return `This action updates a #${id} itinerary`
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} itinerary`
+  async removeItinerary(id: string) {
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id },
+    })
+    if (!itinerary) {
+      throw new NotFoundException('Itinerary not found')
+    }
+
+    return this.prisma.itinerary.delete({
+      where: { id },
+    })
   }
 }
