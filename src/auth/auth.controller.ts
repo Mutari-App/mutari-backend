@@ -8,7 +8,7 @@ export class AuthController {
 
   @Post()
   async login(loginDto: LoginDTO) {
-    const loginResponse = null
+    const loginResponse = await this.authService.login(loginDto)
     return loginResponse
   }
 }
