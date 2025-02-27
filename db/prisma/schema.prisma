@@ -50,6 +50,7 @@ model User {
   phoneNumber      String?
   password         String?
   photoProfile     String?
+  birthDate DateTime? @db.Date()
   referralCode     String?           @unique()
   isEmailConfirmed Boolean           @default(false)
   referredById     String?
@@ -69,6 +70,7 @@ model Ticket {
   createdAt DateTime @default(now()) @db.Timestamptz()
   id        String   @id() @unique() @default(uuid())
   userId    String
+  uniqueCode String? @unique()
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
