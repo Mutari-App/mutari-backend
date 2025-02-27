@@ -39,7 +39,7 @@ export class ItineraryController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.itineraryService.remove(+id)
+  async removeItinerary(@Param('id') id: string) {
+    await this.itineraryService.removeItinerary(id)
   }
 }
