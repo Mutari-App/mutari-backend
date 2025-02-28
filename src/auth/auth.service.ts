@@ -2,6 +2,8 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common'
 import { EmailService } from 'src/email/email.service'
 import { PrismaService } from 'src/prisma/prisma.service'
@@ -9,6 +11,7 @@ import { customAlphabet } from 'nanoid'
 import { Prisma, User } from '@prisma/client'
 import { CreateUserDTO } from './dto/create-user-dto'
 import { verificationCodeTemplate } from './templates/verification-code-template'
+import { VerifyRegistrationDTO } from './dto/verify-registration-dto'
 
 @Injectable()
 export class AuthService {
@@ -127,5 +130,27 @@ export class AuthService {
       'Your Mutari Verification Code',
       verificationCodeTemplate(user.firstName, verificationCode.uniqueCode)
     )
+  }
+
+  async verify(data: VerifyRegistrationDTO) {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: {
+        uniqueCode: data.verificationCode,
+      },
+      include: {
+        user: true,
+      },
+    })
+
+    if (!ticket) {
+      throw new NotFoundException('Verification code not found')
+    }
+
+    if (
+      ticket.user.email !== data.email ||
+      ticket.user.firstName !== data.firstName
+    ) {
+      throw new UnauthorizedException('Invalid verification')
+    }
   }
 }
