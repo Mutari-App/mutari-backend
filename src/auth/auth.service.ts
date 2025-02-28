@@ -5,7 +5,10 @@ import {
 } from '@nestjs/common'
 import { EmailService } from 'src/email/email.service'
 import { PrismaService } from 'src/prisma/prisma.service'
+import { customAlphabet } from 'nanoid'
+import { Prisma, User } from '@prisma/client'
 import { CreateUserDTO } from './dto/create-user-dto'
+import { verificationCodeTemplate } from './templates/verification-code-template'
 
 @Injectable()
 export class AuthService {
@@ -13,6 +16,70 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService
   ) {}
+
+  _generateVerificationCode() {
+    return customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 8)()
+  }
+
+  async _generateUniqueVerificationCode(
+    prisma: Prisma.TransactionClient,
+    user: User
+  ) {
+    const existedTickets = await prisma.ticket.findMany({
+      where: {
+        userId: user.id,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+
+    const latestExistedTicket = existedTickets[0]
+
+    if (!!latestExistedTicket) {
+      const createdAt = new Date(latestExistedTicket.createdAt)
+      const timeDiff = new Date().getTime() - createdAt.getTime()
+      const timeLeft =
+        Number(process.env.PRE_REGISTER_TICKET_REQUEST_DELAY) - timeDiff
+      if (timeLeft > 0)
+        throw new BadRequestException(
+          `Please wait ${Math.floor(timeLeft / 1000)} seconds before requesting another verification code`
+        )
+    }
+
+    if (existedTickets.length >= 5) {
+      const lastExistedTicket = existedTickets[existedTickets.length - 1]
+      await prisma.ticket.delete({
+        where: {
+          id: lastExistedTicket.id,
+        },
+      })
+    }
+
+    let verificationCode: string
+    let isDuplicate: boolean
+
+    do {
+      verificationCode = this._generateVerificationCode()
+      const existingVerificationCode = await prisma.ticket.findUnique({
+        where: { uniqueCode: verificationCode },
+      })
+      isDuplicate = !!existingVerificationCode
+    } while (isDuplicate)
+
+    const ticket = await prisma.ticket.create({
+      data: {
+        uniqueCode: verificationCode,
+        user: {
+          connect: {
+            id: user.id,
+          },
+        },
+      },
+    })
+
+    return ticket
+  }
 
   async createUser(data: CreateUserDTO) {
     let user = await this.prisma.user.findUnique({
@@ -37,5 +104,28 @@ export class AuthService {
         data,
       })
     }
+  }
+
+  async sendVerification(data: CreateUserDTO) {
+    let user = await this.prisma.user.findUnique({
+      where: {
+        email: data.email,
+      },
+    })
+
+    if (!user) {
+      throw new BadRequestException('Invalid verification code')
+    }
+
+    const verificationCode = await this._generateUniqueVerificationCode(
+      this.prisma,
+      user
+    )
+
+    await this.emailService.sendEmail(
+      data.email,
+      'Your Mutari Verification Code',
+      verificationCodeTemplate(user.firstName, verificationCode.uniqueCode)
+    )
   }
 }
