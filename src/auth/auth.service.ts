@@ -12,6 +12,9 @@ import { Prisma, User } from '@prisma/client'
 import { CreateUserDTO } from './dto/create-user-dto'
 import { verificationCodeTemplate } from './templates/verification-code-template'
 import { VerifyRegistrationDTO } from './dto/verify-registration-dto'
+import { RegisterDTO } from './dto/register-dto'
+import { newUserRegistrationTemplate } from './templates/new-user-registration-template'
+import * as bcrypt from 'bcryptjs'
 
 @Injectable()
 export class AuthService {
@@ -152,5 +155,48 @@ export class AuthService {
     ) {
       throw new UnauthorizedException('Invalid verification')
     }
+  }
+
+  async register(data: RegisterDTO) {
+    await this.verify(data)
+
+    if (data.password != data.confirmPassword) {
+      throw new BadRequestException('Password does not match')
+    }
+
+    const saltOrRounds = bcrypt.genSaltSync(10)
+    const hashedPassword = await bcrypt.hash(data.password, saltOrRounds)
+
+    const newUser = await this.prisma.user.findUnique({
+      where: {
+        email: data.email,
+      },
+    })
+
+    if (!newUser) {
+      throw new NotFoundException('User not found')
+    }
+
+    await this.prisma.user.update({
+      where: {
+        email: newUser.email,
+      },
+      data: {
+        password: hashedPassword,
+        isEmailConfirmed: true,
+      },
+    })
+
+    await this.prisma.ticket.deleteMany({
+      where: {
+        userId: newUser.id,
+      },
+    })
+
+    await this.emailService.sendEmail(
+      data.email,
+      'Register Successful!',
+      newUserRegistrationTemplate(data.firstName)
+    )
   }
 }
