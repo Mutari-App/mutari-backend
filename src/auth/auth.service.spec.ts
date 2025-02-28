@@ -2,8 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { AuthService } from './auth.service'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { EmailService } from 'src/email/email.service'
-import { BadRequestException, ConflictException } from '@nestjs/common'
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common'
 import { CreateUserDTO } from './dto/create-user-dto'
+import { VerifyRegistrationDTO } from './dto/verify-registration-dto'
 import { verificationCodeTemplate } from './templates/verification-code-template'
 import { DeepMockProxy, mockDeep } from 'jest-mock-extended'
 import { PrismaClient, Ticket, User } from '@prisma/client'
@@ -210,6 +216,64 @@ describe('AuthService', () => {
         'Your Mutari Verification Code',
         verificationCodeTemplate('John', 'verification-code')
       )
+    })
+  })
+
+  describe('verify', () => {
+    it('should throw NotFoundException if verification code is not found', async () => {
+      prisma.ticket.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.verify({
+          verificationCode: 'code',
+          email: 'test@example.com',
+          firstName: 'John',
+        } as VerifyRegistrationDTO)
+      ).rejects.toThrow(NotFoundException)
+    })
+
+    it('should throw UnauthorizedException if emails do not match', async () => {
+      prisma.ticket.findUnique.mockResolvedValue({
+        uniqueCode: 'verification-code',
+        updatedAt: undefined,
+        createdAt: undefined,
+        id: '',
+        user: {
+          email: 'wrong@example.com',
+          firstName: 'Jane',
+          updatedAt: undefined,
+        } as any,
+      } as any)
+
+      await expect(
+        service.verify({
+          verificationCode: 'code',
+          email: 'test@example.com',
+          firstName: 'John',
+        } as VerifyRegistrationDTO)
+      ).rejects.toThrow(UnauthorizedException)
+    })
+
+    it('should throw UnauthorizedException if firstNames do not match', async () => {
+      prisma.ticket.findUnique.mockResolvedValue({
+        uniqueCode: 'verification-code',
+        updatedAt: undefined,
+        createdAt: undefined,
+        id: '',
+        user: {
+          email: 'test@example.com',
+          firstName: 'Jane',
+          updatedAt: undefined,
+        } as any,
+      } as any)
+
+      await expect(
+        service.verify({
+          verificationCode: 'code',
+          email: 'test@example.com',
+          firstName: 'John',
+        } as VerifyRegistrationDTO)
+      ).rejects.toThrow(UnauthorizedException)
     })
   })
 })
