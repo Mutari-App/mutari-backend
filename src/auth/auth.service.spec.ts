@@ -4,8 +4,9 @@ import { PrismaService } from 'src/prisma/prisma.service'
 import { EmailService } from 'src/email/email.service'
 import { BadRequestException, ConflictException } from '@nestjs/common'
 import { CreateUserDTO } from './dto/create-user-dto'
+import { verificationCodeTemplate } from './templates/verification-code-template'
 import { DeepMockProxy, mockDeep } from 'jest-mock-extended'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, Ticket, User } from '@prisma/client'
 
 describe('AuthService', () => {
   let service: AuthService
@@ -109,6 +110,106 @@ describe('AuthService', () => {
       expect(prisma.user.create).toHaveBeenCalledWith({
         data: { email: 'test@example.com' },
       })
+    })
+  })
+
+  describe('sendVerification', () => {
+    it('should throw BadRequestException if user does not exist', async () => {
+      prisma.user.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.sendVerification({ email: 'test@example.com' } as CreateUserDTO)
+      ).rejects.toThrow(BadRequestException)
+    })
+
+    it('should throw BadRequestException if requesting too fast', async () => {
+      const user = {
+        id: 'user-id',
+        firstName: 'John',
+        email: 'test@example.com',
+      } as User
+
+      const createdAt = new Date()
+      prisma.user.findUnique.mockResolvedValue(user)
+      prisma.ticket.findMany.mockResolvedValue([
+        {
+          createdAt,
+          id: 'ticket-id',
+          uniqueCode: 'verification-code',
+          userId: 'user-id',
+          updatedAt: undefined,
+        },
+      ])
+
+      jest
+        .spyOn(global.Date, 'now')
+        .mockImplementationOnce(() => createdAt.getTime() + 1000)
+
+      await expect(
+        service.sendVerification({ email: 'test@example.com' } as CreateUserDTO)
+      ).rejects.toThrow(BadRequestException)
+    })
+
+    it('should delete the oldest ticket if there are too many', async () => {
+      const user = {
+        id: 'user-id',
+        firstName: 'John',
+        email: 'test@example.com',
+      } as User
+
+      const now = Date.now()
+      const tickets = Array.from({ length: 5 }, (_, i) => ({
+        createdAt: new Date(now - (i + 1) * 60000 * 31),
+        id: `ticket-id-${i}`,
+        uniqueCode: `verification-code-${i}`,
+        userId: 'user-id',
+      })) as Ticket[]
+
+      prisma.user.findUnique.mockResolvedValue(user)
+      prisma.ticket.findMany.mockResolvedValue(tickets)
+      prisma.ticket.create.mockResolvedValue({
+        uniqueCode: 'new-verification-code',
+        createdAt: new Date(now + 60000 * 31),
+        id: 'new-ticket-id',
+        userId: 'user-id',
+        updatedAt: undefined,
+      })
+
+      await service.sendVerification({
+        email: 'test@example.com',
+      } as CreateUserDTO)
+
+      expect(prisma.ticket.delete).toHaveBeenCalledWith({
+        where: { id: 'ticket-id-4' },
+      })
+    })
+
+    it('should send verification email if user exists', async () => {
+      const user = {
+        id: 'user-id',
+        firstName: 'John',
+        email: 'test@example.com',
+      } as User
+
+      prisma.user.findUnique.mockResolvedValue(user)
+      prisma.ticket.findMany.mockResolvedValue([])
+      prisma.ticket.create.mockResolvedValue({
+        uniqueCode: 'verification-code',
+        updatedAt: undefined,
+        createdAt: undefined,
+        id: '',
+        userId: '',
+      })
+
+      await service.sendVerification({
+        email: 'test@example.com',
+      } as CreateUserDTO)
+
+      expect(emailService.sendEmail).toHaveBeenCalledWith(
+        'test@example.com',
+        'Your Mutari Verification Code',
+        verificationCodeTemplate('John', 'verification-code')
+      )
     })
   })
 })
