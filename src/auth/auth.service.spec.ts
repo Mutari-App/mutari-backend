@@ -10,6 +10,8 @@ import {
 } from '@nestjs/common'
 import { CreateUserDTO } from './dto/create-user-dto'
 import { VerifyRegistrationDTO } from './dto/verify-registration-dto'
+import { RegisterDTO } from './dto/register-dto'
+import { newUserRegistrationTemplate } from './templates/new-user-registration-template'
 import { verificationCodeTemplate } from './templates/verification-code-template'
 import { DeepMockProxy, mockDeep } from 'jest-mock-extended'
 import { PrismaClient, Ticket, User } from '@prisma/client'
@@ -274,6 +276,78 @@ describe('AuthService', () => {
           firstName: 'John',
         } as VerifyRegistrationDTO)
       ).rejects.toThrow(UnauthorizedException)
+    })
+  })
+
+  describe('register', () => {
+    it('should throw BadRequestException if passwords do not match', async () => {
+      jest.spyOn(service, 'verify').mockResolvedValue(undefined)
+      await expect(
+        service.register({
+          email: 'test@example.com',
+          password: 'pass',
+          confirmPassword: 'wrong',
+        } as RegisterDTO)
+      ).rejects.toThrow(BadRequestException)
+    })
+
+    it('should throw NotFoundException if user is not found', async () => {
+      jest.spyOn(service, 'verify').mockResolvedValue(undefined)
+      prisma.user.findUnique.mockResolvedValue(null)
+      await expect(
+        service.register({
+          email: 'none@example.com',
+          password: 'pass',
+          confirmPassword: 'pass',
+        } as RegisterDTO)
+      ).rejects.toThrow(NotFoundException)
+    })
+
+    it('should update user and send registration email if verification is successful', async () => {
+      jest.spyOn(service, 'verify').mockResolvedValue(undefined)
+      prisma.user.findUnique.mockResolvedValue({
+        email: 'test@example.com',
+        firstName: 'John',
+        id: 'USER-ID',
+      } as any)
+      prisma.user.update.mockResolvedValue({
+        email: 'test@example.com',
+        firstName: 'John',
+        updatedAt: undefined,
+        createdAt: undefined,
+        id: '',
+        lastName: '',
+        phoneNumber: '',
+        password: 'hashedPassword',
+        photoProfile: '',
+        birthDate: undefined,
+        referralCode: '',
+        isEmailConfirmed: false,
+        referredById: '',
+        loyaltyPoints: 0,
+      })
+
+      await service.register({
+        email: 'test@example.com',
+        password: 'pass',
+        confirmPassword: 'pass',
+        firstName: 'John',
+      } as RegisterDTO)
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+        data: { password: 'hashedPassword', isEmailConfirmed: true },
+      })
+
+      expect(prisma.ticket.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'USER-ID' },
+      })
+
+      expect(emailService.sendEmail).toHaveBeenCalledWith(
+        'test@example.com',
+        'Register Successful!',
+        newUserRegistrationTemplate('John')
+      )
     })
   })
 })
