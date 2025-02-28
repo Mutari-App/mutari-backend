@@ -16,6 +16,11 @@ import { verificationCodeTemplate } from './templates/verification-code-template
 import { DeepMockProxy, mockDeep } from 'jest-mock-extended'
 import { PrismaClient, Ticket, User } from '@prisma/client'
 
+jest.mock('bcryptjs', () => ({
+  genSaltSync: jest.fn().mockReturnValue('salt'),
+  hash: jest.fn().mockResolvedValue('hashedPassword'),
+}))
+
 describe('AuthService', () => {
   let service: AuthService
   let prisma: DeepMockProxy<PrismaClient>
