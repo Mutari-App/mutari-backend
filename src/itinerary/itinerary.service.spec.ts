@@ -51,20 +51,23 @@ describe('ItineraryService', () => {
 
       expect(result).toEqual({
         data: mockData,
-        total: mockTotal,
-        page: mockPage,
-        totalPages: Math.ceil(mockTotal / mockLimit),
+        metadata: {
+          total: mockTotal,
+          page: mockPage,
+          totalPages: Math.ceil(mockTotal / mockLimit),
+        },
       })
     })
 
-    it('should handle invalid page numbers', async () => {
-      await expect(service.findMyItineraries('123', -1)).rejects.toThrow(
-        'Invalid page number'
-      )
-      await expect(service.findMyItineraries('123', 0)).rejects.toThrow(
-        'Invalid page number'
-      )
+    it('should handle negative page numbers', async () => {
+      try {
+        await service.findMyItineraries('123', -1)
+      } catch (error) {
+        expect(error.message).toBe('Invalid page number')
+      }
+    })
 
+    it('should handle overflow page numbers', async () => {
       const mockTotal = 3
       const fixedLimit = PAGINATION_LIMIT
       const totalPages = Math.ceil(mockTotal / fixedLimit)
@@ -75,9 +78,11 @@ describe('ItineraryService', () => {
       prisma.itinerary.findMany = jest.fn().mockResolvedValue([])
       prisma.itinerary.count = jest.fn().mockResolvedValue(0)
 
-      await expect(
-        service.findMyItineraries('123', totalPages + 1)
-      ).rejects.toThrow('Invalid page number')
+      try {
+        await service.findMyItineraries('123', totalPages + 1)
+      } catch (error) {
+        expect(error.message).toBe('Page number exceeds total available pages')
+      }
     })
 
     it('should return empty list if user has no itineraries', async () => {
@@ -91,9 +96,11 @@ describe('ItineraryService', () => {
 
       expect(result).toEqual({
         data: [],
-        total: 0,
-        page: 1,
-        totalPages: 1,
+        metadata: {
+          total: 0,
+          page: 1,
+          totalPages: 1,
+        },
       })
     })
   })

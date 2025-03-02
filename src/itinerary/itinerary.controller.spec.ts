@@ -76,7 +76,7 @@ describe('ItineraryController', () => {
       mockItineraryService.findMyItineraries.mockResolvedValue(mockResult)
       mockResponseUtil.response.mockReturnValue(mockResponse)
 
-      const result = await controller.findMyItineraries(mockUser, { page: 1 })
+      const result = await controller.findMyItineraries(mockUser, { page: '1' })
 
       expect(mockItineraryService.findMyItineraries).toHaveBeenCalledWith(
         mockUser.id,
@@ -87,7 +87,7 @@ describe('ItineraryController', () => {
           statusCode: HttpStatus.OK,
           message: 'Itineraries fetched successfully.',
         },
-        { response: mockResult }
+        { itinerary: mockResult }
       )
       expect(result).toEqual(mockResponse)
     })
@@ -98,7 +98,7 @@ describe('ItineraryController', () => {
       )
 
       await expect(
-        controller.findMyItineraries(mockUser, { page: 0 })
+        controller.findMyItineraries(mockUser, { page: '0' })
       ).rejects.toThrow('Invalid page number')
 
       expect(mockItineraryService.findMyItineraries).toHaveBeenCalledWith(
@@ -117,7 +117,7 @@ describe('ItineraryController', () => {
       mockItineraryService.findMyItineraries.mockResolvedValue(mockResult)
       mockResponseUtil.response.mockResolvedValue(mockResponse)
 
-      const result = await controller.findMyItineraries(mockUser, { page: 1 })
+      const result = await controller.findMyItineraries(mockUser, { page: '1' })
 
       expect(mockItineraryService.findMyItineraries).toHaveBeenCalledWith(
         mockUser.id,
