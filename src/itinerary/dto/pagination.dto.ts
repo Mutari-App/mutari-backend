@@ -4,5 +4,5 @@ export class PaginationDto {
   @IsNumber()
   @IsPositive()
   @IsOptional()
-  page: number
+  page: string
 }

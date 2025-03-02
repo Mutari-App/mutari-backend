@@ -16,6 +16,7 @@ import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { PaginationDto } from './dto/pagination.dto'
 import { User } from '@prisma/client'
 import { ResponseUtil } from 'src/common/utils/response.util'
+import { Public } from 'src/common/decorators/public.decorator'
 
 @Controller('itinerary')
 export class ItineraryController {
@@ -34,14 +35,15 @@ export class ItineraryController {
     return this.itineraryService.findAll()
   }
 
-  @Get()
+  @Public()
+  @Get('me')
   async findMyItineraries(
     @GetUser() user: User,
     @Query() paginationDto: PaginationDto
   ) {
-    const response = await this.itineraryService.findMyItineraries(
+    const itinerary = await this.itineraryService.findMyItineraries(
       user.id,
-      paginationDto.page
+      parseInt(paginationDto.page)
     )
     return this.responseUtil.response(
       {
@@ -49,7 +51,7 @@ export class ItineraryController {
         message: 'Itineraries fetched successfully.',
       },
       {
-        response,
+        itinerary,
       }
     )
   }

@@ -34,9 +34,17 @@ export class ItineraryService {
 
     const totalPages =
       Math.ceil(total / limit) < 1 ? 1 : Math.ceil(total / limit)
-    if (page > totalPages) throw new HttpException('Invalid page number', 400)
+    if (page > totalPages)
+      throw new HttpException('Page number exceeds total available pages', 400)
 
-    return { data, total, page, totalPages }
+    return {
+      data,
+      metadata: {
+        total,
+        page,
+        totalPages,
+      },
+    }
   }
 
   findOne(id: number) {
