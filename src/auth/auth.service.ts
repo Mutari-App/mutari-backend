@@ -42,7 +42,7 @@ export class AuthService {
 
     const latestExistedTicket = existedTickets[0]
 
-    if (!!latestExistedTicket) {
+    if (latestExistedTicket) {
       const createdAt = new Date(latestExistedTicket.createdAt)
       const timeDiff = new Date().getTime() - createdAt.getTime()
       const REQUEST_DELAY = Number(
