@@ -13,6 +13,7 @@ model User extends Base {
     isEmailConfirmed Boolean  @default(false)
     referredById     String?
     loyaltyPoints    Int      @default(0)
+    birthDate       DateTime? @db.Date()
 
     referredBy       User?    @relation("Referral", fields: [referredById], references: [id]) // Relasi ke user lain
     referrals        User[]   @relation("Referral")
@@ -27,6 +28,7 @@ model User extends Base {
 model Ticket extends Base {
     userId String
     user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    uniqueCode String? @unique()
 }
 
 model Token extends Base {
