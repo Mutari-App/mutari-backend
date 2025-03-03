@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build && pnpm sentry:sourcemaps",
+    "build": "nest build",
     "format": "prettier --write .",
     "start": "nest start",
     "start:dev": "nest start --watch",
