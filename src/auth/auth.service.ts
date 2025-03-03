@@ -96,7 +96,7 @@ export class AuthService {
       },
     })
 
-    if (user && user.isEmailConfirmed) {
+    if (user?.isEmailConfirmed) {
       throw new ConflictException('User already exists')
     } else if (user && !user.isEmailConfirmed) {
       const createdAt = new Date(user.createdAt)
@@ -104,7 +104,7 @@ export class AuthService {
       const timeLeft = 5 * 60 * 1000 - timeDiff
       if (timeLeft > 0) {
         throw new BadRequestException(
-          `Please check your email to verify your account. You can wait  ${Math.floor(timeLeft / 1000)} seconds before requesting another register verification code`
+          `Please check your email to verify your account. You can wait ${Math.floor(timeLeft / 1000)} seconds before requesting another register verification code`
         )
       }
     } else {
