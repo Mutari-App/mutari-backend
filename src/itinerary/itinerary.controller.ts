@@ -35,7 +35,6 @@ export class ItineraryController {
     return this.itineraryService.findAll()
   }
 
-  @Public()
   @Get('me')
   async findMyItineraries(
     @GetUser() user: User,
