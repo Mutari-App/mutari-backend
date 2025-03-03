@@ -1,41 +1,42 @@
-name: SonarCloud Analysis
+  name: SonarCloud Analysis
 
-on:
-  push:
-    branches:
-      - main
-      - staging
-      - development
-  pull_request:
-    branches:
-      - development
-      - staging
-    types: [opened, synchronize, reopened]
+  on:
+    push:
+      branches:
+        - main
+        - staging
+        - development
+    pull_request:
+      branches:
+        - development
+        - staging
+      types: [opened, synchronize, reopened]
 
-jobs:
-  sonarcloud:
-    name: SonarCloud Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+  jobs:
+    sonarcloud:
+      name: SonarCloud Scan
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v3
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 10
+        - name: Setup pnpm
+          uses: pnpm/action-setup@v2
+          with:
+            version: 10
 
-      - name: Install dependencies
-        run: pnpm install
+        - name: Install dependencies
+          run: pnpm install
 
-      - name: Generate Prisma Client
-        run: pnpm prisma generate
+        - name: Generate Prisma Client
+          run: pnpm prisma generate
 
-      - name: Run tests & generate coverage
-        run: pnpm run test:cov
+        - name: Run tests & generate coverage
+          run: pnpm run test:cov
 
-      - name: SonarCloud Scan
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          pnpm sonar-scanner
+        - name: SonarCloud Scan
+          env:
+            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+            SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          run: |
+            pnpm sonar-scanner
