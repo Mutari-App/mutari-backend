@@ -35,11 +35,9 @@ describe('ItineraryService', () => {
       const mockItinerary = {
         id: 'ITN123',
         title: 'Trip to Bali',
-      }
+      };
 
-      ;(prisma.itinerary.findUnique as jest.Mock).mockResolvedValue(
-        mockItinerary
-      )
+      (prisma.itinerary.findUnique as jest.Mock).mockResolvedValue(mockItinerary)
 
       const result = await service.findOne(mockItinerary.id)
       expect(result).toEqual(mockItinerary)
@@ -49,13 +47,11 @@ describe('ItineraryService', () => {
     })
 
     it('should throw NotFoundException if itinerary does not exist', async () => {
-      const itineraryId = 'non-existent-id'
+      const itineraryId = 'non-existent-id';
 
-      ;(prisma.itinerary.findUnique as jest.Mock).mockResolvedValue(null)
+      (prisma.itinerary.findUnique as jest.Mock).mockResolvedValue(null)
 
-      await expect(service.findOne(itineraryId)).rejects.toThrow(
-        NotFoundException
-      )
+      await expect(service.findOne(itineraryId)).rejects.toThrow(NotFoundException)
       expect(prisma.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
       })
