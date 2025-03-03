@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  NotFoundException,
 } from '@nestjs/common'
 import { ItineraryService } from './itinerary.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
@@ -26,8 +27,12 @@ export class ItineraryController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.itineraryService.findOne(+id)
+  async findOne(@Param('id') id: string) {
+    const itinerary = await this.itineraryService.findOne(id)
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${id} not found`)
+    }
+    return itinerary
   }
 
   @Patch(':id')
