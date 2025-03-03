@@ -10,5 +10,5 @@ abstract model UpdatedAt {
     updatedAt DateTime @db.Timestamptz() @updatedAt
 }
 
-abstract model Base extends Id, CreatedAt,UpdatedAt {
+abstract model Base extends Id, CreatedAt, UpdatedAt {
 }

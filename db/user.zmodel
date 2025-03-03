@@ -1,19 +1,27 @@
 import 'base'
+import 'tour'
+import 'itinerary'
 
 model User extends Base {
     firstName        String
     lastName         String?
     email            String   @unique
     phoneNumber      String?
+    password         String?
+    photoProfile     String?
     referralCode     String?  @unique
     isEmailConfirmed Boolean  @default(false)
-
     referredById     String?
-    referredBy       User?    @relation("Referral", fields: [referredById], references: [id]) // Relasi ke user lain
+    loyaltyPoints    Int      @default(0)
 
+    referredBy       User?    @relation("Referral", fields: [referredById], references: [id]) // Relasi ke user lain
     referrals        User[]   @relation("Referral")
     tickets          Ticket[]
     tokens           Token[]
+    itineraries      Itinerary[]
+    itineraryAccess  ItineraryAccess[]
+    itineraryLikes   ItineraryLike[]
+    tourTickets      TourTicket[]
 }
 
 model Ticket extends Base {

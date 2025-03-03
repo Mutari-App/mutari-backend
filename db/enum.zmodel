@@ -1,0 +1,27 @@
+enum DURATION_TYPE {
+  HOUR
+  DAY
+}
+
+enum TICKET_STATUS {
+  PENDING
+  CONFIRMED
+  CANCELED
+}
+
+enum PAYMENT_STATUS {
+  UNPAID
+  PAID
+  REFUNDED
+}
+
+enum TITLE {
+  MR
+  MRS
+  MS
+}
+
+enum BLOCK_TYPE {
+  LOCATION
+  NOTE
+}
