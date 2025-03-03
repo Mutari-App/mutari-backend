@@ -12,7 +12,6 @@ export class ItineraryService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createItinerary(data: CreateItineraryDto, user: User) {
-    // Validate dates
     const startDate = new Date(data.startDate)
     const endDate = new Date(data.endDate)
 
@@ -24,20 +23,16 @@ export class ItineraryService {
       throw new BadRequestException('Start date must be before end date')
     }
 
-    // Validate sections
     if (!data.sections || data.sections.length === 0) {
       throw new BadRequestException('At least one section is required')
     }
 
-    // Check for duplicate section numbers
     const sectionNumbers = data.sections.map((section) => section.sectionNumber)
     if (new Set(sectionNumbers).size !== sectionNumbers.length) {
       throw new BadRequestException('Duplicate section numbers are not allowed')
     }
 
-    // Validate tags if provided
     if (data.tags && data.tags.length > 0) {
-      // Check if all tags exist
       const existingTags = await this.prisma.tag.findMany({
         where: {
           id: {
@@ -51,9 +46,7 @@ export class ItineraryService {
       }
     }
 
-    // Create the itinerary with sections and blocks in a single transaction
     return this.prisma.$transaction(async (prisma) => {
-      // Step 1: Create the main itinerary
       const itinerary = await prisma.itinerary.create({
         data: {
           userId: user.id,
@@ -62,7 +55,6 @@ export class ItineraryService {
           coverImage: data.coverImage,
           startDate: startDate,
           endDate: endDate,
-          // Step 2: Create tags if provided
           tags: data.tags?.length
             ? {
                 create: data.tags.map((tagId) => ({
@@ -72,12 +64,10 @@ export class ItineraryService {
                 })),
               }
             : undefined,
-          // Step 3: Create sections with their blocks
           sections: {
             create: data.sections.map((section) => ({
               sectionNumber: section.sectionNumber,
               title: section.title || `Hari ke-${section.sectionNumber}`,
-              // Step 4: Create blocks within each section
               blocks: {
                 create:
                   section.blocks && section.blocks.length > 0
@@ -99,7 +89,6 @@ export class ItineraryService {
             })),
           },
         },
-        // Include related data in the response
         include: {
           sections: {
             include: {
