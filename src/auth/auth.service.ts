@@ -45,8 +45,10 @@ export class AuthService {
     if (!!latestExistedTicket) {
       const createdAt = new Date(latestExistedTicket.createdAt)
       const timeDiff = new Date().getTime() - createdAt.getTime()
-      const timeLeft =
-        Number(process.env.PRE_REGISTER_TICKET_REQUEST_DELAY) - timeDiff
+      const REQUEST_DELAY = Number(
+        process.env.PRE_REGISTER_TICKET_REQUEST_DELAY || 300000
+      )
+      const timeLeft = REQUEST_DELAY - timeDiff
       if (timeLeft > 0)
         throw new BadRequestException(
           `Please wait ${Math.floor(timeLeft / 1000)} seconds before requesting another verification code`
