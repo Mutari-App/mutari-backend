@@ -335,7 +335,7 @@ describe('PreRegisterService', () => {
       const result = await service['_generateTicket'](prisma, 'USER123')
 
       expect(prisma.ticket.create).toHaveBeenCalledWith({
-        data: { user: { connect: { id: 'USER123' } } },
+        data: { uniqueCode: null, user: { connect: { id: 'USER123' } } },
       })
       expect(result).toEqual({ id: 'TICKET123', userId: 'USER123' })
     })
