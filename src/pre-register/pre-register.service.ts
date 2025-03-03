@@ -369,6 +369,7 @@ export class PreRegisterService {
 
     const ticket = await prisma.ticket.create({
       data: {
+        uniqueCode: null,
         user: {
           connect: {
             id: userId,

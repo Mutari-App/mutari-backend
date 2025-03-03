@@ -93,6 +93,7 @@ describe('PreRegisterService', () => {
         isEmailConfirmed: false,
         referredById: 'REFERRED_USER_ID',
         loyaltyPoints: 0,
+        birthDate: null,
       })
 
       jest.spyOn(service, '_generateTicket').mockResolvedValue({
@@ -100,6 +101,7 @@ describe('PreRegisterService', () => {
         createdAt: new Date(),
         id: 'id',
         userId: 'USER123',
+        uniqueCode: 'ABCDEFGH',
       })
 
       const result = await service.createPreRegister(dto)
@@ -144,6 +146,7 @@ describe('PreRegisterService', () => {
         isEmailConfirmed: false,
         referredById: '',
         loyaltyPoints: 0,
+        birthDate: null,
       })
 
       await expect(service.createPreRegister(dto)).rejects.toThrow(
@@ -202,12 +205,14 @@ describe('PreRegisterService', () => {
         isEmailConfirmed: false,
         referredById: '',
         loyaltyPoints: 0,
+        birthDate: null,
       })
       jest.spyOn(service, '_generateTicket').mockResolvedValue({
         updatedAt: new Date(),
         createdAt: new Date(),
         id: 'id',
         userId: 'userId',
+        uniqueCode: null,
       })
 
       const result = await service.login(email)
@@ -330,7 +335,7 @@ describe('PreRegisterService', () => {
       const result = await service['_generateTicket'](prisma, 'USER123')
 
       expect(prisma.ticket.create).toHaveBeenCalledWith({
-        data: { user: { connect: { id: 'USER123' } } },
+        data: { uniqueCode: null, user: { connect: { id: 'USER123' } } },
       })
       expect(result).toEqual({ id: 'TICKET123', userId: 'USER123' })
     })
