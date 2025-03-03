@@ -9,7 +9,7 @@ import { User } from '@prisma/client'
 
 @Injectable()
 export class ItineraryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async createItinerary(data: CreateItineraryDto, user: User) {
     // Validate dates
