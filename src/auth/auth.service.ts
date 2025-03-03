@@ -108,7 +108,7 @@ export class AuthService {
         )
       }
     } else {
-      user = await this.prisma.user.create({
+      await this.prisma.user.create({
         data,
       })
     }
