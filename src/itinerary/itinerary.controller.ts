@@ -1,10 +1,12 @@
 import {
   Controller,
+  Get,
   Post,
   Body,
   HttpStatus,
   Param,
   Patch,
+  Delete,
 } from '@nestjs/common'
 import { ItineraryService } from './itinerary.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
