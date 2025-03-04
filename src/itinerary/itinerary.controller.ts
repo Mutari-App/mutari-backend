@@ -1,45 +1,34 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-} from '@nestjs/common'
+import { Controller, Body, HttpStatus, Param, Patch } from '@nestjs/common'
 import { ItineraryService } from './itinerary.service'
-import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
+import { User } from '@prisma/client'
+import { GetUser } from 'src/common/decorators/getUser.decorator'
+import { ResponseUtil } from 'src/common/utils/response.util'
 
-@Controller('itinerary')
+@Controller('itineraries')
 export class ItineraryController {
-  constructor(private readonly itineraryService: ItineraryService) {}
-
-  @Post()
-  create(@Body() createItineraryDto: CreateItineraryDto) {
-    return this.itineraryService.create(createItineraryDto)
-  }
-
-  @Get()
-  findAll() {
-    return this.itineraryService.findAll()
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.itineraryService.findOne(+id)
-  }
+  constructor(
+    private readonly responseUtil: ResponseUtil,
+    private readonly itineraryService: ItineraryService
+  ) {}
 
   @Patch(':id')
-  update(
+  async updateItinerary(
     @Param('id') id: string,
+    @GetUser() user: User,
     @Body() updateItineraryDto: UpdateItineraryDto
   ) {
-    return this.itineraryService.update(+id, updateItineraryDto)
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.itineraryService.remove(+id)
+    const itinerary = await this.itineraryService.updateItinerary(
+      id,
+      updateItineraryDto,
+      user
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary updated successfully',
+      },
+      itinerary
+    )
   }
 }
