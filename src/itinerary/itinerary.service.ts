@@ -10,7 +10,7 @@ import { User } from '@prisma/client'
 
 @Injectable()
 export class ItineraryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async updateItinerary(id: string, data: UpdateItineraryDto, user: User) {
     const existingItinerary = await this.prisma.itinerary.findUnique({
