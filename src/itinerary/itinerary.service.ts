@@ -40,14 +40,16 @@ export class ItineraryService {
     }
 
     // Validate block dates order
-    for (var section of data.sections) {
-      for (var block of section.blocks) {
+    for (let section of data.sections) {
+      for (let block of section.blocks) {
         const startTime = new Date(block.startTime)
         const endTime = new Date(block.endTime)
 
         if (!isNaN(startTime.getTime()) && !isNaN(endTime.getTime())) {
           if (startTime > endTime) {
-            throw new BadRequestException('Block start time must be before end time')
+            throw new BadRequestException(
+              'Block start time must be before end time'
+            )
           }
         }
       }
@@ -92,16 +94,16 @@ export class ItineraryService {
           endDate: endDate,
 
           tags: data.tags?.length
-          ? {
-              set: [],
-              create: data.tags.map((tagId) => ({
-                tag: {
-                  connect: { id: tagId },
-                },
-              })),
-            }
-          : undefined,
-            
+            ? {
+                set: [],
+                create: data.tags.map((tagId) => ({
+                  tag: {
+                    connect: { id: tagId },
+                  },
+                })),
+              }
+            : undefined,
+
           sections: {
             deleteMany: {},
             create: data.sections.map((section) => ({
