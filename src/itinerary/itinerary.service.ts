@@ -39,6 +39,20 @@ export class ItineraryService {
       throw new BadRequestException('Start date must be before end date')
     }
 
+    // Validate block dates order
+    for (var section of data.sections) {
+      for (var block of section.blocks) {
+        const startTime = new Date(block.startTime)
+        const endTime = new Date(block.endTime)
+
+        if (!isNaN(startTime.getTime()) && !isNaN(endTime.getTime())) {
+          if (startTime > endTime) {
+            throw new BadRequestException('Block start time must be before end time')
+          }
+        }
+      }
+    }
+
     // Validate sections
     if (!data.sections || data.sections.length === 0) {
       throw new BadRequestException('At least one section is required')

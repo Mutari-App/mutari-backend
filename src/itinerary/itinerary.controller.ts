@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Body,
-  HttpStatus,
-  Param,
-  Patch,
-} from '@nestjs/common'
+import { Controller, Body, HttpStatus, Param, Patch } from '@nestjs/common'
 import { ItineraryService } from './itinerary.service'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
 import { User } from '@prisma/client'

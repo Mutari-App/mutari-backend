@@ -168,8 +168,8 @@ describe('ItineraryService', () => {
               createdAt: new Date(),
               updatedAt: new Date(),
             },
-          }
-        ]
+          },
+        ],
       }
 
       mockPrismaService.itinerary.findUnique.mockResolvedValue(
@@ -207,9 +207,7 @@ describe('ItineraryService', () => {
           endDate: updateItineraryDto.endDate,
           tags: {
             set: [],
-            create: [
-              { tag: { connect: { id: 'tag-123' } } },
-            ],
+            create: [{ tag: { connect: { id: 'tag-123' } } }],
           },
           sections: {
             deleteMany: {},
@@ -231,7 +229,7 @@ describe('ItineraryService', () => {
                       photoUrl: 'updated_resort.jpg',
                     },
                   ],
-                } 
+                },
               },
             ],
           },
