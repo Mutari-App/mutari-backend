@@ -64,7 +64,7 @@ jobs:
         with:
           message: |
             🎯 **Allure Test Report is Ready!**
-            📊 **[View Report](https://mutari-app.github.io/mutari-backend/${{ github.event.number }}/)**
+            📊 **[View Report](https://mutari-app.github.io/mutari-backend/${{ github.run_number }}/)**
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   format-lint:
