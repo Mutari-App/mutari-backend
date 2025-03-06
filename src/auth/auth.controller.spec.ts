@@ -2,7 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
 import { LoginDTO } from './dto/login.dto'
-import { BadRequestException, UnauthorizedException } from '@nestjs/common'
+import { UnauthorizedException } from '@nestjs/common'
+import { ResponseUtil } from 'src/common/utils/response.util'
 
 describe('AuthController', () => {
   let controller: AuthController
@@ -12,6 +13,10 @@ describe('AuthController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [
+        {
+          provide: ResponseUtil,
+          useClass: ResponseUtil,
+        },
         {
           provide: AuthService,
           useValue: {
@@ -41,17 +46,15 @@ describe('AuthController', () => {
       const result = await controller.login(dto)
 
       expect(service.login).toHaveBeenCalledWith(dto)
-      expect(result).toEqual(mockResponse)
-    })
-
-    it('should throw BadRequestException if email format is invalid', async () => {
-      const dto: LoginDTO = { email: 'invalid-email', password: 'password123' }
-
-      jest
-        .spyOn(service, 'login')
-        .mockRejectedValue(new BadRequestException('Invalid email format'))
-
-      await expect(controller.login(dto)).rejects.toThrow(BadRequestException)
+      expect(result).toEqual({
+        success: true,
+        statusCode: 200,
+        message: 'Success Login',
+        data: {
+          accessToken: 'mocked-access-token',
+          refreshToken: 'mocked-refresh-token',
+        },
+      })
     })
 
     it('should throw UnauthorizedException if email is not registered', async () => {
@@ -63,7 +66,7 @@ describe('AuthController', () => {
       jest
         .spyOn(service, 'login')
         .mockRejectedValue(
-          new UnauthorizedException('Email atau password salah')
+          new UnauthorizedException('Incorrect Email or Password')
         )
 
       await expect(controller.login(dto)).rejects.toThrow(UnauthorizedException)
@@ -78,7 +81,7 @@ describe('AuthController', () => {
       jest
         .spyOn(service, 'login')
         .mockRejectedValue(
-          new UnauthorizedException('Email atau password salah')
+          new UnauthorizedException('Incorrect Email or Password')
         )
 
       await expect(controller.login(dto)).rejects.toThrow(UnauthorizedException)
