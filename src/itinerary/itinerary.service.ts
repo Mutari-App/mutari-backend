@@ -19,12 +19,12 @@ export class ItineraryService {
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.itinerary.findMany({
-        where: { userId },
+        where: { userId, isCompleted: false },
         take: limit,
         skip,
         orderBy: { startDate: 'asc' },
       }),
-      this.prisma.itinerary.count({ where: { userId } }),
+      this.prisma.itinerary.count({ where: { userId, isCompleted: false } }),
     ])
 
     const totalPages =
@@ -40,6 +40,30 @@ export class ItineraryService {
         totalPages,
       },
     }
+  }
+
+  async findMyCompletedItineraries(userId: string) {
+    const completedItineraries = await this.prisma.itinerary.findMany({
+      where: { userId, isCompleted: true },
+      orderBy: { startDate: 'asc' },
+      include: {
+        sections: {
+          include: {
+            blocks: {
+              where: { blockType: 'LOCATION' }, // Hanya ambil blocks yang punya blockType = LOCATION
+            },
+          },
+        },
+      },
+    })
+
+    return completedItineraries.map((itinerary) => ({
+      ...itinerary, // Ambil semua data itinerary (id, title, dsb.)
+      locationCount: itinerary.sections.reduce(
+        (acc, section) => acc + section.blocks.length,
+        0
+      ), // Hitung total block dengan type LOCATION
+    }))
   }
 
   async markAsComplete(itineraryId: string, userId: string) {
