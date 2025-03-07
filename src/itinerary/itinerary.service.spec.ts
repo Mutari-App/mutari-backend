@@ -20,6 +20,8 @@ describe('ItineraryService', () => {
     endDate: new Date(),
     isPublished: false,
     isCompleted: false,
+    sections: [],
+    locationCount: 0,
   }
 
   beforeEach(async () => {

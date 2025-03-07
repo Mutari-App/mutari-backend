@@ -23,9 +23,26 @@ export class ItineraryService {
         take: limit,
         skip,
         orderBy: { startDate: 'asc' },
+        include: {
+          sections: {
+            include: {
+              blocks: {
+                where: { blockType: 'LOCATION' }, // Ambil hanya block dengan blockType = LOCATION
+              },
+            },
+          },
+        },
       }),
       this.prisma.itinerary.count({ where: { userId, isCompleted: false } }),
     ])
+
+    const formattedData = data.map((itinerary) => ({
+      ...itinerary,
+      locationCount: itinerary.sections.reduce(
+        (acc, section) => acc + section.blocks.length,
+        0
+      ), // Hitung total block LOCATION
+    }))
 
     const totalPages =
       Math.ceil(total / limit) < 1 ? 1 : Math.ceil(total / limit)
@@ -33,7 +50,7 @@ export class ItineraryService {
       throw new HttpException('Page number exceeds total available pages', 400)
 
     return {
-      data,
+      data: formattedData,
       metadata: {
         total,
         page,
