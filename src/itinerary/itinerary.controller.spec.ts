@@ -19,6 +19,7 @@ describe('ItineraryController', () => {
   const mockItineraryService = {
     findMyItineraries: jest.fn(),
     markAsComplete: jest.fn(),
+    findMyCompletedItineraries: jest.fn(),
   }
   const mockResponseUtil = {
     response: jest.fn(),
@@ -136,12 +137,19 @@ describe('ItineraryController', () => {
   describe('markAsComplete', () => {
     it('should mark itinerary as complete', async () => {
       const mockItinerary = { id: '1', userId: '123', isCompleted: true }
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries fetched successfully.',
+        itinerary: mockItinerary,
+      }
+
       mockItineraryService.markAsComplete.mockResolvedValue(mockItinerary)
+      mockResponseUtil.response.mockResolvedValue(mockResponse)
 
       const result = await controller.markAsComplete('1', mockUser)
 
       expect(service.markAsComplete).toHaveBeenCalledWith('1', 'user1')
-      expect(result.isCompleted).toBe(true)
+      expect(result.itinerary.isCompleted).toBe(true)
     })
 
     it('should throw NotFoundException if itinerary does not exist', async () => {
@@ -162,6 +170,83 @@ describe('ItineraryController', () => {
       await expect(controller.markAsComplete('1', mockUser)).rejects.toThrow(
         ForbiddenException
       )
+    })
+  })
+
+  describe('findMyCompletedItineraries', () => {
+    it('should return completed itineraries with response formatting', async () => {
+      const mockUser: User = { id: 'user-1' } as User
+      const mockItineraries = [
+        {
+          id: 'itinerary-1',
+          title: 'Trip ke Jepang',
+          isCompleted: true,
+          locationCount: 3,
+        },
+        {
+          id: 'itinerary-2',
+          title: 'Trip ke Bali',
+          isCompleted: true,
+          locationCount: 1,
+        },
+      ]
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries fetched successfully.',
+        itinerary: mockItineraries,
+      }
+
+      // Mock service response
+      mockItineraryService.findMyCompletedItineraries.mockResolvedValue(
+        mockItineraries
+      )
+      mockResponseUtil.response.mockResolvedValue(mockResponse)
+
+      // Call controller method
+      const result = await controller.findMyCompletedItineraries(mockUser)
+
+      // Expected response
+      expect(result).toEqual({
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries fetched successfully.',
+        itinerary: mockItineraries,
+      })
+
+      // Ensure service method called correctly
+      expect(service.findMyCompletedItineraries).toHaveBeenCalledWith('user-1')
+
+      // Ensure responseUtil.response called correctly
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Itineraries fetched successfully.',
+        },
+        {
+          itinerary: mockItineraries,
+        }
+      )
+    })
+
+    it('should return empty itinerary array if no completed itineraries found', async () => {
+      const mockUser: User = { id: 'user-2' } as User
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries fetched successfully.',
+        itinerary: [],
+      }
+
+      mockItineraryService.findMyCompletedItineraries.mockResolvedValue([])
+      mockResponseUtil.response.mockResolvedValue(mockResponse)
+
+      const result = await controller.findMyCompletedItineraries(mockUser)
+
+      expect(result).toEqual({
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries fetched successfully.',
+        itinerary: [],
+      })
+
+      expect(service.findMyCompletedItineraries).toHaveBeenCalledWith('user-2')
     })
   })
 })
