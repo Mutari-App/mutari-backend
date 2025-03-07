@@ -210,7 +210,7 @@ describe('ItineraryService', () => {
             create: [{ tag: { connect: { id: 'tag-123' } } }],
           },
           sections: {
-            deleteMany: {},
+            deleteMany: { itineraryId: 'itinerary-123' },
             create: [
               {
                 sectionNumber: 1,
@@ -339,11 +339,11 @@ describe('ItineraryService', () => {
           title: updateItineraryDto.title,
           description: updateItineraryDto.description,
           coverImage: updateItineraryDto.coverImage,
-          startDate: expect.any(Date),
-          endDate: expect.any(Date),
+          startDate: new Date('2025-05-10'),
+          endDate: new Date('2025-05-15'),
           tags: undefined,
           sections: {
-            deleteMany: {},
+            deleteMany: { itineraryId: 'itinerary-123' },
             create: [
               {
                 sectionNumber: 1,
@@ -468,11 +468,11 @@ describe('ItineraryService', () => {
           title: updateItineraryDto.title,
           description: updateItineraryDto.description,
           coverImage: updateItineraryDto.coverImage,
-          startDate: expect.any(Date),
-          endDate: expect.any(Date),
+          startDate: new Date('2025-05-10'),
+          endDate: new Date('2025-05-15'),
           tags: undefined,
           sections: {
-            deleteMany: {},
+            deleteMany: { itineraryId: 'itinerary-123' },
             create: [
               {
                 sectionNumber: 1,
