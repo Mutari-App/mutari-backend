@@ -39,6 +39,22 @@ export class ItineraryController {
     )
   }
 
+  @Get('me/completed')
+  async findMyCompletedItineraries(@GetUser() user: User) {
+    const itinerary = await this.itineraryService.findMyCompletedItineraries(
+      user.id
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries fetched successfully.',
+      },
+      {
+        itinerary,
+      }
+    )
+  }
+
   @Patch(':id/mark-as-complete')
   async markAsComplete(@Param('id') id: string, @GetUser() user: User) {
     const itinerary = await this.itineraryService.markAsComplete(id, user.id)
