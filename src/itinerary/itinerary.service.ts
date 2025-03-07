@@ -1,4 +1,9 @@
-import { HttpException, Injectable } from '@nestjs/common'
+import {
+  ForbiddenException,
+  HttpException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { PAGINATION_LIMIT } from 'src/common/constants/itinerary.constant'
 
@@ -35,5 +40,27 @@ export class ItineraryService {
         totalPages,
       },
     }
+  }
+
+  async markAsComplete(itineraryId: string, userId: string) {
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: itineraryId },
+    })
+
+    if (!itinerary)
+      throw new NotFoundException(
+        `Itinerary with id ${itineraryId} does not exist.`
+      )
+
+    if (itinerary.userId !== userId) {
+      throw new ForbiddenException(
+        `You are not authorized to update this itinerary.`
+      )
+    }
+
+    return await this.prisma.itinerary.update({
+      where: { id: itineraryId },
+      data: { isCompleted: true },
+    })
   }
 }
