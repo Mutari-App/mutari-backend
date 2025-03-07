@@ -37,24 +37,23 @@ describe('ItineraryService', () => {
         sections: [
           {
             id: '1',
-            blocks: [
-              { id: 'block1' },
-              { id: 'block2' }
-            ]
-          }
-        ]
-      };
-      (prisma.itinerary.findUnique as jest.Mock).mockResolvedValue(mockItinerary);
-      const result = await service.findOne('123');
-  
-      expect(result).toEqual(mockItinerary);
+            blocks: [{ id: 'block1' }, { id: 'block2' }],
+          },
+        ],
+      }
+      ;(prisma.itinerary.findUnique as jest.Mock).mockResolvedValue(
+        mockItinerary
+      )
+      const result = await service.findOne('123')
+
+      expect(result).toEqual(mockItinerary)
       expect(prisma.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: '123' },
         include: {
-          sections: { include: { blocks: true } }
-        }
-      });
-    });
+          sections: { include: { blocks: true } },
+        },
+      })
+    })
 
     it('should throw NotFoundException if itinerary does not exist', async () => {
       const itineraryId = 'non-existent-id'
