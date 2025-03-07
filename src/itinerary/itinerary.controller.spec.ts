@@ -3,7 +3,12 @@ import { ItineraryController } from './itinerary.controller'
 import { ItineraryService } from './itinerary.service'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
-import { HttpException, HttpStatus } from '@nestjs/common'
+import {
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+  NotFoundException,
+} from '@nestjs/common'
 import { User } from '@prisma/client'
 
 describe('ItineraryController', () => {
@@ -13,9 +18,26 @@ describe('ItineraryController', () => {
 
   const mockItineraryService = {
     findMyItineraries: jest.fn(),
+    markAsComplete: jest.fn(),
   }
   const mockResponseUtil = {
     response: jest.fn(),
+  }
+
+  const mockUser: User = {
+    id: 'user1',
+    firstName: 'John',
+    lastName: 'Doe',
+    email: 'johndoe@example.com',
+    phoneNumber: '08123456789',
+    password: 'hashedpassword',
+    photoProfile: 'profile.jpg',
+    referralCode: 'REF123',
+    isEmailConfirmed: true,
+    referredById: null,
+    loyaltyPoints: 100,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   }
 
   beforeEach(async () => {
@@ -43,22 +65,6 @@ describe('ItineraryController', () => {
   })
 
   describe('findMyItineraries', () => {
-    const mockUser: User = {
-      id: 'user1',
-      firstName: 'John',
-      lastName: 'Doe',
-      email: 'johndoe@example.com',
-      phoneNumber: '08123456789',
-      password: 'hashedpassword',
-      photoProfile: 'profile.jpg',
-      referralCode: 'REF123',
-      isEmailConfirmed: true,
-      referredById: null,
-      loyaltyPoints: 100,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-
     it('should return itineraries successfully', async () => {
       const mockResult = {
         data: [{ id: 1, userId: 'user1' }],
@@ -124,6 +130,38 @@ describe('ItineraryController', () => {
         1
       )
       expect(result).toEqual(mockResponse)
+    })
+  })
+
+  describe('markAsComplete', () => {
+    it('should mark itinerary as complete', async () => {
+      const mockItinerary = { id: '1', userId: '123', isCompleted: true }
+      mockItineraryService.markAsComplete.mockResolvedValue(mockItinerary)
+
+      const result = await controller.markAsComplete('1', mockUser)
+
+      expect(service.markAsComplete).toHaveBeenCalledWith('1', 'user1')
+      expect(result.isCompleted).toBe(true)
+    })
+
+    it('should throw NotFoundException if itinerary does not exist', async () => {
+      mockItineraryService.markAsComplete.mockRejectedValue(
+        new NotFoundException()
+      )
+
+      await expect(controller.markAsComplete('1', mockUser)).rejects.toThrow(
+        NotFoundException
+      )
+    })
+
+    it('should throw ForbiddenException if user is not the owner', async () => {
+      mockItineraryService.markAsComplete.mockRejectedValue(
+        new ForbiddenException()
+      )
+
+      await expect(controller.markAsComplete('1', mockUser)).rejects.toThrow(
+        ForbiddenException
+      )
     })
   })
 })
