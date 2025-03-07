@@ -4,10 +4,23 @@ import { PrismaService } from 'src/prisma/prisma.service'
 import { PAGINATION_LIMIT } from 'src/common/constants/itinerary.constant'
 import { DeepMockProxy, mockDeep } from 'jest-mock-extended'
 import { PrismaClient } from '@prisma/client'
+import { NotFoundException, ForbiddenException } from '@nestjs/common'
 
 describe('ItineraryService', () => {
   let service: ItineraryService
   let prisma: PrismaService
+
+  const mockItinerary = {
+    id: '1',
+    userId: 'user1',
+    title: 'Itinerary Mock',
+    description: 'This is a mocked itinerary',
+    coverImage: 'image.jpg',
+    startDate: new Date(),
+    endDate: new Date(),
+    isPublished: false,
+    isCompleted: false,
+  }
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -102,6 +115,43 @@ describe('ItineraryService', () => {
           totalPages: 1,
         },
       })
+    })
+  })
+
+  describe('markAsComplete', () => {
+    it('should mark itinerary as complete', async () => {
+      prisma.itinerary.findUnique = jest.fn().mockResolvedValue(mockItinerary)
+      prisma.itinerary.update = jest.fn().mockResolvedValue({
+        ...mockItinerary,
+        isCompleted: true,
+      })
+
+      const result = await service.markAsComplete('1', 'user1')
+
+      expect(prisma.itinerary.update).toHaveBeenCalledWith({
+        where: { id: '1' },
+        data: { isCompleted: true },
+      })
+
+      expect(result.isCompleted).toBe(true)
+    })
+
+    it('should throw NotFoundException if itinerary does not exist', async () => {
+      prisma.itinerary.findUnique = jest.fn().mockResolvedValue(null)
+
+      await expect(service.markAsComplete('1', 'user1')).rejects.toThrow(
+        NotFoundException
+      )
+    })
+
+    it('should throw ForbiddenException if user is not the owner', async () => {
+      const mockItinerary = { id: '1', userId: '999', isCompleted: false }
+
+      prisma.itinerary.findUnique = jest.fn().mockResolvedValue(mockItinerary)
+
+      await expect(service.markAsComplete('1', 'user1')).rejects.toThrow(
+        ForbiddenException
+      )
     })
   })
 })
