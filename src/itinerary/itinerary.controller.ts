@@ -7,14 +7,20 @@ import {
   Param,
   Delete,
   NotFoundException,
+  HttpStatus,
 } from '@nestjs/common'
 import { ItineraryService } from './itinerary.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
+import { Public } from 'src/common/decorators/public.decorator'
+import { ResponseUtil } from 'src/common/utils/response.util'
 
 @Controller('itinerary')
 export class ItineraryController {
-  constructor(private readonly itineraryService: ItineraryService) {}
+  constructor(
+    private readonly itineraryService: ItineraryService,
+    private readonly responseUtil: ResponseUtil
+  ) {}
 
   @Post()
   create(@Body() createItineraryDto: CreateItineraryDto) {
@@ -32,7 +38,15 @@ export class ItineraryController {
     if (!itinerary) {
       throw new NotFoundException(`Itinerary with ID ${id} not found`)
     }
-    return itinerary
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary fetched successfully.',
+      },
+      {
+        data: itinerary,
+      }
+    )
   }
 
   @Patch(':id')
