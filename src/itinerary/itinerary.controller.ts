@@ -1,4 +1,11 @@
-import { Controller, Get, Query, HttpStatus } from '@nestjs/common'
+import {
+  Controller,
+  Get,
+  Query,
+  HttpStatus,
+  Param,
+  Patch,
+} from '@nestjs/common'
 import { ItineraryService } from './itinerary.service'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { PaginationDto } from './dto/pagination.dto'
@@ -30,5 +37,10 @@ export class ItineraryController {
         itinerary,
       }
     )
+  }
+
+  @Patch(':id/mark-as-complete')
+  markAsComplete(@Param('id') id: string, @GetUser() user: User) {
+    return this.itineraryService.markAsComplete(id, user.id)
   }
 }
