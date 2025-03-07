@@ -10,7 +10,7 @@ describe('ItineraryService', () => {
   let service: ItineraryService
   let prisma: PrismaService
 
-  const mockItinerary = {
+  const mockItineraryData = {
     id: '1',
     userId: 'user1',
     title: 'Itinerary Mock',
@@ -49,7 +49,7 @@ describe('ItineraryService', () => {
 
   describe('findMyItineraries', () => {
     it('should return paginated itineraries', async () => {
-      const mockData = [{ id: 1, userId: 'user1', startDate: new Date() }]
+      const mockData = [mockItineraryData]
       const mockTotal = 10
       const mockPage = 1
       const mockLimit = PAGINATION_LIMIT
@@ -118,11 +118,105 @@ describe('ItineraryService', () => {
     })
   })
 
+  describe('findMyCompletedItineraries', () => {
+    it('should return completed itineraries with locationCount', async () => {
+      // Mock data yang akan dikembalikan Prisma
+      const mockItineraries = [
+        {
+          id: 'itinerary-1',
+          userId: 'user-1',
+          title: 'Trip ke Jepang',
+          isCompleted: true,
+          startDate: new Date(),
+          sections: [
+            { blocks: [{ blockType: 'LOCATION' }, { blockType: 'LOCATION' }] },
+            { blocks: [{ blockType: 'LOCATION' }] },
+          ],
+        },
+        {
+          id: 'itinerary-2',
+          userId: 'user-1',
+          title: 'Trip ke Bali',
+          isCompleted: true,
+          startDate: new Date(),
+          sections: [{ blocks: [{ blockType: 'LOCATION' }] }],
+        },
+      ]
+
+      // Set mock return value
+      prisma.itinerary.findMany = jest.fn().mockResolvedValue(mockItineraries)
+
+      // Panggil fungsi yang akan diuji
+      const result = await service.findMyCompletedItineraries('user-1')
+
+      // Cek hasilnya sesuai dengan ekspektasi
+      expect(result).toEqual([
+        {
+          id: 'itinerary-1',
+          userId: 'user-1',
+          title: 'Trip ke Jepang',
+          isCompleted: true,
+          startDate: expect.any(Date),
+          sections: expect.any(Array),
+          locationCount: 3, // Total lokasi dalam itinerary ini
+        },
+        {
+          id: 'itinerary-2',
+          userId: 'user-1',
+          title: 'Trip ke Bali',
+          isCompleted: true,
+          startDate: expect.any(Date),
+          sections: expect.any(Array),
+          locationCount: 1, // Total lokasi dalam itinerary ini
+        },
+      ])
+
+      // Pastikan findMany terpanggil dengan benar
+      expect(prisma.itinerary.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', isCompleted: true },
+        orderBy: { startDate: 'asc' },
+        include: {
+          sections: {
+            include: {
+              blocks: {
+                where: { blockType: 'LOCATION' },
+              },
+            },
+          },
+        },
+      })
+    })
+
+    it('should return an empty array when there are no completed itineraries', async () => {
+      // Mock return value kosong
+      prisma.itinerary.findMany = jest.fn().mockResolvedValue([])
+
+      const result = await service.findMyCompletedItineraries('user-2')
+
+      expect(result).toEqual([])
+      expect(prisma.itinerary.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-2', isCompleted: true },
+        orderBy: { startDate: 'asc' },
+        include: {
+          sections: {
+            include: {
+              blocks: {
+                where: { blockType: 'LOCATION' },
+              },
+            },
+          },
+        },
+      })
+    })
+  })
+
   describe('markAsComplete', () => {
     it('should mark itinerary as complete', async () => {
-      prisma.itinerary.findUnique = jest.fn().mockResolvedValue(mockItinerary)
+      prisma.itinerary.findUnique = jest
+        .fn()
+        .mockResolvedValue(mockItineraryData)
       prisma.itinerary.update = jest.fn().mockResolvedValue({
-        ...mockItinerary,
+        ...mockItineraryData,
         isCompleted: true,
       })
 
