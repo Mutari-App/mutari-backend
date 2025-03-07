@@ -40,7 +40,16 @@ export class ItineraryController {
   }
 
   @Patch(':id/mark-as-complete')
-  markAsComplete(@Param('id') id: string, @GetUser() user: User) {
-    return this.itineraryService.markAsComplete(id, user.id)
+  async markAsComplete(@Param('id') id: string, @GetUser() user: User) {
+    const itinerary = await this.itineraryService.markAsComplete(id, user.id)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary updated successfully.',
+      },
+      {
+        itinerary,
+      }
+    )
   }
 }
