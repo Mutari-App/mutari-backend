@@ -15,13 +15,115 @@ import { VerifyRegistrationDTO } from './dto/verify-registration-dto'
 import { RegisterDTO } from './dto/register-dto'
 import { newUserRegistrationTemplate } from './templates/new-user-registration-template'
 import * as bcrypt from 'bcryptjs'
+import { JwtService } from '@nestjs/jwt'
+import { Cron, CronExpression } from '@nestjs/schedule'
+import { LoginDTO } from './dto/login.dto'
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
     private readonly emailService: EmailService
   ) {}
+
+  async login(loginDto: LoginDTO) {
+    const { email, password } = loginDto
+
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    })
+
+    if (!user) {
+      throw new UnauthorizedException('Incorrect Email or Password')
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password)
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Incorrect Email or Password')
+    }
+
+    const accessToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_SECRET,
+        expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
+      }
+    )
+
+    const refreshToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
+      }
+    )
+
+    return { accessToken, refreshToken }
+  }
+
+  private isRefreshTokenBlackListed(refreshToken: string, userId: string) {
+    return this.prisma.refreshToken.findFirst({
+      where: {
+        token: refreshToken,
+        userId,
+      },
+    })
+  }
+
+  async refreshToken(
+    user: User,
+    currentRefreshToken: string,
+    currentRefreshTokenExpiresAt: Date
+  ) {
+    if (await this.isRefreshTokenBlackListed(currentRefreshToken, user.id)) {
+      throw new UnauthorizedException('Invalid refresh token.')
+    }
+
+    const newRefreshToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
+      }
+    )
+
+    await this.prisma.refreshToken.create({
+      data: {
+        token: currentRefreshToken,
+        expiresAt: currentRefreshTokenExpiresAt,
+
+        user: {
+          connect: {
+            id: user.id,
+          },
+        },
+      },
+    })
+    const accessToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_SECRET,
+        expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
+      }
+    )
+
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+    }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_6AM)
+  async clearExpiredRefreshTokens() {
+    await this.prisma.refreshToken.deleteMany({
+      where: {
+        expiresAt: {
+          lte: new Date(),
+        },
+      },
+    })
+  }
 
   _generateVerificationCode() {
     return customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 8)()
@@ -85,7 +187,6 @@ export class AuthService {
         },
       },
     })
-
     return ticket
   }
 
