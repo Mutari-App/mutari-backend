@@ -4,13 +4,15 @@ import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { Request } from 'express'
 
+export const extractTokenFromCookies = (req: Request) => {
+  return req.cookies.refreshToken
+}
+
 @Injectable()
 export class RefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
   constructor(private readonly prisma: PrismaService) {
     super({
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        (req: Request) => req.cookies.refreshToken,
-      ]),
+      jwtFromRequest: ExtractJwt.fromExtractors([extractTokenFromCookies]),
       ignoreExpiration: false,
       secretOrKey: process.env.JWT_REFRESH_SECRET,
     })

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { RefreshStrategy } from './refresh.strategy'
+import { extractTokenFromCookies, RefreshStrategy } from './refresh.strategy'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { UnauthorizedException } from '@nestjs/common'
 import { JwtModule } from '@nestjs/jwt'
@@ -84,5 +84,17 @@ describe('RefreshStrategy', () => {
     await expect(refreshStrategy.validate(mockPayload)).rejects.toThrow(
       new UnauthorizedException('Invalid Token')
     )
+  })
+
+  it('should extract refresh token from cookies', () => {
+    const mockRequest = {
+      cookies: { refreshToken: 'mock_refresh_token' },
+    }
+
+    const extractedToken = extractTokenFromCookies(
+      mockRequest as unknown as Request
+    )
+
+    expect(extractedToken).toBe('mock_refresh_token')
   })
 })
