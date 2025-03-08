@@ -11,6 +11,10 @@ describe('RefreshStrategy', () => {
   let refreshStrategy: RefreshStrategy
   let prisma: PrismaService
 
+  beforeAll(() => {
+    process.env.JWT_REFRESH_SECRET = 'JWT_REFRESH_SECRET'
+  })
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [JwtModule.register({})],
@@ -69,6 +73,7 @@ describe('RefreshStrategy', () => {
   })
 
   it('should throw UnauthorizedException if user not found', async () => {
+    process.env.JWT_REFRESH_SECRET = 'JWT_REFRESH_SECRET'
     const mockPayload = {
       userId: 'userId',
       exp: Math.floor(Date.now() / 1000) + 3600,
