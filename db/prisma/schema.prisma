@@ -54,6 +54,7 @@ model User {
   isEmailConfirmed Boolean           @default(false)
   referredById     String?
   loyaltyPoints    Int               @default(0)
+  birthDate        DateTime?         @db.Date()
   referredBy       User?             @relation("Referral", fields: [referredById], references: [id])
   referrals        User[]            @relation("Referral")
   tickets          Ticket[]
@@ -66,11 +67,12 @@ model User {
 }
 
 model Ticket {
-  updatedAt DateTime @updatedAt() @db.Timestamptz()
-  createdAt DateTime @default(now()) @db.Timestamptz()
-  id        String   @id() @unique() @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt  DateTime @updatedAt() @db.Timestamptz()
+  createdAt  DateTime @default(now()) @db.Timestamptz()
+  id         String   @id() @unique() @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  uniqueCode String?  @unique()
 }
 
 model Token {

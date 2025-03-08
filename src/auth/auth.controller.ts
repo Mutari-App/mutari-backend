@@ -1,11 +1,12 @@
 import {
   Body,
   Controller,
-  Get,
   Post,
   UseGuards,
   Res,
   Req,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common'
 import { AuthService } from './auth.service'
 import { LoginDTO } from './dto/login.dto'
@@ -15,6 +16,10 @@ import { RefreshAuthGuard } from './guards/refresh-auth.guard'
 import { Request, Response } from 'express'
 import { User } from '@prisma/client'
 import { COOKIE_CONFIG } from './constant'
+import { RegisterDTO } from './dto/register-dto'
+import { VerifyRegistrationDTO } from './dto/verify-registration-dto'
+import { CreateUserDTO } from './dto/create-user-dto'
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -38,6 +43,16 @@ export class AuthController {
     return this.responseUtil.response({
       message: 'Success Login',
       statusCode: 200,
+    })
+  }
+  @HttpCode(HttpStatus.CREATED)
+  @Post('/createUser')
+  async createUser(@Body() data: CreateUserDTO) {
+    await this.authService.createUser(data)
+    await this.authService.sendVerification(data)
+    return this.responseUtil.response({
+      statusCode: HttpStatus.CREATED,
+      message: 'User created successfully. Please verify your email',
     })
   }
 
@@ -64,6 +79,26 @@ export class AuthController {
     return this.responseUtil.response({
       message: 'Success get Refresh Token',
       statusCode: 200,
+    })
+  }
+  @HttpCode(HttpStatus.OK)
+  @Post('/verify')
+  async verify(@Body() data: VerifyRegistrationDTO) {
+    await this.authService.verify(data)
+    return this.responseUtil.response({
+      statusCode: HttpStatus.OK,
+      message: 'Verification successful',
+    })
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('/register')
+  async register(@Body() data: RegisterDTO) {
+    await this.authService.register(data)
+    return this.responseUtil.response({
+      statusCode: HttpStatus.OK,
+      message: 'Registration successful',
     })
   }
 }

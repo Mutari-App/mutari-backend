@@ -103,6 +103,7 @@ describe('PreRegisterController', () => {
         updatedAt: new Date(),
         referredById: 'USER124',
         loyaltyPoints: 0,
+        birthDate: null,
       }
 
       const result = await controller.referralCode(user)

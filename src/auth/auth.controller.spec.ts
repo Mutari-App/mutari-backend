@@ -6,12 +6,16 @@ import { UnauthorizedException } from '@nestjs/common'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { Request, Response } from 'express'
 import { COOKIE_CONFIG } from './constant'
+import { CreateUserDTO } from './dto/create-user-dto'
+import { RegisterDTO } from './dto/register-dto'
+import { VerifyRegistrationDTO } from './dto/verify-registration-dto'
 
-fdescribe('AuthController', () => {
+describe('AuthController', () => {
   let controller: AuthController
   let service: AuthService
   let mockResponse: Partial<Response>
   let mockRequest: Partial<Request>
+  let responseUtil: ResponseUtil
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -22,11 +26,18 @@ fdescribe('AuthController', () => {
           useValue: {
             login: jest.fn(),
             refreshToken: jest.fn(),
+            createUser: jest.fn(),
+            sendVerification: jest.fn(),
+            verify: jest.fn(),
+            register: jest.fn(),
           },
         },
         {
           provide: ResponseUtil,
           useClass: ResponseUtil,
+          useValue: {
+            response: jest.fn().mockImplementation((data) => data),
+          },
         },
       ],
     }).compile()
@@ -45,6 +56,7 @@ fdescribe('AuthController', () => {
       },
       cookies: { refreshToken: 'mocked-refresh-token' },
     } as Partial<Request>
+    responseUtil = module.get<ResponseUtil>(ResponseUtil)
   })
 
   describe('login', () => {
@@ -162,6 +174,67 @@ fdescribe('AuthController', () => {
           mockResponse as Response
         )
       ).rejects.toThrow(UnauthorizedException)
+    })
+  })
+
+  describe('createUser', () => {
+    it('should call authService.createUser and authService.sendVerification with correct data', async () => {
+      const dto: CreateUserDTO = {
+        email: 'john.doe@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+      }
+      jest.spyOn(service, 'createUser').mockResolvedValue(undefined)
+      jest.spyOn(service, 'sendVerification').mockResolvedValue(undefined)
+
+      const result = await controller.createUser(dto)
+      expect(service.createUser).toHaveBeenCalledWith(dto)
+      expect(service.sendVerification).toHaveBeenCalledWith(dto)
+      expect(result).toEqual({
+        statusCode: 201,
+        message: 'User created successfully. Please verify your email',
+        success: true,
+      })
+    })
+  })
+
+  describe('verify', () => {
+    it('should call authService.verify with correct data', async () => {
+      const dto: VerifyRegistrationDTO = {
+        verificationCode: 'code',
+        email: 'john.doe@example.com',
+        firstName: 'John',
+      }
+      jest.spyOn(service, 'verify').mockResolvedValue(undefined)
+
+      const result = await controller.verify(dto)
+      expect(service.verify).toHaveBeenCalledWith(dto)
+      expect(result).toEqual({
+        statusCode: 200,
+        message: 'Verification successful',
+        success: true,
+      })
+    })
+  })
+
+  describe('register', () => {
+    it('should call authService.register with correct data', async () => {
+      const dto: RegisterDTO = {
+        email: 'john.doe@example.com',
+        password: 'password',
+        confirmPassword: 'password',
+        firstName: 'John',
+        verificationCode: 'code',
+      }
+      jest.spyOn(service, 'register').mockResolvedValue(undefined)
+
+      const result = await controller.register(dto)
+      expect(service.register).toHaveBeenCalledWith(dto)
+      expect(result).toEqual({
+        statusCode: 200,
+        message: 'Registration successful',
+        success: true,
+      })
     })
   })
 })
