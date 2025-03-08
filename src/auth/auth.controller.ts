@@ -101,4 +101,8 @@ export class AuthController {
       message: 'Registration successful',
     })
   }
+
+  @Public()
+  @Post('logout')
+  logout(@Res({ passthrough: true }) res: Response) {}
 }

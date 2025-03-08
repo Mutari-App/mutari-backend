@@ -237,4 +237,21 @@ describe('AuthController', () => {
       })
     })
   })
+
+  describe('logout', () => {
+    it('should clear refreshToken cookie', () => {
+      const mockResponse = {
+        clearCookie: jest.fn(),
+      } as unknown as Response
+
+      controller.logout(mockResponse)
+
+      expect(mockResponse.clearCookie).toHaveBeenCalledWith(
+        COOKIE_CONFIG.refreshToken.name
+      )
+      expect(mockResponse.clearCookie).toHaveBeenCalledWith(
+        COOKIE_CONFIG.accessToken.name
+      )
+    })
+  })
 })
