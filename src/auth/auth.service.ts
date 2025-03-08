@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { LoginDTO } from './dto/login.dto'
 import * as bcrypt from 'bcryptjs'
+import { User } from '@prisma/client'
 
 @Injectable()
 export class AuthService {
@@ -38,5 +39,13 @@ export class AuthService {
     )
 
     return { accessToken, refreshToken }
+  }
+
+  async refreshToken(
+    user: User,
+    currentRefreshToken: string,
+    currentRefreshTokenExpiresAt: Date
+  ) {
+    return null
   }
 }
