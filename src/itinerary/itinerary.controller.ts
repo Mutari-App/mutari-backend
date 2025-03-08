@@ -1,5 +1,6 @@
-import { Controller, Body, HttpStatus, Param, Patch } from '@nestjs/common'
+import { Controller, Post, Body, HttpStatus, Param } from '@nestjs/common'
 import { ItineraryService } from './itinerary.service'
+import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
 import { User } from '@prisma/client'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
@@ -12,6 +13,24 @@ export class ItineraryController {
     private readonly itineraryService: ItineraryService
   ) {}
 
+  @Post()
+  async createItinerary(
+    @GetUser() user: User,
+    @Body() createItineraryDto: CreateItineraryDto
+  ) {
+    const itinerary = await this.itineraryService.createItinerary(
+      createItineraryDto,
+      user
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary created successfully',
+      },
+      itinerary
+    )
+  }
+  
   @Patch(':id')
   async updateItinerary(
     @Param('id') id: string,
