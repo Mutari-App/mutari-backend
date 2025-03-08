@@ -101,4 +101,11 @@ export class AuthController {
       message: 'Registration successful',
     })
   }
+
+  @Public()
+  @Post('logout')
+  logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie(COOKIE_CONFIG.refreshToken.name)
+    res.clearCookie(COOKIE_CONFIG.accessToken.name)
+  }
 }
