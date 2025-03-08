@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpStatus, Param } from '@nestjs/common'
+import { Controller, Post, Body, HttpStatus, Param, Patch } from '@nestjs/common'
 import { ItineraryService } from './itinerary.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
