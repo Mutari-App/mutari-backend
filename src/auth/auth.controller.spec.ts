@@ -7,7 +7,7 @@ import { ResponseUtil } from 'src/common/utils/response.util'
 import { Request, Response } from 'express'
 import { COOKIE_CONFIG } from './constant'
 
-describe('AuthController', () => {
+fdescribe('AuthController', () => {
   let controller: AuthController
   let service: AuthService
   let mockResponse: Partial<Response>
@@ -111,6 +111,56 @@ describe('AuthController', () => {
 
       await expect(
         controller.login(dto, mockResponse as Response)
+      ).rejects.toThrow(UnauthorizedException)
+    })
+  })
+
+  describe('refreshToken', () => {
+    it('should return new access and refresh tokens', async () => {
+      const mockRefreshResponse = {
+        accessToken: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+      }
+
+      jest.spyOn(service, 'refreshToken').mockResolvedValue(mockRefreshResponse)
+
+      const result = await controller.refreshToken(
+        mockRequest as Request,
+        mockResponse as Response
+      )
+
+      expect(service.refreshToken).toHaveBeenCalledWith(
+        (mockRequest.user as any).user,
+        mockRequest.cookies.refreshToken,
+        (mockRequest.user as any).refreshTokenExpiresAt
+      )
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        COOKIE_CONFIG.accessToken.name,
+        mockRefreshResponse.accessToken,
+        expect.any(Object)
+      )
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        COOKIE_CONFIG.refreshToken.name,
+        mockRefreshResponse.refreshToken,
+        expect.any(Object)
+      )
+      expect(result).toEqual({
+        message: 'Success get Refresh Token',
+        statusCode: 200,
+        success: true,
+      })
+    })
+
+    it('should throw UnauthorizedException if refresh token is invalid', async () => {
+      jest
+        .spyOn(service, 'refreshToken')
+        .mockRejectedValue(new UnauthorizedException('Invalid refresh token'))
+
+      await expect(
+        controller.refreshToken(
+          mockRequest as Request,
+          mockResponse as Response
+        )
       ).rejects.toThrow(UnauthorizedException)
     })
   })

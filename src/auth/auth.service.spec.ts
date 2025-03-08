@@ -177,4 +177,17 @@ describe('AuthService', () => {
       })
     })
   })
+
+  describe('clearExpiredRefreshTokens', () => {
+    it('should delete expired refresh tokens', async () => {
+      await service.clearExpiredRefreshTokens()
+      expect(prismaService.refreshToken.deleteMany).toHaveBeenCalledWith({
+        where: {
+          expiresAt: {
+            lte: expect.any(Date),
+          },
+        },
+      })
+    })
+  })
 })

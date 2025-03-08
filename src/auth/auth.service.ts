@@ -4,6 +4,7 @@ import { PrismaService } from 'src/prisma/prisma.service'
 import { LoginDTO } from './dto/login.dto'
 import * as bcrypt from 'bcryptjs'
 import { User } from '@prisma/client'
+import { Cron, CronExpression } from '@nestjs/schedule'
 
 @Injectable()
 export class AuthService {
@@ -98,4 +99,7 @@ export class AuthService {
       refreshToken: newRefreshToken,
     }
   }
+
+  @Cron(CronExpression.EVERY_DAY_AT_6AM)
+  async clearExpiredRefreshTokens() {}
 }
