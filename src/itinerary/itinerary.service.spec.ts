@@ -549,7 +549,7 @@ describe('ItineraryService', () => {
       expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
     })
   })
-  
+
   describe('updateItinerary', () => {
     it('should update an itinerary with new details, tags, sections, and blocks', async () => {
       // Arrange

@@ -362,7 +362,7 @@ describe('ItineraryController', () => {
       expect(result).toEqual(mockResponse)
     })
   })
-  
+
   describe('updateItinerary', () => {
     it('should update an itinerary and return a formatted response', async () => {
       // Arrange

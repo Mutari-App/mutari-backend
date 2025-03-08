@@ -12,7 +12,7 @@ import { User } from '@prisma/client'
 @Injectable()
 export class ItineraryService {
   constructor(private readonly prisma: PrismaService) {}
-  
+
   async createItinerary(data: CreateItineraryDto, user: User) {
     const startDate = new Date(data.startDate)
     const endDate = new Date(data.endDate)
@@ -107,7 +107,7 @@ export class ItineraryService {
       return itinerary
     })
   }
-  
+
   async updateItinerary(id: string, data: UpdateItineraryDto, user: User) {
     await this.checkItineraryExists(id, user)
     this.validateItineraryDates(data)
