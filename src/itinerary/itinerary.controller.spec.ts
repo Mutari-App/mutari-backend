@@ -16,6 +16,7 @@ describe('ItineraryController', () => {
     id: 'user-123',
     firstName: 'John',
     lastName: 'Doe',
+    birthDate: new Date(),
     email: 'john@example.com',
     phoneNumber: '123456789',
     password: 'hashedpassword',
