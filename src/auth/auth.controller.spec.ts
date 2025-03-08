@@ -7,7 +7,7 @@ import { ResponseUtil } from 'src/common/utils/response.util'
 import { Request, Response } from 'express'
 import { COOKIE_CONFIG } from './constant'
 
-fdescribe('AuthController', () => {
+describe('AuthController', () => {
   let controller: AuthController
   let service: AuthService
   let mockResponse: Partial<Response>

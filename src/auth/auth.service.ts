@@ -28,17 +28,32 @@ export class AuthService {
       throw new UnauthorizedException('Incorrect Email or Password')
     }
 
-    const accessToken = this.jwtService.sign(
-      { userId: user.id, email: user.email },
-      { expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN }
+    const accessToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_SECRET,
+        expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
+      }
     )
 
-    const refreshToken = this.jwtService.sign(
+    const refreshToken = await this.jwtService.signAsync(
       { userId: user.id },
-      { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN }
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
+      }
     )
 
     return { accessToken, refreshToken }
+  }
+
+  private isRefreshTokenBlackListed(refreshToken: string, userId: string) {
+    return this.prisma.refreshToken.findFirst({
+      where: {
+        token: refreshToken,
+        userId,
+      },
+    })
   }
 
   async refreshToken(
@@ -46,6 +61,41 @@ export class AuthService {
     currentRefreshToken: string,
     currentRefreshTokenExpiresAt: Date
   ) {
-    return null
+    if (await this.isRefreshTokenBlackListed(currentRefreshToken, user.id)) {
+      throw new UnauthorizedException('Invalid refresh token.')
+    }
+
+    const newRefreshToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
+      }
+    )
+
+    await this.prisma.refreshToken.create({
+      data: {
+        token: currentRefreshToken,
+        expiresAt: currentRefreshTokenExpiresAt,
+        user: {
+          connect: {
+            id: user.id,
+          },
+        },
+      },
+    })
+
+    const accessToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_SECRET,
+        expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
+      }
+    )
+
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+    }
   }
 }
