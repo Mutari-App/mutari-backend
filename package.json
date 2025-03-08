@@ -117,6 +117,10 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "allure-jest/node"
+    "testEnvironment": "allure-jest/node",
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      ".module.ts$"
+    ]
   }
 }
