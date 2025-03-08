@@ -58,6 +58,7 @@ model User {
   referrals        User[]            @relation("Referral")
   tickets          Ticket[]
   tokens           Token[]
+  refreshTokens    RefreshToken[]
   itineraries      Itinerary[]
   itineraryAccess  ItineraryAccess[]
   itineraryLikes   ItineraryLike[]
@@ -79,6 +80,16 @@ model Token {
   token     String   @unique()
   userId    String
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model RefreshToken {
+  updatedAt DateTime @updatedAt() @db.Timestamptz()
+  createdAt DateTime @default(now()) @db.Timestamptz()
+  id        String   @id() @unique() @default(uuid())
+  token     String   @unique()
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
 }
 
 model Tour {
