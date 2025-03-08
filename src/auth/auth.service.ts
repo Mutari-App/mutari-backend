@@ -101,5 +101,13 @@ export class AuthService {
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_6AM)
-  async clearExpiredRefreshTokens() {}
+  async clearExpiredRefreshTokens() {
+    await this.prisma.refreshToken.deleteMany({
+      where: {
+        expiresAt: {
+          lte: new Date(),
+        },
+      },
+    })
+  }
 }
