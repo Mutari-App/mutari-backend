@@ -17,6 +17,7 @@ import { User } from '@prisma/client'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { PaginationDto } from './dto/pagination.dto'
 import { ResponseUtil } from 'src/common/utils/response.util'
+import { Public } from 'src/common/decorators/public.decorator'
 
 @Controller('itineraries')
 export class ItineraryController {
@@ -139,6 +140,21 @@ export class ItineraryController {
         message: 'Itinerary deleted successfully.',
       },
       null
+    )
+  }
+
+  @Public()
+  @Get('tags')
+  async findAllTags() {
+    const tags = await this.itineraryService.findAllTags()
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Tags fetched successfully.',
+      },
+      {
+        tags,
+      }
     )
   }
 }
