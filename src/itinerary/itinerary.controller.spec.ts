@@ -986,7 +986,7 @@ describe('ItineraryController', () => {
       expect(mockResponseUtil.response).not.toHaveBeenCalled()
     })
   })
-  
+
   describe('removeItinerary', () => {
     it('should call remove() in the service and delete an itinerary', async () => {
       const itineraryId = 'ITN123'
@@ -1001,7 +1001,9 @@ describe('ItineraryController', () => {
 
       const result = await controller.removeItinerary(itineraryId)
 
-      expect(mockItineraryService.removeItinerary).toHaveBeenCalledWith(itineraryId)
+      expect(mockItineraryService.removeItinerary).toHaveBeenCalledWith(
+        itineraryId
+      )
       expect(responseUtil.response).toHaveBeenCalledWith(responseMock, null)
       expect(result).toEqual(responseMock)
     })
@@ -1015,7 +1017,9 @@ describe('ItineraryController', () => {
         'Not Found'
       )
 
-      expect(mockItineraryService.removeItinerary).toHaveBeenCalledWith(itineraryId)
+      expect(mockItineraryService.removeItinerary).toHaveBeenCalledWith(
+        itineraryId
+      )
     })
   })
 })

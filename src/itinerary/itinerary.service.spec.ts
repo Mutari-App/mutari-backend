@@ -1604,7 +1604,9 @@ describe('ItineraryService', () => {
     it('should remove an itinerary successfully', async () => {
       const itineraryId = 'ITN123'
 
-      mockPrismaService.itinerary.findUnique.mockResolvedValue({id: itineraryId })
+      mockPrismaService.itinerary.findUnique.mockResolvedValue({
+        id: itineraryId,
+      })
       mockPrismaService.itinerary.delete.mockResolvedValue({ id: itineraryId })
 
       await expect(service.removeItinerary(itineraryId)).resolves.toEqual({
