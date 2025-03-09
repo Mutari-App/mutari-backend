@@ -384,4 +384,13 @@ export class ItineraryService {
       where: { id },
     })
   }
+
+  async findAllTags() {
+    const tags = await this.prisma.tag.findMany({
+      orderBy: {
+        name: 'asc',
+      },
+    })
+    return tags
+  }
 }
