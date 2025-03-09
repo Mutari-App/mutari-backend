@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
-import { UpdateItineraryDto } from './dto/update-itinerary.dto'
 import { User } from '@prisma/client'
 
 @Injectable()
