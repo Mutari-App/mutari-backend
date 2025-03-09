@@ -1,9 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { ItineraryService } from './itinerary.service'
-import { PrismaService } from '../prisma/prisma.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { BLOCK_TYPE, User } from '@prisma/client'
-import { BadRequestException, NotFoundException } from '@nestjs/common'
+import { PrismaService } from 'src/prisma/prisma.service'
+import { PAGINATION_LIMIT } from 'src/common/constants/itinerary.constant'
+import {
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common'
 
 describe('ItineraryService', () => {
   let service: ItineraryService
@@ -17,6 +22,9 @@ describe('ItineraryService', () => {
     itinerary: {
       create: jest.fn(),
       findUnique: jest.fn(),
+      count: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
     },
     tag: {
       findMany: jest.fn(),
@@ -41,6 +49,20 @@ describe('ItineraryService', () => {
     loyaltyPoints: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
+  }
+
+  const mockItineraryData = {
+    id: '1',
+    userId: 'user1',
+    title: 'Itinerary Mock',
+    description: 'This is a mocked itinerary',
+    coverImage: 'image.jpg',
+    startDate: new Date(),
+    endDate: new Date(),
+    isPublished: false,
+    isCompleted: false,
+    sections: [],
+    locationCount: 0,
   }
 
   beforeEach(async () => {
@@ -581,6 +603,242 @@ describe('ItineraryService', () => {
         })
         expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
       })
+    })
+  })
+
+  describe('findMyItineraries', () => {
+    it('should return paginated itineraries', async () => {
+      const mockData = [mockItineraryData]
+      const mockTotal = 10
+      const mockPage = 1
+      const mockLimit = PAGINATION_LIMIT
+
+      mockPrismaService.$transaction.mockImplementation(async (queries) => {
+        return Promise.all(queries)
+      })
+      mockPrismaService.itinerary.findMany.mockResolvedValue(mockData)
+      mockPrismaService.itinerary.count.mockResolvedValue(mockTotal)
+
+      const result = await service.findMyItineraries('user1', mockPage)
+
+      expect(result).toEqual({
+        data: mockData,
+        metadata: {
+          total: mockTotal,
+          page: mockPage,
+          totalPages: Math.ceil(mockTotal / mockLimit),
+        },
+      })
+    })
+
+    it('should handle negative page numbers', async () => {
+      try {
+        await service.findMyItineraries('123', -1)
+      } catch (error) {
+        expect(error.message).toBe('Invalid page number')
+      }
+    })
+
+    it('should handle overflow page numbers', async () => {
+      const mockTotal = 3
+      const fixedLimit = PAGINATION_LIMIT
+      const totalPages = Math.ceil(mockTotal / fixedLimit)
+
+      mockPrismaService.$transaction.mockImplementation(async (queries) => {
+        return Promise.all(queries)
+      })
+      mockPrismaService.itinerary.findMany.mockResolvedValue([])
+      mockPrismaService.itinerary.count.mockResolvedValue(0)
+
+      try {
+        await service.findMyItineraries('123', totalPages + 1)
+      } catch (error) {
+        expect(error.message).toBe('Page number exceeds total available pages')
+      }
+    })
+
+    it('should return empty list if user has no itineraries', async () => {
+      mockPrismaService.$transaction.mockImplementation(async (queries) => {
+        return Promise.all(queries)
+      })
+      mockPrismaService.itinerary.findMany.mockResolvedValue([])
+      mockPrismaService.itinerary.count.mockResolvedValue(0)
+
+      const result = await service.findMyItineraries('123', 1)
+
+      expect(result).toEqual({
+        data: [],
+        metadata: {
+          total: 0,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+  })
+
+  describe('findMyCompletedItineraries', () => {
+    it('should return completed itineraries with locationCount', async () => {
+      // Mock data yang akan dikembalikan Prisma
+      const mockItineraries = [
+        {
+          id: 'itinerary-1',
+          userId: 'user-1',
+          title: 'Trip ke Jepang',
+          isCompleted: true,
+          startDate: new Date(),
+          sections: [
+            { blocks: [{ blockType: 'LOCATION' }, { blockType: 'LOCATION' }] },
+            { blocks: [{ blockType: 'LOCATION' }] },
+          ],
+        },
+        {
+          id: 'itinerary-2',
+          userId: 'user-1',
+          title: 'Trip ke Bali',
+          isCompleted: true,
+          startDate: new Date(),
+          sections: [{ blocks: [{ blockType: 'LOCATION' }] }],
+        },
+      ]
+
+      // Set mock return value
+      mockPrismaService.itinerary.findMany.mockResolvedValue(mockItineraries)
+
+      // Panggil fungsi yang akan diuji
+      const result = await service.findMyCompletedItineraries('user-1')
+
+      // Cek hasilnya sesuai dengan ekspektasi
+      expect(result).toEqual([
+        {
+          id: 'itinerary-1',
+          userId: 'user-1',
+          title: 'Trip ke Jepang',
+          isCompleted: true,
+          startDate: expect.any(Date),
+          sections: expect.any(Array),
+          locationCount: 3, // Total lokasi dalam itinerary ini
+        },
+        {
+          id: 'itinerary-2',
+          userId: 'user-1',
+          title: 'Trip ke Bali',
+          isCompleted: true,
+          startDate: expect.any(Date),
+          sections: expect.any(Array),
+          locationCount: 1, // Total lokasi dalam itinerary ini
+        },
+      ])
+
+      // Pastikan findMany terpanggil dengan benar
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', isCompleted: true },
+        orderBy: { startDate: 'asc' },
+        include: {
+          sections: {
+            include: {
+              blocks: {
+                where: { blockType: 'LOCATION' },
+              },
+            },
+          },
+        },
+      })
+    })
+
+    it('should correctly count LOCATION blocks', async () => {
+      // Mock response dari database
+      mockPrismaService.itinerary.findMany.mockResolvedValue([
+        {
+          id: '1',
+          userId: 'user123',
+          isCompleted: false,
+          sections: [
+            {
+              blocks: [{ blockType: 'LOCATION' }, { blockType: 'LOCATION' }],
+            },
+          ],
+        },
+        {
+          id: '2',
+          userId: 'user123',
+          isCompleted: false,
+          sections: [
+            {
+              blocks: [{ blockType: 'LOCATION' }],
+            },
+          ],
+        },
+      ])
+
+      mockPrismaService.itinerary.count.mockResolvedValue(2)
+
+      const result = await service.findMyItineraries('user123', 1)
+
+      expect(result.data).toHaveLength(2)
+      expect(result.data[0].locationCount).toBe(2) // itinerary pertama punya 2 LOCATION
+      expect(result.data[1].locationCount).toBe(1) // itinerary kedua punya 1 LOCATION
+    })
+
+    it('should return an empty array when there are no completed itineraries', async () => {
+      // Mock return value kosong
+      mockPrismaService.itinerary.findMany.mockResolvedValue([])
+
+      const result = await service.findMyCompletedItineraries('user-2')
+
+      expect(result).toEqual([])
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-2', isCompleted: true },
+        orderBy: { startDate: 'asc' },
+        include: {
+          sections: {
+            include: {
+              blocks: {
+                where: { blockType: 'LOCATION' },
+              },
+            },
+          },
+        },
+      })
+    })
+  })
+
+  describe('markAsComplete', () => {
+    it('should mark itinerary as complete', async () => {
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        mockItineraryData
+      )
+      mockPrismaService.itinerary.update = jest.fn().mockResolvedValue({
+        ...mockItineraryData,
+        isCompleted: true,
+      })
+
+      const result = await service.markAsComplete('1', 'user1')
+
+      expect(mockPrismaService.itinerary.update).toHaveBeenCalledWith({
+        where: { id: '1' },
+        data: { isCompleted: true },
+      })
+
+      expect(result.isCompleted).toBe(true)
+    })
+
+    it('should throw NotFoundException if itinerary does not exist', async () => {
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      await expect(service.markAsComplete('1', 'user1')).rejects.toThrow(
+        NotFoundException
+      )
+    })
+
+    it('should throw ForbiddenException if user is not the owner', async () => {
+      const mockItinerary = { id: '1', userId: '999', isCompleted: false }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+
+      await expect(service.markAsComplete('1', 'user1')).rejects.toThrow(
+        ForbiddenException
+      )
     })
   })
 })
