@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Test, TestingModule } from '@nestjs/testing'
 import { ItineraryController } from './itinerary.controller'
 import { ItineraryService } from './itinerary.service'
