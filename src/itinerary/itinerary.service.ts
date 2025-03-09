@@ -1,8 +1,4 @@
-import { PrismaService } from '../prisma/prisma.service'
-import { CreateItineraryDto } from './dto/create-itinerary.dto'
-import { User } from '@prisma/client'
 import {
-  ForbiddenException,
   HttpException,
   Injectable,
   NotFoundException,

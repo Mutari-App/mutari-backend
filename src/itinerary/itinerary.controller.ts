@@ -15,9 +15,7 @@ import { UpdateItineraryDto } from './dto/update-itinerary.dto'
 import { User } from '@prisma/client'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { PaginationDto } from './dto/pagination.dto'
-import { User } from '@prisma/client'
 import { ResponseUtil } from 'src/common/utils/response.util'
-import { CreateItineraryDto } from './dto/create-itinerary.dto'
 
 @Controller('itineraries')
 export class ItineraryController {
