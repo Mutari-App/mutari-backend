@@ -1,4 +1,3 @@
-
 import {
   Controller,
   Get,
@@ -24,16 +23,6 @@ export class ItineraryController {
     private readonly responseUtil: ResponseUtil
   ) {}
 
-  @Post()
-  create(@Body() createItineraryDto: CreateItineraryDto) {
-    return this.itineraryService.create(createItineraryDto)
-  }
-
-  @Get()
-  findAll() {
-    return this.itineraryService.findAll()
-  }
-
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const itinerary = await this.itineraryService.findOne(id)
@@ -51,14 +40,6 @@ export class ItineraryController {
     )
   }
 
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateItineraryDto: UpdateItineraryDto
-  ) {
-    return this.itineraryService.update(+id, updateItineraryDto)
-  }
-     
   @Post()
   async createItinerary(
     @GetUser() user: User,
