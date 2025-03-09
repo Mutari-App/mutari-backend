@@ -231,9 +231,7 @@ export class ItineraryService {
                 blockType: block.blockType,
                 title: block.title,
                 description: block.description,
-                startTime: block.startTime
-                  ? new Date(block.startTime)
-                  : null,
+                startTime: block.startTime ? new Date(block.startTime) : null,
                 endTime: block.endTime ? new Date(block.endTime) : null,
                 location: block.location,
                 price: block.price || 0,
@@ -242,5 +240,5 @@ export class ItineraryService {
             : [],
       },
     }))
-   }   
+  }
 }
