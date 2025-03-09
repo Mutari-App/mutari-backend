@@ -6,7 +6,7 @@ import { ResponseUtil } from 'src/common/utils/response.util'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { BLOCK_TYPE, User } from '@prisma/client'
-import { PrismaService } from 'src/prisma/prisma.service'
+
 import {
   ForbiddenException,
   HttpException,
@@ -43,6 +43,7 @@ describe('ItineraryController', () => {
     markAsComplete: jest.fn(),
     findMyCompletedItineraries: jest.fn(),
     findOne: jest.fn(),
+    removeItinerary: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -149,301 +150,301 @@ describe('ItineraryController', () => {
         new NotFoundException('Itinerary with ID INVALID_ID not found')
       )
     })
+  })
 
-    describe('createItinerary', () => {
-      it('should create an itinerary and return a formatted response', async () => {
-        // Arrange
-        const createItineraryDto: CreateItineraryDto = {
-          title: 'Beach Trip',
-          description: 'A relaxing beach vacation',
-          startDate: new Date('2025-03-10'),
-          endDate: new Date('2025-03-15'),
-          coverImage: 'beach.jpg',
-          tags: ['tag-123', 'tag-456'],
-          sections: [
-            {
-              sectionNumber: 1,
-              title: 'Day 1',
-              blocks: [
-                {
-                  blockType: BLOCK_TYPE.LOCATION,
-                  title: 'Beach Resort',
-                  description: 'Check in at the beach resort',
-                  position: 0,
-                  startTime: new Date('2025-03-10T14:00:00Z'),
-                  endTime: new Date('2025-03-10T15:00:00Z'),
-                  location: 'Beach Resort',
-                  price: 500000,
-                  photoUrl: 'resort.jpg',
-                },
-                {
-                  blockType: BLOCK_TYPE.NOTE,
-                  description:
-                    'Dont forget to make dinner reservation at seafood restaurant',
-                  position: 1,
-                },
-              ],
-            },
-          ],
-        }
+  describe('createItinerary', () => {
+    it('should create an itinerary and return a formatted response', async () => {
+      // Arrange
+      const createItineraryDto: CreateItineraryDto = {
+        title: 'Beach Trip',
+        description: 'A relaxing beach vacation',
+        startDate: new Date('2025-03-10'),
+        endDate: new Date('2025-03-15'),
+        coverImage: 'beach.jpg',
+        tags: ['tag-123', 'tag-456'],
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Beach Resort',
+                description: 'Check in at the beach resort',
+                position: 0,
+                startTime: new Date('2025-03-10T14:00:00Z'),
+                endTime: new Date('2025-03-10T15:00:00Z'),
+                location: 'Beach Resort',
+                price: 500000,
+                photoUrl: 'resort.jpg',
+              },
+              {
+                blockType: BLOCK_TYPE.NOTE,
+                description:
+                  'Dont forget to make dinner reservation at seafood restaurant',
+                position: 1,
+              },
+            ],
+          },
+        ],
+      }
 
-        const mockCreatedItinerary = {
-          id: 'itinerary-123',
-          userId: mockUser.id,
-          title: createItineraryDto.title,
-          description: createItineraryDto.description,
-          coverImage: createItineraryDto.coverImage,
-          startDate: new Date(createItineraryDto.startDate),
-          endDate: new Date(createItineraryDto.endDate),
-          isPublished: false,
-          isCompleted: false,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          sections: [
-            {
-              id: 'section-1',
-              itineraryId: 'itinerary-123',
-              sectionNumber: 1,
-              title: 'Day 1',
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              blocks: [
-                // Block details omitted for brevity
-              ],
-            },
-          ],
-          tags: [
-            // Tag details omitted for brevity
-          ],
-        }
+      const mockCreatedItinerary = {
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        title: createItineraryDto.title,
+        description: createItineraryDto.description,
+        coverImage: createItineraryDto.coverImage,
+        startDate: new Date(createItineraryDto.startDate),
+        endDate: new Date(createItineraryDto.endDate),
+        isPublished: false,
+        isCompleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        sections: [
+          {
+            id: 'section-1',
+            itineraryId: 'itinerary-123',
+            sectionNumber: 1,
+            title: 'Day 1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            blocks: [
+              // Block details omitted for brevity
+            ],
+          },
+        ],
+        tags: [
+          // Tag details omitted for brevity
+        ],
+      }
 
-        const mockResponse = {
+      const mockResponse = {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary created successfully',
+        data: mockCreatedItinerary,
+      }
+
+      mockItineraryService.createItinerary.mockResolvedValue(
+        mockCreatedItinerary
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      // Act
+      const result = await controller.createItinerary(
+        mockUser,
+        createItineraryDto
+      )
+
+      // Assert
+      expect(mockItineraryService.createItinerary).toHaveBeenCalledWith(
+        createItineraryDto,
+        mockUser
+      )
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
           statusCode: HttpStatus.CREATED,
           message: 'Itinerary created successfully',
-          data: mockCreatedItinerary,
-        }
+        },
+        mockCreatedItinerary
+      )
+      expect(result).toEqual(mockResponse)
+    })
 
-        mockItineraryService.createItinerary.mockResolvedValue(
-          mockCreatedItinerary
-        )
-        mockResponseUtil.response.mockReturnValue(mockResponse)
-
-        // Act
-        const result = await controller.createItinerary(
-          mockUser,
-          createItineraryDto
-        )
-
-        // Assert
-        expect(mockItineraryService.createItinerary).toHaveBeenCalledWith(
-          createItineraryDto,
-          mockUser
-        )
-        expect(mockResponseUtil.response).toHaveBeenCalledWith(
+    it('should pass errors from service to the caller', async () => {
+      // Arrange
+      const createItineraryDto: CreateItineraryDto = {
+        title: 'Problem Trip',
+        description: 'A trip that will cause an error',
+        startDate: new Date('2025-03-15'),
+        endDate: new Date('2025-03-10'), // Invalid date range
+        sections: [
           {
-            statusCode: HttpStatus.CREATED,
-            message: 'Itinerary created successfully',
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [],
           },
-          mockCreatedItinerary
-        )
-        expect(result).toEqual(mockResponse)
-      })
+        ],
+      }
 
-      it('should pass errors from service to the caller', async () => {
-        // Arrange
-        const createItineraryDto: CreateItineraryDto = {
-          title: 'Problem Trip',
-          description: 'A trip that will cause an error',
-          startDate: new Date('2025-03-15'),
-          endDate: new Date('2025-03-10'), // Invalid date range
-          sections: [
-            {
-              sectionNumber: 1,
-              title: 'Day 1',
-              blocks: [],
-            },
-          ],
-        }
+      const mockError = new Error('Start date must be before end date')
+      mockItineraryService.createItinerary.mockRejectedValue(mockError)
 
-        const mockError = new Error('Start date must be before end date')
-        mockItineraryService.createItinerary.mockRejectedValue(mockError)
+      // Act & Assert
+      await expect(
+        controller.createItinerary(mockUser, createItineraryDto)
+      ).rejects.toThrow(mockError)
 
-        // Act & Assert
-        await expect(
-          controller.createItinerary(mockUser, createItineraryDto)
-        ).rejects.toThrow(mockError)
+      expect(mockItineraryService.createItinerary).toHaveBeenCalledWith(
+        createItineraryDto,
+        mockUser
+      )
+      expect(mockResponseUtil.response).not.toHaveBeenCalled()
+    })
 
-        expect(mockItineraryService.createItinerary).toHaveBeenCalledWith(
-          createItineraryDto,
-          mockUser
-        )
-        expect(mockResponseUtil.response).not.toHaveBeenCalled()
-      })
+    it('should create an itinerary without tags', async () => {
+      // Arrange
+      const createItineraryDto: CreateItineraryDto = {
+        title: 'Mountain Trip',
+        description: 'A hiking trip',
+        startDate: new Date('2025-04-10'),
+        endDate: new Date('2025-04-15'),
+        coverImage: 'mountain.jpg',
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Hotel A',
+                description: 'Check in at the hotel',
+                position: 0,
+                startTime: new Date('2025-04-10T14:00:00Z'),
+                endTime: new Date('2025-04-10T15:00:00Z'),
+                location: 'Mountain Hotel',
+                price: 400000,
+                photoUrl: 'hotel.jpg',
+              },
+            ],
+          },
+        ],
+      }
 
-      it('should create an itinerary without tags', async () => {
-        // Arrange
-        const createItineraryDto: CreateItineraryDto = {
-          title: 'Mountain Trip',
-          description: 'A hiking trip',
-          startDate: new Date('2025-04-10'),
-          endDate: new Date('2025-04-15'),
-          coverImage: 'mountain.jpg',
-          sections: [
-            {
-              sectionNumber: 1,
-              title: 'Day 1',
-              blocks: [
-                {
-                  blockType: BLOCK_TYPE.LOCATION,
-                  title: 'Hotel A',
-                  description: 'Check in at the hotel',
-                  position: 0,
-                  startTime: new Date('2025-04-10T14:00:00Z'),
-                  endTime: new Date('2025-04-10T15:00:00Z'),
-                  location: 'Mountain Hotel',
-                  price: 400000,
-                  photoUrl: 'hotel.jpg',
-                },
-              ],
-            },
-          ],
-        }
+      const mockCreatedItinerary = {
+        id: 'itinerary-456',
+        userId: mockUser.id,
+        title: createItineraryDto.title,
+        description: createItineraryDto.description,
+        coverImage: createItineraryDto.coverImage,
+        startDate: new Date(createItineraryDto.startDate),
+        endDate: new Date(createItineraryDto.endDate),
+        isPublished: false,
+        isCompleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        sections: [
+          {
+            id: 'section-3',
+            itineraryId: 'itinerary-456',
+            sectionNumber: 1,
+            title: 'Day 1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            blocks: [
+              // Block details omitted for brevity
+            ],
+          },
+        ],
+        tags: [],
+      }
 
-        const mockCreatedItinerary = {
-          id: 'itinerary-456',
-          userId: mockUser.id,
-          title: createItineraryDto.title,
-          description: createItineraryDto.description,
-          coverImage: createItineraryDto.coverImage,
-          startDate: new Date(createItineraryDto.startDate),
-          endDate: new Date(createItineraryDto.endDate),
-          isPublished: false,
-          isCompleted: false,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          sections: [
-            {
-              id: 'section-3',
-              itineraryId: 'itinerary-456',
-              sectionNumber: 1,
-              title: 'Day 1',
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              blocks: [
-                // Block details omitted for brevity
-              ],
-            },
-          ],
-          tags: [],
-        }
+      const mockResponse = {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary created successfully',
+        data: mockCreatedItinerary,
+      }
 
-        const mockResponse = {
+      mockItineraryService.createItinerary.mockResolvedValue(
+        mockCreatedItinerary
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      // Act
+      const result = await controller.createItinerary(
+        mockUser,
+        createItineraryDto
+      )
+
+      // Assert
+      expect(mockItineraryService.createItinerary).toHaveBeenCalledWith(
+        createItineraryDto,
+        mockUser
+      )
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
           statusCode: HttpStatus.CREATED,
           message: 'Itinerary created successfully',
-          data: mockCreatedItinerary,
-        }
+        },
+        mockCreatedItinerary
+      )
+      expect(result).toEqual(mockResponse)
+    })
 
-        mockItineraryService.createItinerary.mockResolvedValue(
-          mockCreatedItinerary
-        )
-        mockResponseUtil.response.mockReturnValue(mockResponse)
-
-        // Act
-        const result = await controller.createItinerary(
-          mockUser,
-          createItineraryDto
-        )
-
-        // Assert
-        expect(mockItineraryService.createItinerary).toHaveBeenCalledWith(
-          createItineraryDto,
-          mockUser
-        )
-        expect(mockResponseUtil.response).toHaveBeenCalledWith(
+    it('should handle optional fields in the DTO correctly', async () => {
+      // Arrange
+      const createItineraryDto: CreateItineraryDto = {
+        title: 'Minimal Trip',
+        description: null, // Test with null value
+        startDate: new Date('2025-05-10'),
+        endDate: new Date('2025-05-15'),
+        // No coverImage
+        // No tags
+        sections: [
           {
-            statusCode: HttpStatus.CREATED,
-            message: 'Itinerary created successfully',
+            sectionNumber: 1,
+            // No title, should use default
+            blocks: [], // Empty blocks
           },
-          mockCreatedItinerary
-        )
-        expect(result).toEqual(mockResponse)
-      })
+        ],
+      }
 
-      it('should handle optional fields in the DTO correctly', async () => {
-        // Arrange
-        const createItineraryDto: CreateItineraryDto = {
-          title: 'Minimal Trip',
-          description: null, // Test with null value
-          startDate: new Date('2025-05-10'),
-          endDate: new Date('2025-05-15'),
-          // No coverImage
-          // No tags
-          sections: [
-            {
-              sectionNumber: 1,
-              // No title, should use default
-              blocks: [], // Empty blocks
-            },
-          ],
-        }
+      const mockCreatedItinerary = {
+        id: 'itinerary-789',
+        userId: mockUser.id,
+        title: createItineraryDto.title,
+        description: null,
+        coverImage: null,
+        startDate: new Date(createItineraryDto.startDate),
+        endDate: new Date(createItineraryDto.endDate),
+        isPublished: false,
+        isCompleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        sections: [
+          {
+            id: 'section-4',
+            itineraryId: 'itinerary-789',
+            sectionNumber: 1,
+            title: 'Hari ke-1', // Default title
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            blocks: [],
+          },
+        ],
+        tags: [],
+      }
 
-        const mockCreatedItinerary = {
-          id: 'itinerary-789',
-          userId: mockUser.id,
-          title: createItineraryDto.title,
-          description: null,
-          coverImage: null,
-          startDate: new Date(createItineraryDto.startDate),
-          endDate: new Date(createItineraryDto.endDate),
-          isPublished: false,
-          isCompleted: false,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          sections: [
-            {
-              id: 'section-4',
-              itineraryId: 'itinerary-789',
-              sectionNumber: 1,
-              title: 'Hari ke-1', // Default title
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              blocks: [],
-            },
-          ],
-          tags: [],
-        }
+      const mockResponse = {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary created successfully',
+        data: mockCreatedItinerary,
+      }
 
-        const mockResponse = {
+      mockItineraryService.createItinerary.mockResolvedValue(
+        mockCreatedItinerary
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      // Act
+      const result = await controller.createItinerary(
+        mockUser,
+        createItineraryDto
+      )
+
+      // Assert
+      expect(mockItineraryService.createItinerary).toHaveBeenCalledWith(
+        createItineraryDto,
+        mockUser
+      )
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
           statusCode: HttpStatus.CREATED,
           message: 'Itinerary created successfully',
-          data: mockCreatedItinerary,
-        }
-
-        mockItineraryService.createItinerary.mockResolvedValue(
-          mockCreatedItinerary
-        )
-        mockResponseUtil.response.mockReturnValue(mockResponse)
-
-        // Act
-        const result = await controller.createItinerary(
-          mockUser,
-          createItineraryDto
-        )
-
-        // Assert
-        expect(mockItineraryService.createItinerary).toHaveBeenCalledWith(
-          createItineraryDto,
-          mockUser
-        )
-        expect(mockResponseUtil.response).toHaveBeenCalledWith(
-          {
-            statusCode: HttpStatus.CREATED,
-            message: 'Itinerary created successfully',
-          },
-          mockCreatedItinerary
-        )
-        expect(result).toEqual(mockResponse)
-      })
+        },
+        mockCreatedItinerary
+      )
+      expect(result).toEqual(mockResponse)
     })
   })
 
@@ -983,6 +984,38 @@ describe('ItineraryController', () => {
         mockUser
       )
       expect(mockResponseUtil.response).not.toHaveBeenCalled()
+    })
+  })
+  
+  describe('removeItinerary', () => {
+    it('should call remove() in the service and delete an itinerary', async () => {
+      const itineraryId = 'ITN123'
+      mockItineraryService.removeItinerary.mockResolvedValue(undefined)
+
+      const responseMock = {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary deleted successfully.',
+      }
+
+      jest.spyOn(responseUtil, 'response').mockReturnValue(responseMock)
+
+      const result = await controller.removeItinerary(itineraryId)
+
+      expect(mockItineraryService.removeItinerary).toHaveBeenCalledWith(itineraryId)
+      expect(responseUtil.response).toHaveBeenCalledWith(responseMock, null)
+      expect(result).toEqual(responseMock)
+    })
+    it('should throw an error if itinerary is not found', async () => {
+      const itineraryId = 'non-existent-id'
+      const error = new Error('Not Found')
+
+      mockItineraryService.removeItinerary.mockRejectedValue(error)
+
+      await expect(controller.removeItinerary(itineraryId)).rejects.toThrow(
+        'Not Found'
+      )
+
+      expect(mockItineraryService.removeItinerary).toHaveBeenCalledWith(itineraryId)
     })
   })
 })
