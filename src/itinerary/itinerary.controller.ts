@@ -8,6 +8,7 @@ import {
   NotFoundException,
   Param,
   Patch,
+  Delete,
 } from '@nestjs/common'
 import { ItineraryService } from './itinerary.service'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
@@ -105,6 +106,18 @@ export class ItineraryController {
       {
         itinerary,
       }
+    )
+  }
+  
+  @Delete(':id')
+  async removeItinerary(@Param('id') id: string) {
+    await this.itineraryService.removeItinerary(id)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary deleted successfully.',
+      },
+      null
     )
   }
 }

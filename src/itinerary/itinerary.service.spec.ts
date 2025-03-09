@@ -25,6 +25,7 @@ describe('ItineraryService', () => {
       count: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
     tag: {
       findMany: jest.fn(),
@@ -839,6 +840,43 @@ describe('ItineraryService', () => {
       await expect(service.markAsComplete('1', 'user1')).rejects.toThrow(
         ForbiddenException
       )
+    })
+  })
+
+  describe('removeItinerary', () => {
+    it('should remove an itinerary successfully', async () => {
+      const itineraryId = 'ITN123'
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue({id: itineraryId })
+      mockPrismaService.itinerary.delete.mockResolvedValue({ id: itineraryId })
+
+      await expect(service.removeItinerary(itineraryId)).resolves.toEqual({
+        id: itineraryId,
+      })
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: itineraryId },
+      })
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: itineraryId },
+      })
+    })
+
+    it('should throw NotFoundException if itinerary does not exist', async () => {
+      const itineraryId = 'non-existent-id'
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      await expect(service.removeItinerary(itineraryId)).rejects.toThrow(
+        NotFoundException
+      )
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: itineraryId },
+      })
+
+      expect(mockPrismaService.itinerary.delete).not.toHaveBeenCalled()
     })
   })
 })

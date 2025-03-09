@@ -1,4 +1,3 @@
-import { PrismaService } from '../prisma/prisma.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { User } from '@prisma/client'
 import {
@@ -9,6 +8,7 @@ import {
   BadRequestException,
 } from '@nestjs/common'
 import { PAGINATION_LIMIT } from 'src/common/constants/itinerary.constant'
+import { PrismaService } from 'src/prisma/prisma.service'
 
 @Injectable()
 export class ItineraryService {
@@ -216,5 +216,16 @@ export class ItineraryService {
       throw new NotFoundException(`Itinerary with ID ${id} not found`)
     }
     return itinerary
+  }
+  async removeItinerary(id: string) {
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id },
+    })
+    if (!itinerary) {
+      throw new NotFoundException('Itinerary not found')
+    }
+    return this.prisma.itinerary.delete({
+      where: { id },
+    })
   }
 }
