@@ -117,7 +117,9 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "setupFilesAfterEnv": ["../jest.setup.ts"],
+    "setupFilesAfterEnv": [
+      "../jest.setup.ts"
+    ],
     "testEnvironment": "allure-jest/node",
     "coveragePathIgnorePatterns": [
       "/node_modules/",
