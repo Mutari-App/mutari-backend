@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { ItineraryService } from './itinerary.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
-import { BLOCK_TYPE, User } from '@prisma/client'
+import { BLOCK_TYPE, Tag, User } from '@prisma/client'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { PAGINATION_LIMIT } from 'src/common/constants/itinerary.constant'
 import {
@@ -1636,6 +1636,53 @@ describe('ItineraryService', () => {
       })
 
       expect(mockPrismaService.itinerary.delete).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('findAllTags', () => {
+    it('should return an array of tags', async () => {
+      const mockTags: Tag[] = [
+        {
+          id: '1',
+          name: 'Beach',
+          description: 'Beach destinations',
+          iconUrl: 'beach-icon.png',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: '2',
+          name: 'Adventure',
+          description: 'Adventure activities',
+          iconUrl: 'adventure-icon.png',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]
+
+      mockPrismaService.tag.findMany.mockResolvedValue(mockTags)
+
+      const result = await service.findAllTags()
+
+      expect(prismaService.tag.findMany).toHaveBeenCalledWith({
+        orderBy: {
+          name: 'asc',
+        },
+      })
+      expect(result).toEqual(mockTags)
+    })
+
+    it('should return an empty array if there are no tags', async () => {
+      mockPrismaService.tag.findMany.mockResolvedValue([])
+
+      const result = await service.findAllTags()
+
+      expect(prismaService.tag.findMany).toHaveBeenCalledWith({
+        orderBy: {
+          name: 'asc',
+        },
+      })
+      expect(result).toEqual([])
     })
   })
 })
