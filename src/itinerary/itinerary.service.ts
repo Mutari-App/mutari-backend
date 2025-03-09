@@ -118,7 +118,7 @@ export class ItineraryService {
 
     // Update itinerary with id
     return this.prisma.$transaction(async (prisma) => {
-      const updatedItinerary = await this.prisma.itinerary.update({
+      const updatedItinerary = await prisma.itinerary.update({
         where: { id, userId: user.id },
         data: {
           title: data.title,
