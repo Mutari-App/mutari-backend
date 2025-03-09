@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Query,
+  Post,
+  Body,
   HttpStatus,
   Param,
   Patch,
@@ -11,13 +13,32 @@ import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { PaginationDto } from './dto/pagination.dto'
 import { User } from '@prisma/client'
 import { ResponseUtil } from 'src/common/utils/response.util'
+import { CreateItineraryDto } from './dto/create-itinerary.dto'
 
-@Controller('itinerary')
+@Controller('itineraries')
 export class ItineraryController {
   constructor(
-    private readonly itineraryService: ItineraryService,
-    private readonly responseUtil: ResponseUtil
+    private readonly responseUtil: ResponseUtil,
+    private readonly itineraryService: ItineraryService
   ) {}
+
+  @Post()
+  async createItinerary(
+    @GetUser() user: User,
+    @Body() createItineraryDto: CreateItineraryDto
+  ) {
+    const itinerary = await this.itineraryService.createItinerary(
+      createItineraryDto,
+      user
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary created successfully',
+      },
+      itinerary
+    )
+  }
 
   @Get('me')
   async findMyItineraries(
