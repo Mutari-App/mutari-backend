@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
 import { User } from '@prisma/client'
+import { CreateSectionDto } from './dto/create-section.dto'
 
 @Injectable()
 export class ItineraryService {
@@ -67,28 +68,7 @@ export class ItineraryService {
               }
             : undefined,
           sections: {
-            create: data.sections.map((section) => ({
-              sectionNumber: section.sectionNumber,
-              title: section.title || `Hari ke-${section.sectionNumber}`,
-              blocks: {
-                create:
-                  section.blocks && section.blocks.length > 0
-                    ? section.blocks.map((block, index) => ({
-                        position: index,
-                        blockType: block.blockType,
-                        title: block.title,
-                        description: block.description,
-                        startTime: block.startTime
-                          ? new Date(block.startTime)
-                          : null,
-                        endTime: block.endTime ? new Date(block.endTime) : null,
-                        location: block.location,
-                        price: block.price || 0,
-                        photoUrl: block.photoUrl,
-                      }))
-                    : [],
-              },
-            })),
+            create: this._generateBlockFromSections(data.sections),
           },
         },
         include: {
@@ -110,9 +90,9 @@ export class ItineraryService {
 
   async updateItinerary(id: string, data: UpdateItineraryDto, user: User) {
     await this.checkItineraryExists(id, user)
-    this.validateItineraryDates(data)
-    this.validateItinerarySections(data)
-    await this.validateItineraryTags(data)
+    this._validateItineraryDates(data)
+    this._validateItinerarySections(data)
+    await this._validateItineraryTags(data)
 
     // Update itinerary with id
     return this.prisma.$transaction(async (prisma) => {
@@ -138,29 +118,7 @@ export class ItineraryService {
 
           sections: {
             deleteMany: { itineraryId: id },
-            create: data.sections.map((section) => ({
-              sectionNumber: section.sectionNumber,
-              title: section.title || `Hari ke-${section.sectionNumber}`,
-              // Step 4: Create blocks within each section
-              blocks: {
-                create:
-                  section.blocks && section.blocks.length > 0
-                    ? section.blocks.map((block, index) => ({
-                        position: index,
-                        blockType: block.blockType,
-                        title: block.title,
-                        description: block.description,
-                        startTime: block.startTime
-                          ? new Date(block.startTime)
-                          : null,
-                        endTime: block.endTime ? new Date(block.endTime) : null,
-                        location: block.location,
-                        price: block.price || 0,
-                        photoUrl: block.photoUrl,
-                      }))
-                    : [],
-              },
-            })),
+            create: this._generateBlockFromSections(data.sections),
           },
         },
         include: {
@@ -199,7 +157,7 @@ export class ItineraryService {
     return itinerary
   }
 
-  validateItineraryDates(data: UpdateItineraryDto) {
+  _validateItineraryDates(data: UpdateItineraryDto) {
     // Validate dates
     const startDate = new Date(data.startDate)
     const endDate = new Date(data.endDate)
@@ -229,7 +187,7 @@ export class ItineraryService {
     }
   }
 
-  validateItinerarySections(data: UpdateItineraryDto) {
+  _validateItinerarySections(data: UpdateItineraryDto) {
     // Validate sections
     if (!data.sections || data.sections.length === 0) {
       throw new BadRequestException('At least one section is required')
@@ -242,7 +200,7 @@ export class ItineraryService {
     }
   }
 
-  async validateItineraryTags(data: UpdateItineraryDto) {
+  async _validateItineraryTags(data: UpdateItineraryDto) {
     // Validate tags if provided
     if (data.tags && data.tags.length > 0) {
       // Check if all tags exist
@@ -259,4 +217,30 @@ export class ItineraryService {
       }
     }
   }
+
+  _generateBlockFromSections = (sections: CreateSectionDto[]) => {
+    return sections.map((section) => ({
+      sectionNumber: section.sectionNumber,
+      title: section.title || `Hari ke-${section.sectionNumber}`,
+      // Step 4: Create blocks within each section
+      blocks: {
+        create:
+          section.blocks && section.blocks.length > 0
+            ? section.blocks.map((block, index) => ({
+                position: index,
+                blockType: block.blockType,
+                title: block.title,
+                description: block.description,
+                startTime: block.startTime
+                  ? new Date(block.startTime)
+                  : null,
+                endTime: block.endTime ? new Date(block.endTime) : null,
+                location: block.location,
+                price: block.price || 0,
+                photoUrl: block.photoUrl,
+              }))
+            : [],
+      },
+    }))
+   }   
 }
