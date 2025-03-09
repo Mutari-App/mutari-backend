@@ -5,6 +5,7 @@ import {
   Post,
   Body,
   HttpStatus,
+  NotFoundException,
   Param,
   Patch,
 } from '@nestjs/common'
@@ -18,9 +19,26 @@ import { CreateItineraryDto } from './dto/create-itinerary.dto'
 @Controller('itineraries')
 export class ItineraryController {
   constructor(
-    private readonly responseUtil: ResponseUtil,
-    private readonly itineraryService: ItineraryService
+    private readonly itineraryService: ItineraryService,
+    private readonly responseUtil: ResponseUtil
   ) {}
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    const itinerary = await this.itineraryService.findOne(id)
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${id} not found`)
+    }
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary fetched successfully.',
+      },
+      {
+        data: itinerary,
+      }
+    )
+  }
 
   @Post()
   async createItinerary(

@@ -13,7 +13,6 @@ import { PAGINATION_LIMIT } from 'src/common/constants/itinerary.constant'
 @Injectable()
 export class ItineraryService {
   constructor(private readonly prisma: PrismaService) {}
-
   async createItinerary(data: CreateItineraryDto, user: User) {
     const startDate = new Date(data.startDate)
     const endDate = new Date(data.endDate)
@@ -201,5 +200,21 @@ export class ItineraryService {
       where: { id: itineraryId },
       data: { isCompleted: true },
     })
+  }
+  async findOne(id: string) {
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: id },
+      include: {
+        sections: {
+          include: {
+            blocks: true,
+          },
+        },
+      },
+    })
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${id} not found`)
+    }
+    return itinerary
   }
 }
