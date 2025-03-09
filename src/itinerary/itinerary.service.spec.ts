@@ -706,6 +706,40 @@ describe('ItineraryService', () => {
       })
     })
 
+    it('should correctly count LOCATION blocks', async () => {
+      // Mock response dari database
+      mockPrismaService.itinerary.findMany.mockResolvedValue([
+        {
+          id: '1',
+          userId: 'user123',
+          isCompleted: false,
+          sections: [
+            {
+              blocks: [{ blockType: 'LOCATION' }, { blockType: 'LOCATION' }],
+            },
+          ],
+        },
+        {
+          id: '2',
+          userId: 'user123',
+          isCompleted: false,
+          sections: [
+            {
+              blocks: [{ blockType: 'LOCATION' }],
+            },
+          ],
+        },
+      ])
+
+      mockPrismaService.itinerary.count.mockResolvedValue(2)
+
+      const result = await service.findMyItineraries('user123', 1)
+
+      expect(result.data).toHaveLength(2)
+      expect(result.data[0].locationCount).toBe(2) // itinerary pertama punya 2 LOCATION
+      expect(result.data[1].locationCount).toBe(1) // itinerary kedua punya 1 LOCATION
+    })
+
     it('should return an empty array when there are no completed itineraries', async () => {
       // Mock return value kosong
       mockPrismaService.itinerary.findMany.mockResolvedValue([])
