@@ -11,11 +11,12 @@ import {
   Delete,
 } from '@nestjs/common'
 import { ItineraryService } from './itinerary.service'
+import { CreateItineraryDto } from './dto/create-itinerary.dto'
+import { UpdateItineraryDto } from './dto/update-itinerary.dto'
+import { User } from '@prisma/client'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { PaginationDto } from './dto/pagination.dto'
-import { User } from '@prisma/client'
 import { ResponseUtil } from 'src/common/utils/response.util'
-import { CreateItineraryDto } from './dto/create-itinerary.dto'
 
 @Controller('itineraries')
 export class ItineraryController {
@@ -54,6 +55,26 @@ export class ItineraryController {
       {
         statusCode: HttpStatus.CREATED,
         message: 'Itinerary created successfully',
+      },
+      itinerary
+    )
+  }
+
+  @Patch(':id')
+  async updateItinerary(
+    @Param('id') id: string,
+    @GetUser() user: User,
+    @Body() updateItineraryDto: UpdateItineraryDto
+  ) {
+    const itinerary = await this.itineraryService.updateItinerary(
+      id,
+      updateItineraryDto,
+      user
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary updated successfully',
       },
       itinerary
     )
@@ -108,7 +129,7 @@ export class ItineraryController {
       }
     )
   }
-  
+
   @Delete(':id')
   async removeItinerary(@Param('id') id: string) {
     await this.itineraryService.removeItinerary(id)
