@@ -13,7 +13,6 @@ import {
 
 describe('ItineraryService', () => {
   let service: ItineraryService
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let prismaService: PrismaService
 
   const mockPrismaService = {
