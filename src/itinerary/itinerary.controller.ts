@@ -58,7 +58,7 @@ export class ItineraryController {
       itinerary
     )
   }
-  
+
   @Patch(':id')
   async updateItinerary(
     @Param('id') id: string,

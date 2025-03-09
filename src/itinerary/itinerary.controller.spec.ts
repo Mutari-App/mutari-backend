@@ -479,7 +479,6 @@ describe('ItineraryController', () => {
         { itinerary: mockResult }
       )
       expect(result).toEqual(mockResponse)
-      
     })
 
     it('should throw an error for invalid page number', async () => {

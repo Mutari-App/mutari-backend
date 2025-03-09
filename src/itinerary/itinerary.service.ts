@@ -263,7 +263,7 @@ export class ItineraryService {
       },
     }))
   }
-  
+
   async findMyItineraries(userId: string, page: number) {
     if (page < 1) throw new HttpException('Invalid page number', 400)
 
