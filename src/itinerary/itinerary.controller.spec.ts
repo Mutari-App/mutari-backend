@@ -6,6 +6,7 @@ import { ResponseUtil } from 'src/common/utils/response.util'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { BLOCK_TYPE, User } from '@prisma/client'
 import { HttpStatus, NotFoundException } from '@nestjs/common'
+import { find } from 'rxjs'
 
 describe('ItineraryController', () => {
   let controller: ItineraryController
@@ -31,6 +32,7 @@ describe('ItineraryController', () => {
 
   const mockItineraryService = {
     createItinerary: jest.fn(),
+    findOne: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -43,10 +45,7 @@ describe('ItineraryController', () => {
       providers: [
         {
           provide: ItineraryService,
-          useValue: {
-            findOne: jest.fn(),
-            mockItineraryService,
-          },
+          useValue: mockItineraryService,
         },
         {
           provide: ResponseUtil,
@@ -117,8 +116,8 @@ describe('ItineraryController', () => {
         data: mockItinerary,
       }
 
-      jest.spyOn(itineraryService, 'findOne').mockResolvedValue(mockItinerary)
-      jest.spyOn(responseUtil, 'response').mockReturnValue(mockResponse)
+      mockItineraryService.findOne.mockResolvedValue(mockItinerary)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
 
       const result = await controller.findOne('ITN-123')
 
@@ -134,11 +133,12 @@ describe('ItineraryController', () => {
     })
 
     it('should throw NotFoundException if itinerary is not found', async () => {
-      jest.spyOn(itineraryService, 'findOne').mockResolvedValue(null)
+      mockItineraryService.findOne.mockResolvedValue(null)
 
       await expect(controller.findOne('INVALID_ID')).rejects.toThrow(
         new NotFoundException('Itinerary with ID INVALID_ID not found')
       )
+  })
 
   describe('createItinerary', () => {
     it('should create an itinerary and return a formatted response', async () => {
@@ -435,4 +435,5 @@ describe('ItineraryController', () => {
       expect(result).toEqual(mockResponse)
     })
   })
+})
 })
