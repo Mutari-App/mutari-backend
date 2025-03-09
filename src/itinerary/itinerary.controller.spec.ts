@@ -5,7 +5,7 @@ import { ItineraryService } from './itinerary.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
-import { BLOCK_TYPE, User } from '@prisma/client'
+import { BLOCK_TYPE, Tag, User } from '@prisma/client'
 
 import {
   ForbiddenException,
@@ -44,6 +44,7 @@ describe('ItineraryController', () => {
     findMyCompletedItineraries: jest.fn(),
     findOne: jest.fn(),
     removeItinerary: jest.fn(),
+    findAllTags: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -1020,6 +1021,85 @@ describe('ItineraryController', () => {
       expect(mockItineraryService.removeItinerary).toHaveBeenCalledWith(
         itineraryId
       )
+    })
+  })
+
+  describe('findAllTags', () => {
+    it('should return all tags', async () => {
+      const mockTags: Tag[] = [
+        {
+          id: '1',
+          name: 'Beach',
+          description: 'Beach destinations',
+          iconUrl: 'beach-icon.png',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: '2',
+          name: 'Adventure',
+          description: 'Adventure activities',
+          iconUrl: 'adventure-icon.png',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]
+
+      const expectedResponse = {
+        success: true,
+        code: HttpStatus.OK,
+        message: 'Tags fetched successfully.',
+        data: {
+          tags: mockTags,
+        },
+      }
+
+      mockItineraryService.findAllTags.mockResolvedValue(mockTags)
+      mockResponseUtil.response.mockReturnValue(expectedResponse)
+
+      const result = await controller.findAllTags()
+
+      expect(mockItineraryService.findAllTags).toHaveBeenCalled()
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Tags fetched successfully.',
+        },
+        {
+          tags: mockTags,
+        }
+      )
+      expect(result).toEqual(expectedResponse)
+    })
+
+    it('should return an empty array if no tags are found', async () => {
+      const mockTags: Tag[] = []
+
+      const expectedResponse = {
+        success: true,
+        code: HttpStatus.OK,
+        message: 'Tags fetched successfully.',
+        data: {
+          tags: mockTags,
+        },
+      }
+
+      mockItineraryService.findAllTags.mockResolvedValue(mockTags)
+      mockResponseUtil.response.mockReturnValue(expectedResponse)
+
+      const result = await controller.findAllTags()
+
+      expect(mockItineraryService.findAllTags).toHaveBeenCalled()
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Tags fetched successfully.',
+        },
+        {
+          tags: mockTags,
+        }
+      )
+      expect(result).toEqual(expectedResponse)
     })
   })
 })
