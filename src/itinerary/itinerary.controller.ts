@@ -26,6 +26,21 @@ export class ItineraryController {
     private readonly responseUtil: ResponseUtil
   ) {}
 
+  @Public()
+  @Get('tags')
+  async findAllTags() {
+    const tags = await this.itineraryService.findAllTags()
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Tags fetched successfully.',
+      },
+      {
+        tags,
+      }
+    )
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const itinerary = await this.itineraryService.findOne(id)
@@ -140,21 +155,6 @@ export class ItineraryController {
         message: 'Itinerary deleted successfully.',
       },
       null
-    )
-  }
-
-  @Public()
-  @Get('tags')
-  async findAllTags() {
-    const tags = await this.itineraryService.findAllTags()
-    return this.responseUtil.response(
-      {
-        statusCode: HttpStatus.OK,
-        message: 'Tags fetched successfully.',
-      },
-      {
-        tags,
-      }
     )
   }
 }
