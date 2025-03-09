@@ -14,7 +14,7 @@ export class ItineraryService {
   async createItinerary(data: CreateItineraryDto, user: User) {
     const startDate = new Date(data.startDate)
     const endDate = new Date(data.endDate)
-    
+
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       throw new BadRequestException('Invalid date format')
     }
