@@ -1,3 +1,4 @@
+
 import {
   Controller,
   Get,
@@ -12,10 +13,11 @@ import {
 import { ItineraryService } from './itinerary.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
-import { Public } from 'src/common/decorators/public.decorator'
+import { User } from '@prisma/client'
+import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { ResponseUtil } from 'src/common/utils/response.util'
 
-@Controller('itinerary')
+@Controller('itineraries')
 export class ItineraryController {
   constructor(
     private readonly itineraryService: ItineraryService,
@@ -56,9 +58,22 @@ export class ItineraryController {
   ) {
     return this.itineraryService.update(+id, updateItineraryDto)
   }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.itineraryService.remove(+id)
+     
+  @Post()
+  async createItinerary(
+    @GetUser() user: User,
+    @Body() createItineraryDto: CreateItineraryDto
+  ) {
+    const itinerary = await this.itineraryService.createItinerary(
+      createItineraryDto,
+      user
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary created successfully',
+      },
+      itinerary
+    )
   }
 }
