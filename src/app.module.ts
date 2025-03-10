@@ -9,11 +9,19 @@ import { StaticModule } from './static/static.module'
 import { ConfigModule } from '@nestjs/config'
 import { CommonModule } from './common/common.module'
 import { EmailModule } from './email/email.module'
-import { AuthGuard } from './auth/auth.guard'
+import { AuthGuard } from './auth/guards/auth.guard'
 import { AuthModule } from './auth/auth.module'
+import { SentryModule } from '@sentry/nestjs/setup'
+import { ProfileModule } from './profile/profile.module'
+import { ItineraryModule } from './itinerary/itinerary.module'
+import { NotificationModule } from './notification/notification.module'
+import { PaymentModule } from './payment/payment.module'
+import { TicketModule } from './ticket/ticket.module'
+import { MapModule } from './map/map.module'
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     CommonModule,
@@ -21,6 +29,12 @@ import { AuthModule } from './auth/auth.module'
     StaticModule,
     EmailModule,
     AuthModule,
+    ProfileModule,
+    ItineraryModule,
+    NotificationModule,
+    PaymentModule,
+    TicketModule,
+    MapModule,
   ],
   controllers: [AppController],
   providers: [

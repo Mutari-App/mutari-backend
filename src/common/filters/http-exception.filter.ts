@@ -8,9 +8,11 @@ import {
 } from '@nestjs/common'
 import { Response } from 'express'
 import { Prisma } from '@prisma/client'
+import { SentryExceptionCaptured } from '@sentry/nestjs'
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  @SentryExceptionCaptured()
   catch(exception: any, host: ArgumentsHost) {
     const context = host.switchToHttp()
 
