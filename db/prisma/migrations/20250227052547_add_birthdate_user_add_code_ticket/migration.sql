@@ -9,6 +9,6 @@
 ALTER TABLE "Token" ADD COLUMN "uniqueCode" TEXT DEFAULT 'temp_value' NOT NULL;
 
 -- AlterTable
-ALTER TABLE "User" ADD COLUMN     "birthDate" DATE;
+ALTER TABLE "User" ADD COLUMN   "birthDate" DATE;
 
 

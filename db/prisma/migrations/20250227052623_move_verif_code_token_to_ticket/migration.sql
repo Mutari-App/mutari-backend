@@ -8,7 +8,7 @@
 */
 
 -- AlterTable
-ALTER TABLE "Ticket" ADD COLUMN   "uniqueCode" TEXT ;
+ALTER TABLE "Ticket" ADD COLUMN     "uniqueCode" TEXT NOT NULL;
 
 -- AlterTable
 ALTER TABLE "Token" DROP COLUMN "uniqueCode";
