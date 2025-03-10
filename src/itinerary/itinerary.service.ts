@@ -111,7 +111,7 @@ export class ItineraryService {
   }
 
   async updateItinerary(id: string, data: UpdateItineraryDto, user: User) {
-    await this.checkItineraryExists(id, user)
+    await this._checkItineraryExists(id, user)
     this._validateItineraryDates(data)
     this._validateItinerarySections(data)
     await this._validateItineraryTags(data)
@@ -161,7 +161,7 @@ export class ItineraryService {
     })
   }
 
-  async checkItineraryExists(id: string, user: User) {
+  async _checkItineraryExists(id: string, user: User) {
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id },
     })
@@ -172,7 +172,7 @@ export class ItineraryService {
 
     if (itinerary.userId !== user.id) {
       throw new ForbiddenException(
-        'You do not have permission to update this itinerary'
+        'You do not have permission to update or view this itinerary'
       )
     }
 
@@ -357,7 +357,8 @@ export class ItineraryService {
       data: { isCompleted: true },
     })
   }
-  async findOne(id: string) {
+  async findOne(id: string, user: User) {
+    await this._checkItineraryExists(id, user)
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id: id },
       include: {
@@ -368,9 +369,6 @@ export class ItineraryService {
         },
       },
     })
-    if (!itinerary) {
-      throw new NotFoundException(`Itinerary with ID ${id} not found`)
-    }
     return itinerary
   }
   async removeItinerary(id: string) {
