@@ -78,8 +78,8 @@ export class ItineraryController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    const itinerary = await this.itineraryService.findOne(id)
+  async findOne(@Param('id') id: string, @GetUser() user: User) {
+    const itinerary = await this.itineraryService.findOne(id, user)
     if (!itinerary) {
       throw new NotFoundException(`Itinerary with ID ${id} not found`)
     }
