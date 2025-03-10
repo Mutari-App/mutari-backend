@@ -1330,9 +1330,10 @@ describe('ItineraryService', () => {
   })
 
   describe('findOneItinerary', () => {
-    it('should return itinerary when found', async () => {
+    it('should return itinerary when found and user has access to it', async () => {
       const mockItinerary = {
         id: '123',
+        userId: 'user-123',
         sections: [
           {
             id: '1',
@@ -1341,7 +1342,7 @@ describe('ItineraryService', () => {
         ],
       }
       mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
-      const result = await service.findOne('123')
+      const result = await service.findOne('123', mockUser)
 
       expect(result).toEqual(mockItinerary)
       expect(prismaService.itinerary.findUnique).toHaveBeenCalledWith({
@@ -1357,8 +1358,18 @@ describe('ItineraryService', () => {
 
       mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
 
-      await expect(service.findOne(itineraryId)).rejects.toThrow(
+      await expect(service.findOne(itineraryId, mockUser)).rejects.toThrow(
         NotFoundException
+      )
+    })
+
+    it('should throw ForbiddenException if user is not authorized', async () => {
+      const mockItinerary = { id: '1', userId: '999' }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+
+      await expect(service.findOne('1', mockUser)).rejects.toThrow(
+        ForbiddenException
       )
     })
   })

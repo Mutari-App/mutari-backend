@@ -82,7 +82,7 @@ describe('ItineraryController', () => {
     it('should return an itinerary when found', async () => {
       const mockItinerary = {
         id: 'ITN-123',
-        userId: 'USR-123',
+        userId: 'user-123',
         title: 'Trip to Bali',
         description: 'Bali with friends',
         coverImage: 'https://example.com/image.jpg',
@@ -130,9 +130,9 @@ describe('ItineraryController', () => {
       mockItineraryService.findOne.mockResolvedValue(mockItinerary)
       mockResponseUtil.response.mockReturnValue(mockResponse)
 
-      const result = await controller.findOne('ITN-123')
+      const result = await controller.findOne('ITN-123', mockUser)
 
-      expect(itineraryService.findOne).toHaveBeenCalledWith('ITN-123')
+      expect(itineraryService.findOne).toHaveBeenCalledWith('ITN-123', mockUser)
       expect(responseUtil.response).toHaveBeenCalledWith(
         {
           statusCode: HttpStatus.OK,
@@ -146,8 +146,16 @@ describe('ItineraryController', () => {
     it('should throw NotFoundException if itinerary is not found', async () => {
       mockItineraryService.findOne.mockResolvedValue(null)
 
-      await expect(controller.findOne('INVALID_ID')).rejects.toThrow(
+      await expect(controller.findOne('INVALID_ID', mockUser)).rejects.toThrow(
         new NotFoundException('Itinerary with ID INVALID_ID not found')
+      )
+    })
+
+    it('should throw ForbiddenException if user is not authorized', async () => {
+      mockItineraryService.findOne.mockRejectedValue(new ForbiddenException())
+
+      await expect(controller.findOne('1', mockUser)).rejects.toThrow(
+        ForbiddenException
       )
     })
   })
