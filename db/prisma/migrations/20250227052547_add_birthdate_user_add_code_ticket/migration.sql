@@ -6,10 +6,9 @@
 
 */
 -- AlterTable
-ALTER TABLE "Token" ADD COLUMN     "uniqueCode" TEXT NOT NULL;
+ALTER TABLE "Token" ADD COLUMN "uniqueCode" TEXT DEFAULT 'temp_value' NOT NULL;
 
 -- AlterTable
 ALTER TABLE "User" ADD COLUMN     "birthDate" DATE;
 
--- CreateIndex
-CREATE UNIQUE INDEX "Token_uniqueCode_key" ON "Token"("uniqueCode");
+

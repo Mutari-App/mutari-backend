@@ -4,7 +4,7 @@ export const COOKIE_CONFIG = {
   refreshToken: {
     name: 'refreshToken',
     options: {
-      path: '/auth/refresh-token',
+      path: process.env.NODE_ENV === 'production' ? '/auth/refresh-token' : '/',
       httpOnly: true,
       sameSite: 'strict' as const,
       secure: true,
