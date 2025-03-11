@@ -54,7 +54,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const responseData = {
       success: false,
-      code,
+      statusCode: code,
       message,
     }
 
