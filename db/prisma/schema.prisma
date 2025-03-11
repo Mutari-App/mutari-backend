@@ -4,40 +4,40 @@
 //////////////////////////////////////////////////////////////////////////////////////////////
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+    provider = "postgresql"
+    url = env("DATABASE_URL")
 }
 
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 enum DURATION_TYPE {
-  HOUR
-  DAY
+    HOUR
+    DAY
 }
 
 enum TICKET_STATUS {
-  PENDING
-  CONFIRMED
-  CANCELED
+    PENDING
+    CONFIRMED
+    CANCELED
 }
 
 enum PAYMENT_STATUS {
-  UNPAID
-  PAID
-  REFUNDED
+    UNPAID
+    PAID
+    REFUNDED
 }
 
 enum TITLE {
-  MR
-  MRS
-  MS
+    MR
+    MRS
+    MS
 }
 
 enum BLOCK_TYPE {
-  LOCATION
-  NOTE
+    LOCATION
+    NOTE
 }
 
 model User {
@@ -95,160 +95,160 @@ model RefreshToken {
 }
 
 model Tour {
-  updatedAt      DateTime       @updatedAt() @db.Timestamptz()
-  createdAt      DateTime       @default(now()) @db.Timestamptz()
-  id             String         @id() @unique() @default(uuid())
-  title          String
-  coverImage     String?
-  maxCapacity    Int
-  description    String?
-  location       String
-  pricePerTicket Decimal
-  duration       Int
-  durationType   DURATION_TYPE
-  itineraryId    String
-  itinerary      Itinerary      @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  includes       TourIncludes[]
-  tickets        TourTicket[]
+    updatedAt DateTime @db.Timestamptz() @updatedAt()
+    createdAt DateTime @db.Timestamptz() @default(now())
+    id String @default(uuid()) @id() @unique()
+    title String
+    coverImage String?
+    maxCapacity Int
+    description String?
+    location String
+    pricePerTicket Decimal
+    duration Int
+    durationType DURATION_TYPE
+    itineraryId String
+    itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+    includes TourIncludes[]
+    tickets TourTicket[]
 }
 
 model TourIncludes {
-  id     String @id() @unique() @default(uuid())
-  tourId String
-  icon   String
-  text   String
-  tour   Tour   @relation(fields: [tourId], references: [id], onDelete: Cascade)
+    id String @default(uuid()) @id() @unique()
+    tourId String
+    icon String
+    text String
+    tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
 }
 
 model TourTicket {
-  updatedAt     DateTime          @updatedAt() @db.Timestamptz()
-  createdAt     DateTime          @default(now()) @db.Timestamptz()
-  id            String            @id() @unique() @default(uuid())
-  userId        String
-  tourId        String
-  quantity      Int
-  totalPrice    Decimal
-  status        TICKET_STATUS     @default(PENDING)
-  paymentStatus PAYMENT_STATUS    @default(UNPAID)
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tour          Tour              @relation(fields: [tourId], references: [id], onDelete: Cascade)
-  guests        TourTicketGuest[]
+    updatedAt DateTime @db.Timestamptz() @updatedAt()
+    createdAt DateTime @db.Timestamptz() @default(now())
+    id String @default(uuid()) @id() @unique()
+    userId String
+    tourId String
+    quantity Int
+    totalPrice Decimal
+    status TICKET_STATUS @default(PENDING)
+    paymentStatus PAYMENT_STATUS @default(UNPAID)
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+    guests TourTicketGuest[]
 }
 
 model TourTicketGuest {
-  id           String     @id() @unique() @default(uuid())
-  tourTicketId String
-  title        TITLE
-  firstName    String
-  lastName     String
-  phoneNumber  String
-  email        String
-  tourTicket   TourTicket @relation(fields: [tourTicketId], references: [id], onDelete: Cascade)
+    id String @default(uuid()) @id() @unique()
+    tourTicketId String
+    title TITLE
+    firstName String
+    lastName String
+    phoneNumber String
+    email String
+    tourTicket TourTicket @relation(fields: [tourTicketId], references: [id], onDelete: Cascade)
 }
 
 model Itinerary {
-  updatedAt      DateTime                 @updatedAt() @db.Timestamptz()
-  createdAt      DateTime                 @default(now()) @db.Timestamptz()
-  id             String                   @id() @unique() @default(uuid())
-  userId         String
-  title          String
-  description    String?
-  coverImage     String?
-  startDate      DateTime                 @db.Timestamptz()
-  endDate        DateTime                 @db.Timestamptz()
-  isPublished    Boolean                  @default(false)
-  isCompleted    Boolean                  @default(false)
-  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sections       Section[]
-  tags           ItineraryTag[]
-  access         ItineraryAccess[]
-  pendingInvites PendingItineraryInvite[]
-  likes          ItineraryLike[]
-  tours          Tour[]
+    updatedAt DateTime @db.Timestamptz() @updatedAt()
+    createdAt DateTime @db.Timestamptz() @default(now())
+    id String @default(uuid()) @id() @unique()
+    userId String
+    title String
+    description String?
+    coverImage String?
+    startDate DateTime @db.Timestamptz()
+    endDate DateTime @db.Timestamptz()
+    isPublished Boolean @default(false)
+    isCompleted Boolean @default(false)
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    sections Section[]
+    tags ItineraryTag[]
+    access ItineraryAccess[]
+    pendingInvites PendingItineraryInvite[]
+    likes ItineraryLike[]
+    tours Tour[]
 }
 
 model Section {
-  updatedAt     DateTime  @updatedAt() @db.Timestamptz()
-  createdAt     DateTime  @default(now()) @db.Timestamptz()
-  id            String    @id() @unique() @default(uuid())
-  itineraryId   String
-  sectionNumber Int
-  title         String    @default("Hari ke-1")
-  itinerary     Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  blocks        Block[]
+    updatedAt DateTime @db.Timestamptz() @updatedAt()
+    createdAt DateTime @db.Timestamptz() @default(now())
+    id String @default(uuid()) @id() @unique()
+    itineraryId String
+    sectionNumber Int
+    title String @default("Hari ke-1")
+    itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+    blocks Block[]
 
-  @@unique([itineraryId, sectionNumber])
+    @@unique([itineraryId, sectionNumber])
 }
 
 model Block {
-  updatedAt   DateTime   @updatedAt() @db.Timestamptz()
-  createdAt   DateTime   @default(now()) @db.Timestamptz()
-  id          String     @id() @unique() @default(uuid())
-  sectionId   String
-  position    Int
-  blockType   BLOCK_TYPE
-  title       String?
-  description String?
-  startTime   DateTime?  @db.Timestamptz()
-  endTime     DateTime?  @db.Timestamptz()
-  location    String?
-  price       Int?       @default(0)
-  photoUrl    String?
-  section     Section    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+    updatedAt DateTime @db.Timestamptz() @updatedAt()
+    createdAt DateTime @db.Timestamptz() @default(now())
+    id String @default(uuid()) @id() @unique()
+    sectionId String
+    position Int
+    blockType BLOCK_TYPE
+    title String?
+    description String?
+    startTime DateTime? @db.Timestamptz()
+    endTime DateTime? @db.Timestamptz()
+    location String?
+    price Int? @default(0)
+    photoUrl String?
+    section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
-  @@unique([sectionId, position])
+    @@unique([sectionId, position])
 }
 
 model Tag {
-  updatedAt     DateTime       @updatedAt() @db.Timestamptz()
-  createdAt     DateTime       @default(now()) @db.Timestamptz()
-  id            String         @id() @unique() @default(uuid())
-  name          String         @unique()
-  description   String?
-  iconUrl       String?
-  itineraryTags ItineraryTag[]
+    updatedAt DateTime @db.Timestamptz() @updatedAt()
+    createdAt DateTime @db.Timestamptz() @default(now())
+    id String @default(uuid()) @id() @unique()
+    name String @unique()
+    description String?
+    iconUrl String?
+    itineraryTags ItineraryTag[]
 }
 
 model ItineraryTag {
-  createdAt   DateTime  @default(now()) @db.Timestamptz()
-  id          String    @id() @unique() @default(uuid())
-  itineraryId String
-  tagId       String
-  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  tag         Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+    createdAt DateTime @db.Timestamptz() @default(now())
+    id String @default(uuid()) @id() @unique()
+    itineraryId String
+    tagId String
+    itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+    tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
-  @@unique([itineraryId, tagId])
+    @@unique([itineraryId, tagId])
 }
 
 model ItineraryAccess {
-  createdAt   DateTime  @default(now()) @db.Timestamptz()
-  id          String    @id() @unique() @default(uuid())
-  itineraryId String
-  userId      String
-  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    createdAt DateTime @db.Timestamptz() @default(now())
+    id String @default(uuid()) @id() @unique()
+    itineraryId String
+    userId String
+    itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([itineraryId, userId])
+    @@unique([itineraryId, userId])
 }
 
 model PendingItineraryInvite {
-  updatedAt   DateTime  @updatedAt() @db.Timestamptz()
-  createdAt   DateTime  @default(now()) @db.Timestamptz()
-  id          String    @id() @unique() @default(uuid())
-  itineraryId String
-  email       String    @unique()
-  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+    updatedAt DateTime @db.Timestamptz() @updatedAt()
+    createdAt DateTime @db.Timestamptz() @default(now())
+    id String @default(uuid()) @id() @unique()
+    itineraryId String
+    email String @unique()
+    itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
 
-  @@unique([itineraryId, email])
+    @@unique([itineraryId, email])
 }
 
 model ItineraryLike {
-  createdAt   DateTime  @default(now()) @db.Timestamptz()
-  id          String    @id() @unique() @default(uuid())
-  itineraryId String
-  userId      String
-  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    createdAt DateTime @db.Timestamptz() @default(now())
+    id String @default(uuid()) @id() @unique()
+    itineraryId String
+    userId String
+    itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([itineraryId, userId])
+    @@unique([itineraryId, userId])
 }

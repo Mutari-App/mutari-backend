@@ -45,7 +45,8 @@ export class AuthController {
       statusCode: 200,
     })
   }
-  @HttpCode(HttpStatus.CREATED)
+
+  @Public()
   @Post('/createUser')
   async createUser(@Body() data: CreateUserDTO) {
     await this.authService.createUser(data)
@@ -81,7 +82,8 @@ export class AuthController {
       statusCode: 200,
     })
   }
-  @HttpCode(HttpStatus.OK)
+
+  @Public()
   @Post('/verify')
   async verify(@Body() data: VerifyRegistrationDTO) {
     await this.authService.verify(data)
@@ -92,7 +94,6 @@ export class AuthController {
   }
 
   @Public()
-  @HttpCode(HttpStatus.OK)
   @Post('/register')
   async register(@Body() data: RegisterDTO) {
     await this.authService.register(data)
