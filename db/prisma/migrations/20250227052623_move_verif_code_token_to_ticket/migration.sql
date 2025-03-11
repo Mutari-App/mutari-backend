@@ -6,8 +6,6 @@
   - Added the required column `uniqueCode` to the `Ticket` table without a default value. This is not possible if the table is not empty.
 
 */
--- DropIndex
-DROP INDEX "Token_uniqueCode_key";
 
 -- AlterTable
 ALTER TABLE "Ticket" ADD COLUMN     "uniqueCode" TEXT NOT NULL;
@@ -15,5 +13,3 @@ ALTER TABLE "Ticket" ADD COLUMN     "uniqueCode" TEXT NOT NULL;
 -- AlterTable
 ALTER TABLE "Token" DROP COLUMN "uniqueCode";
 
--- CreateIndex
-CREATE UNIQUE INDEX "Ticket_uniqueCode_key" ON "Ticket"("uniqueCode");
