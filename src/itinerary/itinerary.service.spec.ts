@@ -703,7 +703,7 @@ describe('ItineraryService', () => {
           startDate: updateItineraryDto.startDate,
           endDate: updateItineraryDto.endDate,
           tags: {
-            set: [],
+            deleteMany: { itineraryId: 'itinerary-123' },
             create: [{ tag: { connect: { id: 'tag-123' } } }],
           },
           sections: {
@@ -838,7 +838,10 @@ describe('ItineraryService', () => {
           coverImage: updateItineraryDto.coverImage,
           startDate: new Date('2025-05-10'),
           endDate: new Date('2025-05-15'),
-          tags: undefined,
+          tags: {
+            deleteMany: { itineraryId: 'itinerary-123' },
+            create: undefined,
+          },
           sections: {
             deleteMany: { itineraryId: 'itinerary-123' },
             create: [
@@ -967,7 +970,10 @@ describe('ItineraryService', () => {
           coverImage: updateItineraryDto.coverImage,
           startDate: new Date('2025-05-10'),
           endDate: new Date('2025-05-15'),
-          tags: undefined,
+          tags: {
+            deleteMany: { itineraryId: 'itinerary-123' },
+            create: undefined,
+          },
           sections: {
             deleteMany: { itineraryId: 'itinerary-123' },
             create: [
