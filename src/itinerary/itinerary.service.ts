@@ -127,16 +127,14 @@ export class ItineraryService {
           startDate: new Date(data.startDate),
           endDate: new Date(data.endDate),
 
-          tags: data.tags?.length
-            ? {
-                set: [],
-                create: data.tags.map((tagId) => ({
-                  tag: {
-                    connect: { id: tagId },
-                  },
-                })),
-              }
-            : undefined,
+          tags: {
+            deleteMany: { itineraryId: id },
+            create: data.tags?.map((tagId) => ({
+              tag: {
+                connect: { id: tagId },
+              },
+            })),
+          },
 
           sections: {
             deleteMany: { itineraryId: id },
