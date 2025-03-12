@@ -1349,6 +1349,11 @@ describe('ItineraryService', () => {
         where: { id: '123' },
         include: {
           sections: { include: { blocks: true } },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
         },
       })
     })
@@ -1510,6 +1515,11 @@ describe('ItineraryService', () => {
               },
             },
           },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
         },
       })
     })
@@ -1564,6 +1574,11 @@ describe('ItineraryService', () => {
               blocks: {
                 where: { blockType: 'LOCATION' },
               },
+            },
+          },
+          tags: {
+            include: {
+              tag: true,
             },
           },
         },
