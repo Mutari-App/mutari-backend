@@ -284,6 +284,11 @@ export class ItineraryService {
               },
             },
           },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
         },
       }),
       this.prisma.itinerary.count({ where: { userId, isCompleted: false } }),
@@ -322,6 +327,11 @@ export class ItineraryService {
             blocks: {
               where: { blockType: 'LOCATION' }, // Hanya ambil blocks yang punya blockType = LOCATION
             },
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
           },
         },
       },
@@ -365,6 +375,11 @@ export class ItineraryService {
         sections: {
           include: {
             blocks: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
           },
         },
       },
