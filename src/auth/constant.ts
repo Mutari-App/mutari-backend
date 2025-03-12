@@ -6,7 +6,7 @@ export const COOKIE_CONFIG = {
     options: {
       path: process.env.NODE_ENV === 'production' ? '/auth/refresh-token' : '/',
       httpOnly: true,
-      sameSite: 'strict' as const,
+      sameSite: 'none' as const,
       secure: true,
       maxAge: ms(
         (process.env.REFRESH_TOKEN_EXPIRES_IN as ms.StringValue) || '30d'
@@ -18,7 +18,7 @@ export const COOKIE_CONFIG = {
     options: {
       path: '/',
       httpOnly: true,
-      sameSite: 'strict' as const,
+      sameSite: 'none' as const,
       secure: true,
       maxAge: ms(
         (process.env.ACCESS_TOKEN_EXPIRES_IN as ms.StringValue) || '1h'

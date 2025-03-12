@@ -108,5 +108,10 @@ export class AuthController {
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie(COOKIE_CONFIG.refreshToken.name)
     res.clearCookie(COOKIE_CONFIG.accessToken.name)
+
+    return this.responseUtil.response({
+      statusCode: HttpStatus.OK,
+      message: 'Success Logout',
+    })
   }
 }
