@@ -21,7 +21,7 @@ async function bootstrap() {
         callback(new Error('Not allowed by CORS'))
       }
     },
-    methods: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   }
   app.enableCors(corsOptions)
   app.use(cookieParser())
