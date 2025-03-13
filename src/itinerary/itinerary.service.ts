@@ -127,16 +127,14 @@ export class ItineraryService {
           startDate: new Date(data.startDate),
           endDate: new Date(data.endDate),
 
-          tags: data.tags?.length
-            ? {
-                set: [],
-                create: data.tags.map((tagId) => ({
-                  tag: {
-                    connect: { id: tagId },
-                  },
-                })),
-              }
-            : undefined,
+          tags: {
+            deleteMany: { itineraryId: id },
+            create: data.tags?.map((tagId) => ({
+              tag: {
+                connect: { id: tagId },
+              },
+            })),
+          },
 
           sections: {
             deleteMany: { itineraryId: id },
@@ -284,6 +282,11 @@ export class ItineraryService {
               },
             },
           },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
         },
       }),
       this.prisma.itinerary.count({ where: { userId, isCompleted: false } }),
@@ -322,6 +325,11 @@ export class ItineraryService {
             blocks: {
               where: { blockType: 'LOCATION' }, // Hanya ambil blocks yang punya blockType = LOCATION
             },
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
           },
         },
       },
@@ -365,6 +373,11 @@ export class ItineraryService {
         sections: {
           include: {
             blocks: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
           },
         },
       },
