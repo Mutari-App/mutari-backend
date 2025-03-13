@@ -19,7 +19,9 @@ import { COOKIE_CONFIG } from './constant'
 import { RegisterDTO } from './dto/register-dto'
 import { VerifyRegistrationDTO } from './dto/verify-registration-dto'
 import { CreateUserDTO } from './dto/create-user-dto'
+import { PreRegistGuard } from './guards/pre-regist.guard'
 
+@UseGuards(PreRegistGuard)
 @Controller('auth')
 export class AuthController {
   constructor(
