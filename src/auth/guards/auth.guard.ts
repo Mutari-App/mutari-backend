@@ -25,31 +25,33 @@ export class AuthGuard implements CanActivate {
     ])
 
     if (isPublic) return true
-
     const request = context.switchToHttp().getRequest()
-    const rawToken = this.extractTokenFromHeader(request)
+
+    const launchingDate = new Date(
+      process.env.LAUNCHING_DATE || '2025-01-22T00:00:00'
+    )
+    const now = new Date()
+    const isLaunching = now > launchingDate
+
+    const rawToken = isLaunching
+      ? request.cookies.accessToken
+      : this.extractTokenFromHeader(request)
     if (!rawToken) {
       throw new UnauthorizedException('token not provided')
     }
 
     try {
-      const { token } = await this.prisma.token.findUniqueOrThrow({
-        where: {
-          token: rawToken,
-        },
-      })
-
-      if (!token) {
-        throw new UnauthorizedException(`Invalid Token`)
-      }
-
-      const { sub: id } = await this.jwtService.verifyAsync(token, {
+      const token = this.jwtService.verify(rawToken, {
         secret: process.env.JWT_SECRET,
       })
-
       const user = await this.prisma.user.findUnique({
-        where: { id },
+        where: { id: isLaunching ? token.userId : token.sub },
       })
+
+      if (!user) {
+        throw new UnauthorizedException('Invalid Token')
+      }
+      delete user.password
       request['user'] = user
     } catch (err) {
       if (err instanceof TokenExpiredError) {

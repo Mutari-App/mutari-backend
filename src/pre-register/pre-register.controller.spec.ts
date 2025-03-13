@@ -95,11 +95,15 @@ describe('PreRegisterController', () => {
         lastName: 'Doe',
         email: 'john.doe@example.com',
         phoneNumber: '08123456789',
+        password: 'password',
+        photoProfile: 'profile.jpg',
         referralCode: 'ABCD1234',
         isEmailConfirmed: true,
         createdAt: new Date(),
         updatedAt: new Date(),
         referredById: 'USER124',
+        loyaltyPoints: 0,
+        birthDate: null,
       }
 
       const result = await controller.referralCode(user)

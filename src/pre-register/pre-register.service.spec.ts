@@ -88,8 +88,12 @@ describe('PreRegisterService', () => {
         ...dto,
         updatedAt: new Date(),
         createdAt: new Date(),
+        password: '',
+        photoProfile: '',
         isEmailConfirmed: false,
         referredById: 'REFERRED_USER_ID',
+        loyaltyPoints: 0,
+        birthDate: null,
       })
 
       jest.spyOn(service, '_generateTicket').mockResolvedValue({
@@ -97,6 +101,7 @@ describe('PreRegisterService', () => {
         createdAt: new Date(),
         id: 'id',
         userId: 'USER123',
+        uniqueCode: 'ABCDEFGH',
       })
 
       const result = await service.createPreRegister(dto)
@@ -135,9 +140,13 @@ describe('PreRegisterService', () => {
         firstName: '',
         lastName: '',
         phoneNumber: '',
+        password: '',
+        photoProfile: '',
         referralCode: '',
         isEmailConfirmed: false,
-        referredById: null,
+        referredById: '',
+        loyaltyPoints: 0,
+        birthDate: null,
       })
 
       await expect(service.createPreRegister(dto)).rejects.toThrow(
@@ -185,20 +194,25 @@ describe('PreRegisterService', () => {
       prisma.user.findUnique.mockResolvedValue({
         id: 'USER123',
         email,
-        updatedAt: undefined,
-        createdAt: undefined,
+        updatedAt: new Date(),
+        createdAt: new Date(),
         firstName: '',
         lastName: '',
         phoneNumber: '',
+        password: '',
+        photoProfile: '',
         referralCode: '',
         isEmailConfirmed: false,
         referredById: '',
+        loyaltyPoints: 0,
+        birthDate: null,
       })
       jest.spyOn(service, '_generateTicket').mockResolvedValue({
         updatedAt: new Date(),
         createdAt: new Date(),
         id: 'id',
         userId: 'userId',
+        uniqueCode: null,
       })
 
       const result = await service.login(email)
@@ -321,7 +335,7 @@ describe('PreRegisterService', () => {
       const result = await service['_generateTicket'](prisma, 'USER123')
 
       expect(prisma.ticket.create).toHaveBeenCalledWith({
-        data: { user: { connect: { id: 'USER123' } } },
+        data: { uniqueCode: null, user: { connect: { id: 'USER123' } } },
       })
       expect(result).toEqual({ id: 'TICKET123', userId: 'USER123' })
     })

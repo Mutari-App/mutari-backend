@@ -6,6 +6,7 @@ import {
   Param,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common'
 import { PreRegisterService } from './pre-register.service'
 import { PreRegisterDTO } from './dto/pre-register.dto'
@@ -13,7 +14,11 @@ import { LoginDTO } from './dto/login.dto'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { User } from '@prisma/client'
 import { Public } from 'src/common/decorators/public.decorator'
+import { PreRegistGuard } from 'src/auth/guards/pre-regist.guard'
+import { PreRegistOnly } from 'src/common/decorators/preRegistOnly.decorator'
 
+@UseGuards(PreRegistGuard)
+@PreRegistOnly()
 @Controller('pre-register')
 export class PreRegisterController {
   constructor(private readonly preRegisterService: PreRegisterService) {}
