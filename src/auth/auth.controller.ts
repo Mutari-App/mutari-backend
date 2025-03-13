@@ -107,8 +107,12 @@ export class AuthController {
 
   @Post('logout')
   logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie(COOKIE_CONFIG.refreshToken.name)
-    res.clearCookie(COOKIE_CONFIG.accessToken.name)
+    res.clearCookie(COOKIE_CONFIG.refreshToken.name, {
+      ...COOKIE_CONFIG.refreshToken.options,
+    })
+    res.clearCookie(COOKIE_CONFIG.accessToken.name, {
+      ...COOKIE_CONFIG.refreshToken.options,
+    })
 
     return this.responseUtil.response({
       statusCode: HttpStatus.OK,

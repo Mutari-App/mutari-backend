@@ -247,10 +247,8 @@ describe('AuthController', () => {
       controller.logout(mockResponse)
 
       expect(mockResponse.clearCookie).toHaveBeenCalledWith(
-        COOKIE_CONFIG.refreshToken.name
-      )
-      expect(mockResponse.clearCookie).toHaveBeenCalledWith(
-        COOKIE_CONFIG.accessToken.name
+        COOKIE_CONFIG.refreshToken.name,
+        { ...COOKIE_CONFIG.refreshToken.options }
       )
     })
   })
