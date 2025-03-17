@@ -404,4 +404,40 @@ export class ItineraryService {
     })
     return tags
   }
+
+  async findByUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    })
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} doesn't exist`)
+    }
+
+    const itineraries = await this.prisma.itinerary.findMany({
+      where: {
+        userId,
+      },
+      orderBy: { startDate: 'asc' },
+      include: {
+        sections: {
+          include: {
+            blocks: {
+              where: { blockType: 'LOCATION' }, // Ambil hanya block dengan blockType = LOCATION
+            },
+          },
+        },
+      },
+    })
+
+    const formattedData = itineraries.map((itinerary) => ({
+      ...itinerary,
+      locationCount: itinerary.sections.reduce(
+        (acc, section) => acc + section.blocks.length,
+        0
+      ),
+    }))
+
+    return formattedData
+  }
 }
