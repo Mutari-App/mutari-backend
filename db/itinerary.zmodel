@@ -39,15 +39,31 @@ model Block extends Base {
   blockType    BLOCK_TYPE
   title        String?
   description  String?
-  startTime    DateTime?  @db.Timestamptz()
-  endTime      DateTime?  @db.Timestamptz()
+  startTime    DateTime?    @db.Timestamptz()
+  endTime      DateTime?    @db.Timestamptz()
   location     String?
-  price        Int?       @default(0)
+  price        Int?         @default(0)
   photoUrl     String?
   
-  section      Section    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  section           Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  routeToNext       Route?  @relation("SourceBlock")
+  routeFromPrevious Route?  @relation("DestinationBlock")
 
   @@unique([sectionId, position])
+}
+
+model Route {
+  id                 String   @id() @unique() @default(uuid())
+  sourceBlockId      String   @unique
+  destinationBlockId String   @unique
+  distance           Int      // Distance in meters
+  duration           Int      // Duration in seconds
+  polyline           String?
+  createdAt          DateTime @default(now()) @db.Timestamptz()
+  updatedAt          DateTime @updatedAt() @db.Timestamptz()
+  
+  sourceBlock        Block    @relation("SourceBlock", fields: [sourceBlockId], references: [id], onDelete: Cascade)
+  destinationBlock   Block    @relation("DestinationBlock", fields: [destinationBlockId], references: [id], onDelete: Cascade)
 }
 
 model Tag extends Base {
