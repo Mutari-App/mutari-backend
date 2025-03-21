@@ -147,34 +147,51 @@ model TourTicketGuest {
 }
 
 model Itinerary {
-  updatedAt      DateTime                 @updatedAt() @db.Timestamptz()
-  createdAt      DateTime                 @default(now()) @db.Timestamptz()
-  id             String                   @id() @unique() @default(uuid())
-  userId         String
-  title          String
-  description    String?
-  coverImage     String?
-  startDate      DateTime                 @db.Timestamptz()
-  endDate        DateTime                 @db.Timestamptz()
-  isPublished    Boolean                  @default(false)
-  isCompleted    Boolean                  @default(false)
-  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sections       Section[]
-  tags           ItineraryTag[]
-  access         ItineraryAccess[]
-  pendingInvites PendingItineraryInvite[]
-  likes          ItineraryLike[]
-  tours          Tour[]
+  updatedAt       DateTime                 @updatedAt() @db.Timestamptz()
+  createdAt       DateTime                 @default(now()) @db.Timestamptz()
+  id              String                   @id() @unique() @default(uuid())
+  userId          String
+  title           String
+  description     String?
+  coverImage      String?
+  startDate       DateTime                 @db.Timestamptz()
+  endDate         DateTime                 @db.Timestamptz()
+  isPublished     Boolean                  @default(false)
+  isCompleted     Boolean                  @default(false)
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sections        Section[]
+  tags            ItineraryTag[]
+  access          ItineraryAccess[]
+  pendingInvites  PendingItineraryInvite[]
+  likes           ItineraryLike[]
+  tours           Tour[]
+  contigencyPlans ContigencyPlan[]
+}
+
+model ContigencyPlan {
+  updatedAt   DateTime  @updatedAt() @db.Timestamptz()
+  createdAt   DateTime  @default(now()) @db.Timestamptz()
+  id          String    @id() @unique() @default(uuid())
+  itineraryId String
+  title       String
+  description String?
+  isSelected  Boolean   @default(false)
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  sections    Section[]
+
+  @@unique([itineraryId, title])
 }
 
 model Section {
-  updatedAt     DateTime  @updatedAt() @db.Timestamptz()
-  createdAt     DateTime  @default(now()) @db.Timestamptz()
-  id            String    @id() @unique() @default(uuid())
+  updatedAt     DateTime        @updatedAt() @db.Timestamptz()
+  createdAt     DateTime        @default(now()) @db.Timestamptz()
+  id            String          @id() @unique() @default(uuid())
   itineraryId   String
   sectionNumber Int
-  title         String    @default("Hari ke-1")
-  itinerary     Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  title         String          @default("Hari ke-1")
+  planId        String?
+  itinerary     Itinerary       @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  plan          ContigencyPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
   blocks        Block[]
 
   @@unique([itineraryId, sectionNumber])
