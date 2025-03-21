@@ -20,10 +20,10 @@ model Itinerary extends Base {
   pendingInvites PendingItineraryInvite[]
   likes        ItineraryLike[]
   tours        Tour[]
-  contigencyPlans ContigencyPlan[]
+  contingencyPlans ContingencyPlan[]
 }
 
-model ContigencyPlan extends Base {
+model ContingencyPlan extends Base {
   itineraryId String
   title       String
   description String?
@@ -35,13 +35,13 @@ model ContigencyPlan extends Base {
 }
 
 model Section extends Base {
-  itineraryId   String
-  sectionNumber Int
-  title         String    @default("Hari ke-1")
-  planId        String?
+  itineraryId       String
+  sectionNumber     Int
+  title             String    @default("Hari ke-1")
+  contingencyPlanId String?
   
   itinerary     Itinerary       @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  plan          ContigencyPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  plan          ContingencyPlan? @relation(fields: [contingencyPlanId], references: [id], onDelete: SetNull)
   blocks        Block[]
 
   @@unique([itineraryId, sectionNumber])
