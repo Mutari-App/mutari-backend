@@ -44,6 +44,7 @@ import { MonitoringInterceptor } from './monitoring/monitoring.interceptor'
     PrometheusModule.register({
       defaultMetrics: { enabled: true },
     }),
+    MonitoringModule,
   ],
   controllers: [AppController],
   providers: [
@@ -53,6 +54,15 @@ import { MonitoringInterceptor } from './monitoring/monitoring.interceptor'
       useClass: HttpExceptionFilter,
     },
     { provide: APP_GUARD, useClass: AuthGuard },
+    makeCounterProvider({
+      name: 'http_requests_total',
+      help: 'Total number of HTTP requests',
+      labelNames: ['method', 'route', 'status'],
+    }),
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: MonitoringInterceptor,
+    },
   ],
 })
 export class AppModule {}
