@@ -27,6 +27,8 @@ export class AuthGuard implements CanActivate {
     if (isPublic) return true
     const request = context.switchToHttp().getRequest()
 
+    if (request.path === '/metrics') return true
+
     const launchingDate = new Date(
       process.env.LAUNCHING_DATE || '2025-01-22T00:00:00'
     )
