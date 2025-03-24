@@ -134,6 +134,4 @@ model ItineraryReminder extends Base {
   reminderOption REMINDER_OPTION
   
   itinerary    Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-
-  @@unique([itineraryId, email])
 }
