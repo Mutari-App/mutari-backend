@@ -18,6 +18,7 @@ import { NotificationModule } from './notification/notification.module'
 import { PaymentModule } from './payment/payment.module'
 import { TicketModule } from './ticket/ticket.module'
 import { MapModule } from './map/map.module'
+import { GeminiModule } from './gemini/gemini.module'
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { MapModule } from './map/map.module'
     PaymentModule,
     TicketModule,
     MapModule,
+    GeminiModule,
   ],
   controllers: [AppController],
   providers: [
