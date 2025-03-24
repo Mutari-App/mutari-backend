@@ -29,6 +29,7 @@
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org mutari --project mutari-backend ./dist && sentry-cli sourcemaps upload --org mutari --project mutari-backend ./dist"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.0",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^10.0.0",
