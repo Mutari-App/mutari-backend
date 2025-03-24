@@ -21,6 +21,7 @@ export class UmamiService {
 
       if (response.ok) {
         const data = await response.json()
+        await this.sendToDiscord(data)
       }
     } catch (error) {
       console.error(`Error: ${error.message}`)
@@ -40,6 +41,54 @@ export class UmamiService {
     return {
       startAt: firstDayOfLastMonth.getTime(),
       endAt: lastDayOfLastMonth.getTime(),
+    }
+  }
+
+  async sendToDiscord(data: any) {
+    const MSG_CONTENT = {
+      embeds: [
+        {
+          title: '📊 Umami Analytics Report',
+          description:
+            'Here are the website analytics for the selected period:',
+          color: 5814783,
+          fields: [
+            {
+              name: '📈 Stats',
+              value:
+                `- 👀 **Pageviews**: ${data.pageviews.value}\n` +
+                `- 🧑‍💻 **Unique Visitors**: ${data.visitors.value}\n` +
+                `- 🚀 **Visits**: ${data.visits.value}\n` +
+                `- 💨 **Bounces**: ${data.bounces.value}\n` +
+                `- ⏳ **Total Time Spent**: ${data.totaltime.value} seconds`,
+              inline: false,
+            },
+          ],
+          footer: {
+            text: 'Data provided by Umami Analytics',
+            icon_url: 'https://umami.is/logo.svg',
+          },
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    }
+
+    try {
+      const webhookUrl = process.env.UMAMI_DISCORD_WEBHOOK_URL ?? ''
+      if (!webhookUrl) {
+        console.error('DISCORD_WEBHOOK_URL is not set')
+        return
+      }
+
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(MSG_CONTENT),
+      })
+    } catch (error) {
+      console.error(`Failed to send message to Discord: ${error.message}`)
     }
   }
 }
