@@ -40,6 +40,13 @@ enum BLOCK_TYPE {
   NOTE
 }
 
+enum REMINDER_OPTION {
+  NONE
+  TEN_MINUTES_BEFORE
+  ONE_HOUR_BEFORE
+  ONE_DAY_BEFORE
+}
+
 model User {
   updatedAt        DateTime          @updatedAt() @db.Timestamptz()
   createdAt        DateTime          @default(now()) @db.Timestamptz()
@@ -166,6 +173,7 @@ model Itinerary {
   likes            ItineraryLike[]
   tours            Tour[]
   contingencyPlans ContingencyPlan[]
+  reminder         ItineraryReminder?
 }
 
 model ContingencyPlan {
@@ -283,4 +291,14 @@ model ItineraryLike {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([itineraryId, userId])
+}
+
+model ItineraryReminder {
+  updatedAt      DateTime        @updatedAt() @db.Timestamptz()
+  createdAt      DateTime        @default(now()) @db.Timestamptz()
+  id             String          @id() @unique() @default(uuid())
+  itineraryId    String          @unique()
+  email          String
+  reminderOption REMINDER_OPTION
+  itinerary      Itinerary       @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
 }

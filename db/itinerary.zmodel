@@ -21,6 +21,7 @@ model Itinerary extends Base {
   likes        ItineraryLike[]
   tours        Tour[]
   contingencyPlans ContingencyPlan[]
+  reminder    ItineraryReminder?
 }
 
 model ContingencyPlan extends Base {
@@ -125,4 +126,12 @@ model ItineraryLike extends Id, CreatedAt {
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([itineraryId, userId])
+}
+
+model ItineraryReminder extends Base {
+  itineraryId  String @unique
+  email        String
+  reminderOption REMINDER_OPTION
+  
+  itinerary    Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
 }
