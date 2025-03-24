@@ -129,7 +129,7 @@ model ItineraryLike extends Id, CreatedAt {
 }
 
 model ItineraryReminder extends Base {
-  itineraryId  String
+  itineraryId  String @unique
   email        String
   reminderOption REMINDER_OPTION
   
