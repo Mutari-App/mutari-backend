@@ -1,4 +1,9 @@
-import { Injectable } from '@nestjs/common'
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  OnModuleInit,
+} from '@nestjs/common'
 import { EmailService } from '../email/email.service'
 import { UpdateItineraryReminderDto } from './dto/update-itinerary-reminder.dto'
 import { SchedulerRegistry } from '@nestjs/schedule'
@@ -21,6 +26,8 @@ export class NotificationService {
    * Creates a new ItineraryReminder and saves it
    */
   async create(data: CreateItineraryReminderDto) {
+    await this._checkItineraryExists(data.itineraryId)
+    await this._checkItineraryReminderExists(data.itineraryId, false)
     return this.prisma.$transaction(async (prisma) => {
       const reminder = await prisma.itineraryReminder.create({
         data: {
@@ -47,5 +54,39 @@ export class NotificationService {
 
   remove(id: number) {
     return `This action removes a #${id} notification`
+  }
+
+  async _checkItineraryReminderExists(
+    itineraryId: string,
+    requiresFound: boolean
+  ) {
+    const reminder = await this.prisma.itineraryReminder.findUnique({
+      where: { itineraryId: itineraryId },
+    })
+
+    if (requiresFound && !reminder) {
+      throw new NotFoundException(
+        `Itinerary with ID ${itineraryId} doesn't have a reminder`
+      )
+    }
+    if (!requiresFound && reminder) {
+      throw new ConflictException(
+        `Itinerary with ID ${itineraryId} already has a reminder`
+      )
+    }
+
+    return reminder
+  }
+
+  async _checkItineraryExists(itineraryId: string) {
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: itineraryId },
+    })
+
+    if (!itinerary) {
+      throw new NotFoundException(
+        `Itinerary with ID ${itineraryId} does not exist`
+      )
+    }
   }
 }
