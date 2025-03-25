@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   OnModuleInit,
+  BadRequestException,
 } from '@nestjs/common'
 import { EmailService } from '../email/email.service'
 import { UpdateItineraryReminderDto } from './dto/update-itinerary-reminder.dto'
@@ -21,6 +22,56 @@ export class NotificationService {
     private readonly emailService: EmailService,
     private readonly schedulerRegistry: SchedulerRegistry
   ) {}
+
+  scheduleEmail(data: EmailScheduleDto) {
+    const scheduledDate = this._calculateScheduleDate(
+      data.startDate,
+      data.reminderOption
+    )
+    const subject = `Reminder for ${data.tripName}`
+    const jobName = `${data.itineraryId}-${data.recipient}`
+    const job = new CronJob(scheduledDate, () => {
+      this.emailService.sendEmail(
+        data.recipient,
+        subject,
+        itineraryReminderTemplate(
+          data.recipientName,
+          data.tripName,
+          data.reminderOption
+        )
+      )
+    })
+
+    if (this.schedulerRegistry.doesExist('cron', jobName)) {
+      throw new ConflictException(
+        `Failed to schedule job for itinerary ${data.itineraryId}: already scheduled`
+      )
+    }
+    this.schedulerRegistry.addCronJob(jobName, job)
+    try {
+      job.start()
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to schedule job for itinerary ${data.itineraryId}: date in past`
+      )
+    }
+  }
+
+  _calculateScheduleDate(startDate: string, reminderOption: REMINDER_OPTION) {
+    let scheduledDate = new Date(startDate)
+    let dateOffset: number = 0
+    if (reminderOption == 'TEN_MINUTES_BEFORE') {
+      dateOffset = 1000 * 60 * 10
+    } else if (reminderOption == 'ONE_HOUR_BEFORE') {
+      dateOffset = 1000 * 60 * 60
+    } else if (reminderOption == 'ONE_DAY_BEFORE') {
+      dateOffset = 1000 * 60 * 60 * 24
+    } else {
+      throw new BadRequestException('Invalid reminder option')
+    }
+    scheduledDate.setTime(scheduledDate.getTime() - dateOffset)
+    return scheduledDate
+  }
 
   /**
    * Creates a new ItineraryReminder and saves it
