@@ -354,4 +354,39 @@ describe('NotificationService', () => {
       }).toThrow(BadRequestException)
     })
   })
+
+  describe('cancelScheduledEmail', () => {
+    it('should cancel an existing scheduled email job', async () => {
+      // schedule job
+      const baseDate = Date.now()
+      const emailSchedule: EmailScheduleDto = {
+        itineraryId: 'ITN-123',
+        recipient: 'test@example.com',
+        startDate: new Date(baseDate + 1000 * 60 * 60).toISOString(),
+        reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
+      }
+      const jobName = `${emailSchedule.itineraryId}-${emailSchedule.recipient}`
+
+      jest.spyOn(schedulerRegistry, 'doesExist').mockReturnValue(true)
+      jest.spyOn(schedulerRegistry, 'deleteCronJob')
+      service.cancelScheduledEmail(emailSchedule)
+      expect(schedulerRegistry.deleteCronJob).toHaveBeenCalledWith(jobName)
+    })
+
+    it('should throw a NotFoundException if job doesnt exist', async () => {
+      // schedule job
+      const baseDate = Date.now()
+      const emailSchedule: EmailScheduleDto = {
+        itineraryId: 'ITN-123',
+        recipient: 'test@example.com',
+        startDate: new Date(baseDate + 1000 * 60 * 60).toISOString(),
+        reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
+      }
+
+      jest.spyOn(schedulerRegistry, 'doesExist').mockReturnValue(false)
+      expect(() => {
+        service.cancelScheduledEmail(emailSchedule)
+      }).toThrow(NotFoundException)
+    })
+  })
 })
