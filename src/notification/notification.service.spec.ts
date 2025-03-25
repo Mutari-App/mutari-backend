@@ -311,4 +311,47 @@ describe('NotificationService', () => {
       }).toThrow(BadRequestException)
     })
   })
+
+  describe('calculateScheduleDate', () => {
+    it('should calculate scheduled date correctly', async () => {
+      // schedule job
+      const baseDate = Date.now()
+      const startDate = new Date(baseDate + 1000 * 60 * 60 * 24).toISOString()
+
+      // calculate scheduled date
+      const expectedDate_ONEDAY = new Date(baseDate)
+      const scheduledDate_ONEDAY = service._calculateScheduleDate(
+        startDate,
+        REMINDER_OPTION.ONE_DAY_BEFORE
+      )
+      expect(scheduledDate_ONEDAY).toEqual(expectedDate_ONEDAY)
+
+      const expectedDate_ONEHOUR = new Date(baseDate + 1000 * 60 * 60 * 23)
+      const scheduledDate_ONEHOUR = service._calculateScheduleDate(
+        startDate,
+        REMINDER_OPTION.ONE_HOUR_BEFORE
+      )
+      expect(scheduledDate_ONEHOUR).toEqual(expectedDate_ONEHOUR)
+
+      const expectedDate_TENMINUTES = new Date(
+        baseDate + 1000 * 60 * 60 * 23 + 1000 * 60 * 50
+      )
+      const scheduledDate_TENMINUTES = service._calculateScheduleDate(
+        startDate,
+        REMINDER_OPTION.TEN_MINUTES_BEFORE
+      )
+      expect(scheduledDate_TENMINUTES).toEqual(expectedDate_TENMINUTES)
+    })
+
+    it('should throw BadRequestException on improper reminder option', async () => {
+      // schedule job
+      const baseDate = Date.now()
+      const startDate = new Date(baseDate + 1000 * 60 * 60).toISOString()
+
+      // calculate scheduled date
+      expect(() => {
+        service._calculateScheduleDate(startDate, REMINDER_OPTION.NONE)
+      }).toThrow(BadRequestException)
+    })
+  })
 })
