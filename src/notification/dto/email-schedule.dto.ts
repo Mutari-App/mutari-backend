@@ -5,22 +5,27 @@ import {
   IsEnum,
   IsNotEmpty,
   IsString,
+  IsUUID,
 } from 'class-validator'
 
-export class CreateNotificationDto {
+export class EmailScheduleDto {
+  @IsString()
+  @IsUUID()
+  itineraryId: string
+
   @IsEmail()
   recipient: string
 
   @IsString()
-  recipientName: string
+  recipientName?: string
 
   @IsString()
-  tripName: string
+  tripName?: string
 
   @IsEnum(REMINDER_OPTION)
   @IsNotEmpty()
   reminderOption: 'TEN_MINUTES_BEFORE' | 'ONE_HOUR_BEFORE' | 'ONE_DAY_BEFORE'
 
   @IsDateString()
-  date: string
+  startDate: string
 }
