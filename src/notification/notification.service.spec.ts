@@ -9,13 +9,16 @@ import { EmailScheduleDto } from './dto/email-schedule.dto'
 import { CreateItineraryReminderDto } from './dto/create-itinerary-reminder.dto'
 import { UpdateItineraryReminderDto } from './dto/update-itinerary-reminder.dto'
 import { itineraryReminderTemplate } from './templates/itinerary-reminder-template'
-import { ConflictException, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common'
 
 describe('NotificationService', () => {
   let service: NotificationService
   let emailService: EmailService
   let schedulerRegistry: SchedulerRegistry
-  let prismaService: PrismaService
 
   const mockPrismaService = {
     $transaction: jest
@@ -45,6 +48,9 @@ describe('NotificationService', () => {
           provide: SchedulerRegistry,
           useValue: {
             addCronJob: jest.fn(),
+            getCronJob: jest.fn(),
+            deleteCronJob: jest.fn(),
+            doesExist: jest.fn(),
           },
         },
         {
@@ -57,7 +63,6 @@ describe('NotificationService', () => {
     service = module.get<NotificationService>(NotificationService)
     emailService = module.get<EmailService>(EmailService)
     schedulerRegistry = module.get<SchedulerRegistry>(SchedulerRegistry)
-    prismaService = module.get<PrismaService>(PrismaService)
   })
 
   afterEach(() => {
