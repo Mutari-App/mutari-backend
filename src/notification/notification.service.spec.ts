@@ -23,7 +23,7 @@ describe('NotificationService', () => {
       .mockImplementation((callback) => callback(mockPrismaService)),
     itineraryReminder: {
       create: jest.fn(),
-      
+      update: jest.fn(),
       findUnique: jest.fn(),
     },
     itinerary: {
@@ -162,11 +162,88 @@ describe('NotificationService', () => {
   })
 
   describe('update', () => {
-    it('should update a notification', () => {
-      const data: UpdateItineraryReminderDto = {}
-      expect(service.update(1, data)).toBe(
-        'This action updates a #1 notification'
+    it('should update an itinerary reminder', async () => {
+      const updateItineraryReminder: UpdateItineraryReminderDto = {
+        itineraryId: 'ITN-123',
+        email: 'test@example.com',
+        reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
+      }
+
+      const existingItineraryReminder = {
+        id: 'RMNDR-123',
+        itineraryId: 'ITN-123',
+        email: 'test@example.com',
+        reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      const updatedItineraryReminder = {
+        id: 'RMNDR-123',
+        itineraryId: 'ITN-123',
+        email: 'test@example.com',
+        reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      // Mocks
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        'itinerary-exists'
       )
+      mockPrismaService.itineraryReminder.findUnique.mockResolvedValue(
+        existingItineraryReminder
+      )
+      mockPrismaService.itineraryReminder.update.mockResolvedValue(
+        updatedItineraryReminder
+      )
+      const result = await service.update(updateItineraryReminder)
+      expect(mockPrismaService.$transaction).toHaveBeenCalled()
+      expect(mockPrismaService.itineraryReminder.update).toHaveBeenCalledWith({
+        where: { itineraryId: 'ITN-123' },
+        data: {
+          email: updateItineraryReminder.email,
+          reminderOption: updateItineraryReminder.reminderOption,
+        },
+      })
+      expect(result).toEqual(updatedItineraryReminder)
+    })
+
+    it('should throw NotFoundException if itinerary doesnt exist', async () => {
+      const updateItineraryReminder: UpdateItineraryReminderDto = {
+        itineraryId: 'ITN-123',
+        email: 'test@example.com',
+        reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
+      }
+
+      // Mocks
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      // Assert
+      await expect(service.update(updateItineraryReminder)).rejects.toThrow(
+        NotFoundException
+      )
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+    })
+
+    it('should throw NotFoundException if itinerary reminder does not exist', async () => {
+      const updateItineraryReminder: UpdateItineraryReminderDto = {
+        itineraryId: 'ITN-123',
+        email: 'test@example.com',
+        reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
+      }
+
+      // Mocks
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        'itinerary-exists'
+      )
+      mockPrismaService.itineraryReminder.findUnique.mockResolvedValue(null)
+
+      // Assert
+      await expect(service.update(updateItineraryReminder)).rejects.toThrow(
+        NotFoundException
+      )
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
     })
   })
 
