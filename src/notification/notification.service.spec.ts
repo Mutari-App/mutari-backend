@@ -257,4 +257,58 @@ describe('NotificationService', () => {
       expect(service.remove(1)).toBe('This action removes a #1 notification')
     })
   })
+
+  describe('scheduleEmail', () => {
+    it('should schedule a sendEmail job and verify it runs', async () => {
+      // schedule job
+      const baseDate = Date.now()
+      const emailSchedule: EmailScheduleDto = {
+        itineraryId: 'ITN-123',
+        recipient: 'test@example.com',
+        recipientName: 'John Doe',
+        tripName: 'Hawaii Trip',
+        startDate: new Date(baseDate + 1000 * 60 * 60).toISOString(),
+        reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
+      }
+
+      const jobSpy = jest.spyOn(schedulerRegistry, 'addCronJob')
+      service.scheduleEmail(emailSchedule)
+      expect(jobSpy).toHaveBeenCalled()
+    })
+
+    it('should throw a ConflictException on already scheduled reminders', async () => {
+      // schedule job
+      const baseDate = Date.now()
+      const emailSchedule: EmailScheduleDto = {
+        itineraryId: 'ITN-123',
+        recipient: 'test@example.com',
+        recipientName: 'John Doe',
+        tripName: 'Hawaii Trip',
+        startDate: new Date(baseDate + 1000 * 60 * 60).toISOString(),
+        reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
+      }
+
+      jest.spyOn(schedulerRegistry, 'doesExist').mockReturnValue(true)
+      expect(() => {
+        service.scheduleEmail(emailSchedule)
+      }).toThrow(ConflictException)
+    })
+
+    it('should throw a BadRequestException on jobs with date in past', async () => {
+      // schedule job
+      const baseDate = Date.now()
+      const emailSchedule: EmailScheduleDto = {
+        itineraryId: 'ITN-123',
+        recipient: 'test@example.com',
+        recipientName: 'John Doe',
+        tripName: 'Hawaii Trip',
+        startDate: new Date(baseDate).toISOString(),
+        reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
+      }
+
+      expect(() => {
+        service.scheduleEmail(emailSchedule)
+      }).toThrow(BadRequestException)
+    })
+  })
 })
