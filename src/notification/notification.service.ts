@@ -73,6 +73,17 @@ export class NotificationService {
     return scheduledDate
   }
 
+  cancelScheduledEmail(data: EmailScheduleDto) {
+    const jobName = `${data.itineraryId}-${data.recipient}`
+
+    if (!this.schedulerRegistry.doesExist('cron', jobName)) {
+      throw new NotFoundException(
+        `Failed to cancel job for itinerary ${data.itineraryId}: doesn't have a reminder`
+      )
+    }
+    this.schedulerRegistry.deleteCronJob(jobName)
+  }
+
   /**
    * Creates a new ItineraryReminder and saves it
    */
