@@ -1,38 +1,36 @@
 import { Injectable } from '@nestjs/common'
 import { EmailService } from '../email/email.service'
-import { CreateNotificationDto } from './dto/create-notification.dto'
-import { UpdateNotificationDto } from './dto/update-notification.dto'
+import { UpdateItineraryReminderDto } from './dto/update-itinerary-reminder.dto'
 import { SchedulerRegistry } from '@nestjs/schedule'
 import { CronJob } from 'cron'
 import { itineraryReminderTemplate } from './templates/itinerary-reminder-template'
+import { PrismaService } from 'src/prisma/prisma.service'
+import { REMINDER_OPTION } from '@prisma/client'
+import { CreateItineraryReminderDto } from './dto/create-itinerary-reminder.dto'
+import { EmailScheduleDto } from './dto/email-schedule.dto'
 
 @Injectable()
 export class NotificationService {
   constructor(
+    private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly schedulerRegistry: SchedulerRegistry
   ) {}
 
-  create(createNotificationDto: CreateNotificationDto) {
-    const date = new Date(createNotificationDto.date)
-    const job = new CronJob(date, () => {
-      this.emailService.sendEmail(
-        createNotificationDto.recipient,
-        `Reminder for ${createNotificationDto.tripName}`,
-        itineraryReminderTemplate(
-          createNotificationDto.recipientName,
-          createNotificationDto.tripName,
-          createNotificationDto.reminderOption
-        )
-      )
+  /**
+   * Creates a new ItineraryReminder and saves it
+   */
+  async create(data: CreateItineraryReminderDto) {
+    return this.prisma.$transaction(async (prisma) => {
+      const reminder = await prisma.itineraryReminder.create({
+        data: {
+          itineraryId: data.itineraryId,
+          email: data.email,
+          reminderOption: data.reminderOption,
+        },
+      })
+      return reminder
     })
-
-    this.schedulerRegistry.addCronJob(
-      `${Date.now()}-${createNotificationDto.recipient}`,
-      job
-    )
-    job.start()
-    return job
   }
 
   findAll() {
@@ -43,7 +41,7 @@ export class NotificationService {
     return `This action returns a #${id} notification`
   }
 
-  update(id: number, updateNotificationDto: UpdateNotificationDto) {
+  update(id: number, updateNotificationDto: UpdateItineraryReminderDto) {
     return `This action updates a #${id} notification`
   }
 
