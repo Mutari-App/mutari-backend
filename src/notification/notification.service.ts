@@ -48,8 +48,20 @@ export class NotificationService {
     return `This action returns a #${id} notification`
   }
 
-  update(id: number, updateNotificationDto: UpdateItineraryReminderDto) {
-    return `This action updates a #${id} notification`
+  async update(data: UpdateItineraryReminderDto) {
+    await this._checkItineraryExists(data.itineraryId)
+    await this._checkItineraryReminderExists(data.itineraryId, true)
+
+    return this.prisma.$transaction(async (prisma) => {
+      const reminder = await prisma.itineraryReminder.update({
+        where: { itineraryId: data.itineraryId },
+        data: {
+          email: data.email,
+          reminderOption: data.reminderOption,
+        },
+      })
+      return reminder
+    })
   }
 
   remove(id: number) {
