@@ -1,17 +1,29 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { NotificationService } from './notification.service'
 import { EmailService } from 'src/email/email.service'
+import { PrismaService } from 'src/prisma/prisma.service'
 import { SchedulerRegistry } from '@nestjs/schedule'
-import { CreateNotificationDto } from './dto/create-notification.dto'
 import { $Enums, REMINDER_OPTION } from '@prisma/client'
 import { CronJob } from 'cron'
+import { EmailScheduleDto } from './dto/email-schedule.dto'
+import { CreateItineraryReminderDto } from './dto/create-itinerary-reminder.dto'
+import { UpdateItineraryReminderDto } from './dto/update-itinerary-reminder.dto'
 import { itineraryReminderTemplate } from './templates/itinerary-reminder-template'
-import { UpdateNotificationDto } from './dto/update-notification.dto'
 
 describe('NotificationService', () => {
   let service: NotificationService
   let emailService: EmailService
   let schedulerRegistry: SchedulerRegistry
+  let prismaService: PrismaService
+
+  const mockPrismaService = {
+    $transaction: jest
+      .fn()
+      .mockImplementation((callback) => callback(mockPrismaService)),
+    itineraryReminder: {
+      create: jest.fn(),
+    },
+  }
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -29,12 +41,21 @@ describe('NotificationService', () => {
             addCronJob: jest.fn(),
           },
         },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
       ],
     }).compile()
 
     service = module.get<NotificationService>(NotificationService)
     emailService = module.get<EmailService>(EmailService)
     schedulerRegistry = module.get<SchedulerRegistry>(SchedulerRegistry)
+    prismaService = module.get<PrismaService>(PrismaService)
+  })
+
+  afterEach(() => {
+    jest.clearAllMocks()
   })
 
   it('should be defined', () => {
@@ -42,59 +63,36 @@ describe('NotificationService', () => {
   })
 
   describe('create', () => {
-    it('should schedule a sendEmail job', async () => {
-      const createNotificationDto: CreateNotificationDto = {
-        recipient: 'test@example.com',
-        recipientName: 'John Doe',
-        tripName: 'Hawaii Trip',
-        date: new Date(Date.now() + 10000).toISOString(),
+    it('should create an itinerary reminder', async () => {
+      const createItineraryReminder: CreateItineraryReminderDto = {
+        itineraryId: 'ITN-123',
+        email: 'test@example.com',
         reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
       }
 
-      const jobSpy = jest.spyOn(CronJob.prototype, 'start')
-      service.create(createNotificationDto)
-
-      expect(schedulerRegistry.addCronJob).toHaveBeenCalled()
-      expect(jobSpy).toHaveBeenCalled()
-    })
-
-    it('should call sendEmail with correct parameters', () => {
-      const createNotificationDto: CreateNotificationDto = {
-        recipient: 'test@example.com',
-        recipientName: 'John Doe',
-        tripName: 'Hawaii Trip',
-        date: new Date(Date.now() + 10000).toISOString(),
+      const expectedItineraryReminder = {
+        id: 'RMNDR-123',
+        itineraryId: 'ITN-123',
+        email: '',
         reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       }
 
-      service.create(createNotificationDto)
-      const emailArgs = [
-        createNotificationDto.recipient,
-        `Reminder for ${createNotificationDto.tripName}`,
-        itineraryReminderTemplate(
-          createNotificationDto.recipientName,
-          createNotificationDto.tripName,
-          createNotificationDto.reminderOption
-        ),
-      ]
-
-      expect(emailService.sendEmail).not.toHaveBeenCalled() // Since cron job runs later
-    })
-
-    it('should throw an error if emailService fails', async () => {
-      emailService.sendEmail = jest.fn().mockImplementation(() => {
-        throw new Error('Email sending failed')
+      // save to db
+      mockPrismaService.itineraryReminder.create.mockResolvedValue(
+        expectedItineraryReminder
+      )
+      const result = await service.create(createItineraryReminder)
+      expect(mockPrismaService.$transaction).toHaveBeenCalled()
+      expect(mockPrismaService.itineraryReminder.create).toHaveBeenCalledWith({
+        data: {
+          itineraryId: createItineraryReminder.itineraryId,
+          email: createItineraryReminder.email,
+          reminderOption: createItineraryReminder.reminderOption,
+        },
       })
-
-      const createNotificationDto: CreateNotificationDto = {
-        recipient: 'test@example.com',
-        recipientName: 'John Doe',
-        tripName: 'Hawaii Trip',
-        date: new Date(Date.now() + 10000).toISOString(),
-        reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
-      }
-
-      expect(() => service.create(createNotificationDto)).not.toThrow() // Error happens later in job
+      expect(result).toEqual(expectedItineraryReminder)
     })
   })
 
@@ -112,8 +110,8 @@ describe('NotificationService', () => {
 
   describe('update', () => {
     it('should update a notification', () => {
-      const updateDto: UpdateNotificationDto = {}
-      expect(service.update(1, updateDto)).toBe(
+      const data: UpdateItineraryReminderDto = {}
+      expect(service.update(1, data)).toBe(
         'This action updates a #1 notification'
       )
     })
