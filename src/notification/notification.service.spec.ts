@@ -9,6 +9,7 @@ import { EmailScheduleDto } from './dto/email-schedule.dto'
 import { CreateItineraryReminderDto } from './dto/create-itinerary-reminder.dto'
 import { UpdateItineraryReminderDto } from './dto/update-itinerary-reminder.dto'
 import { itineraryReminderTemplate } from './templates/itinerary-reminder-template'
+import { ConflictException, NotFoundException } from '@nestjs/common'
 
 describe('NotificationService', () => {
   let service: NotificationService
@@ -22,6 +23,11 @@ describe('NotificationService', () => {
       .mockImplementation((callback) => callback(mockPrismaService)),
     itineraryReminder: {
       create: jest.fn(),
+      
+      findUnique: jest.fn(),
+    },
+    itinerary: {
+      findUnique: jest.fn(),
     },
   }
 
@@ -73,17 +79,25 @@ describe('NotificationService', () => {
       const expectedItineraryReminder = {
         id: 'RMNDR-123',
         itineraryId: 'ITN-123',
-        email: '',
+        email: 'test@example.com',
         reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
         createdAt: new Date(),
         updatedAt: new Date(),
       }
 
-      // save to db
+      // Mocks
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        'itinerary-exists'
+      )
+      mockPrismaService.itineraryReminder.findUnique.mockResolvedValue(null)
       mockPrismaService.itineraryReminder.create.mockResolvedValue(
         expectedItineraryReminder
       )
+
+      // Logic
       const result = await service.create(createItineraryReminder)
+
+      // Assert
       expect(mockPrismaService.$transaction).toHaveBeenCalled()
       expect(mockPrismaService.itineraryReminder.create).toHaveBeenCalledWith({
         data: {
@@ -93,6 +107,45 @@ describe('NotificationService', () => {
         },
       })
       expect(result).toEqual(expectedItineraryReminder)
+    })
+
+    it('should throw NotFoundException if itinerary doesnt exist', async () => {
+      const createItineraryReminder: CreateItineraryReminderDto = {
+        itineraryId: 'ITN-123',
+        email: 'test@example.com',
+        reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
+      }
+
+      // Mocks
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      // Assert
+      await expect(service.create(createItineraryReminder)).rejects.toThrow(
+        NotFoundException
+      )
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+    })
+
+    it('should throw ConflictException if itinerary reminder already exist', async () => {
+      const createItineraryReminder: CreateItineraryReminderDto = {
+        itineraryId: 'ITN-123',
+        email: 'test@example.com',
+        reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
+      }
+
+      // Mocks
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        'itinerary-exists'
+      )
+      mockPrismaService.itineraryReminder.findUnique.mockResolvedValue(
+        'existing-reminder'
+      )
+
+      // Assert
+      await expect(service.create(createItineraryReminder)).rejects.toThrow(
+        ConflictException
+      )
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
     })
   })
 
