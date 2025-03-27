@@ -1,0 +1,60 @@
+name: Update Notion Task Status
+
+on:
+  pull_request:
+    types: [opened, closed]
+
+jobs:
+  update-notion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Determine Task Status
+        run: |
+          if [[ "${{ github.event.pull_request.merged }}" == "true" ]]; then
+            echo "TASK_STATUS=Done" >> $GITHUB_ENV
+          else
+            echo "TASK_STATUS=In Progress" >> $GITHUB_ENV
+          fi
+
+      - name: Get Notion Page ID by Task Name
+        run: |
+          RESPONSE=$(curl -X POST "https://api.notion.com/v1/databases/${{ secrets.NOTION_DATABASE_ID }}/query" \
+          -H "Authorization: Bearer ${{ secrets.NOTION_API_KEY }}" \
+          -H "Notion-Version: 2022-06-28" \
+          -H "Content-Type: application/json" \
+          --data '{
+            "filter": {
+              "property": "Task Name",
+              "title": {
+                "equals": "${{ github.event.pull_request.title }}"
+              }
+            }
+          }')
+
+          PAGE_ID=$(echo $RESPONSE | jq -r '.results[0].id')
+
+          if [ "$PAGE_ID" == "null" ]; then
+            echo "Task tidak ditemukan di Notion"
+            exit 1
+          fi
+
+          echo "PAGE_ID=$PAGE_ID" >> $GITHUB_ENV
+
+      - name: Update Task Status in Notion
+        run: |
+          curl -X PATCH "https://api.notion.com/v1/pages/$PAGE_ID" \
+          -H "Authorization: Bearer ${{ secrets.NOTION_API_KEY }}" \
+          -H "Notion-Version: 2022-06-28" \
+          -H "Content-Type: application/json" \
+          --data '{
+            "properties": {
+              "Status": {
+                "status": {
+                  "name": "${{ env.TASK_STATUS }}"
+                }
+              }
+            }
+          }'
