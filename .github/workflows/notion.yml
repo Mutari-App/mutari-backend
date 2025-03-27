@@ -11,6 +11,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Extract PBI Number from PR Title
+        run: |
+          PBI_NUMBER=$(echo "${{ github.event.pull_request.title }}" | grep -oE 'PBI [0-9]+' | awk '{print $2}')
+          if [ -z "$PBI_NUMBER" ]; then
+            echo "PBI number not found in PR title"
+            exit 1
+          fi
+          echo "PBI_NUMBER=$PBI_NUMBER" >> $GITHUB_ENV
+
       - name: Determine Task Status
         run: |
           if [[ "${{ github.event.pull_request.merged }}" == "true" ]]; then
@@ -19,7 +28,7 @@ jobs:
             echo "TASK_STATUS=In Progress" >> $GITHUB_ENV
           fi
 
-      - name: Get Notion Page ID by Task Name
+      - name: Get Notion Page ID by PBI Number
         run: |
           RESPONSE=$(curl -X POST "https://api.notion.com/v1/databases/${{ secrets.NOTION_DATABASE_ID }}/query" \
           -H "Authorization: Bearer ${{ secrets.NOTION_API_KEY }}" \
@@ -27,9 +36,9 @@ jobs:
           -H "Content-Type: application/json" \
           --data '{
             "filter": {
-              "property": "Task Name",
-              "title": {
-                "equals": "${{ github.event.pull_request.title }}"
+              "property": "PBI",
+              "number": {
+                "equals": '${{ env.PBI_NUMBER }}'
               }
             }
           }')
@@ -37,7 +46,7 @@ jobs:
           PAGE_ID=$(echo $RESPONSE | jq -r '.results[0].id')
 
           if [ "$PAGE_ID" == "null" ]; then
-            echo "Task tidak ditemukan di Notion"
+            echo "Task dengan PBI $PBI_NUMBER tidak ditemukan di Notion"
             exit 1
           fi
 
@@ -51,7 +60,7 @@ jobs:
           -H "Content-Type: application/json" \
           --data '{
             "properties": {
-              "Status": {
+              "Status (Backend)": {
                 "status": {
                   "name": "${{ env.TASK_STATUS }}"
                 }
