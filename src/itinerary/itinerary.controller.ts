@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Delete,
+  BadRequestException,
 } from '@nestjs/common'
 import { ItineraryService } from './itinerary.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
@@ -90,6 +91,25 @@ export class ItineraryController {
       },
       {
         data: itinerary,
+      }
+    )
+  }
+
+  @Get('user/:userId')
+  async findByUser(@Param('userId') userId: string) {
+    if (!userId) {
+      throw new BadRequestException('User ID is required')
+    }
+
+    const itinerary = await this.itineraryService.findByUser(userId)
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary fetched successfully.',
+      },
+      {
+        itinerary,
       }
     )
   }

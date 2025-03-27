@@ -7,6 +7,7 @@ import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { BLOCK_TYPE, Tag, User } from '@prisma/client'
 
 import {
+  BadRequestException,
   ForbiddenException,
   HttpException,
   HttpStatus,
@@ -44,6 +45,7 @@ describe('ItineraryController', () => {
     findOne: jest.fn(),
     removeItinerary: jest.fn(),
     findAllTags: jest.fn(),
+    findByUser: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -1107,6 +1109,67 @@ describe('ItineraryController', () => {
         }
       )
       expect(result).toEqual(expectedResponse)
+    })
+  })
+
+  describe('findByUser', () => {
+    it('should return itinerary successfully', async () => {
+      const userId = 'user1'
+      const mockItinerary = [{ id: 'itinerary1', title: 'Trip to Bali' }]
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries fetched successfully.',
+        itinerary: mockItinerary,
+      }
+
+      mockItineraryService.findByUser.mockResolvedValue(mockItinerary)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findByUser(userId)
+
+      expect(result).toEqual({
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries fetched successfully.',
+        itinerary: mockItinerary,
+      })
+    })
+
+    it('should throw BadRequestException if userId is missing', async () => {
+      await expect(controller.findByUser('')).rejects.toThrow(
+        BadRequestException
+      )
+    })
+
+    it('should throw NotFoundException if user not found', async () => {
+      const userId = 'nonexistent-user'
+      mockItineraryService.findByUser.mockRejectedValue(
+        new NotFoundException(`User with ID ${userId} doesn't exist`)
+      )
+
+      await expect(controller.findByUser(userId)).rejects.toThrow(
+        NotFoundException
+      )
+    })
+
+    it('should handle edge case with empty itinerary data', async () => {
+      const userId = 'user2'
+      const mockItinerary = []
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries fetched successfully.',
+        itinerary: mockItinerary,
+      }
+
+      mockItineraryService.findByUser.mockResolvedValue(mockItinerary)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findByUser(userId)
+
+      expect(result).toEqual({
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries fetched successfully.',
+        itinerary: [],
+      })
     })
   })
 })

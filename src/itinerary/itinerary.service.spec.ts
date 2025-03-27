@@ -33,6 +33,9 @@ describe('ItineraryService', () => {
     itineraryAccess: {
       findUnique: jest.fn(),
     },
+    user: {
+      findUnique: jest.fn(),
+    },
   }
 
   const mockUser: User = {
@@ -1714,6 +1717,76 @@ describe('ItineraryService', () => {
         },
       })
       expect(result).toEqual([])
+    })
+  })
+
+  describe('findByUser', () => {
+    it('should return formatted itineraries when user exists', async () => {
+      const userId = 'user1'
+      const mockUser = { id: userId, name: 'Fathan' }
+      const mockItineraries = [
+        {
+          id: 'itinerary1',
+          userId,
+          title: 'Trip to Bogor',
+          startDate: '2025-03-12T17:00:00.000Z',
+          sections: [
+            {
+              id: 'section1',
+              blocks: [
+                { id: 'block1', blockType: 'LOCATION' },
+                { id: 'block2', blockType: 'LOCATION' },
+              ],
+            },
+          ],
+        },
+      ]
+
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser)
+      mockPrismaService.itinerary.findMany.mockResolvedValue(mockItineraries)
+
+      const result = await service.findByUser(userId)
+
+      expect(result).toEqual([
+        {
+          ...mockItineraries[0],
+          locationCount: 2,
+        },
+      ])
+    })
+
+    it('should handle itineraries with no LOCATION blocks', async () => {
+      const userId = 'user2'
+      const mockUser = { id: userId, name: 'Fathan' }
+      const mockItineraries = [
+        {
+          id: 'itinerary2',
+          userId,
+          title: 'Trip to Bandung',
+          startDate: '2025-03-14T10:00:00.000Z',
+          sections: [],
+        },
+      ]
+
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser)
+      mockPrismaService.itinerary.findMany.mockResolvedValue(mockItineraries)
+
+      const result = await service.findByUser(userId)
+
+      expect(result).toEqual([
+        {
+          ...mockItineraries[0],
+          locationCount: 0,
+        },
+      ])
+    })
+
+    it('should throw NotFoundException if user does not exist', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue(null)
+
+      await expect(service.findByUser('nonexistent-user')).rejects.toThrow(
+        NotFoundException
+      )
     })
   })
 })
