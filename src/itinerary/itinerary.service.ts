@@ -505,6 +505,35 @@ export class ItineraryService {
     userTargetId: string,
     user: User
   ) {
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: itineraryId },
+    })
+
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
+    }
+
+    if (itinerary.userId !== user.id) {
+      throw new ForbiddenException(
+        'You are not authorized to remove users from this itinerary'
+      )
+    }
+
+    const existingAccess = await this.prisma.itineraryAccess.findUnique({
+      where: {
+        itineraryId_userId: {
+          itineraryId,
+          userId: userTargetId,
+        },
+      },
+    })
+
+    if (!existingAccess) {
+      throw new NotFoundException(
+        `User with ID ${userTargetId} is not a participant of this itinerary`
+      )
+    }
+
     const deletedAccess = await this.prisma.itineraryAccess.delete({
       where: {
         itineraryId_userId: {

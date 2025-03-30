@@ -2027,7 +2027,7 @@ describe('ItineraryService', () => {
     })
   })
 
-  fdescribe('removeUserFromItinerary', () => {
+  describe('removeUserFromItinerary', () => {
     it('should remove a user from the itinerary successfully', async () => {
       const itineraryId = 'itinerary-123'
       const userTargetId = 'user-target-123'
