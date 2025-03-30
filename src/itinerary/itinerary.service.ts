@@ -450,6 +450,12 @@ export class ItineraryService {
       )
     }
 
+    if (pendingInvite.email === user.email) {
+      throw new ForbiddenException(
+        'You are not authorized to accept this invitation'
+      )
+    }
+
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id: pendingInvite.itineraryId },
     })
