@@ -1839,6 +1839,10 @@ describe('ItineraryService', () => {
         .fn()
         .mockResolvedValue(mockPendingInvite)
 
+      mockPrismaService.itinerary.findUnique = jest
+        .fn()
+        .mockResolvedValue({ id: mockPendingInvite.itineraryId })
+
       mockPrismaService.itineraryAccess.create = jest
         .fn()
         .mockResolvedValue(mockNewitineraryAccess)

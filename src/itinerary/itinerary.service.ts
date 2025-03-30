@@ -444,6 +444,22 @@ export class ItineraryService {
       where: { id: pendingItineraryInviteId },
     })
 
+    if (!pendingInvite) {
+      throw new NotFoundException(
+        `Invitation with ID ${pendingItineraryInviteId} not found`
+      )
+    }
+
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: pendingInvite.itineraryId },
+    })
+
+    if (!itinerary) {
+      throw new NotFoundException(
+        `Itinerary with ID ${pendingInvite.itineraryId} not found`
+      )
+    }
+
     const newItineraryAccess = await this.prisma.$transaction(
       async (prisma) => {
         const newItineraryAccess = await prisma.itineraryAccess.create({
