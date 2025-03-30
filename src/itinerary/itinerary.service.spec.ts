@@ -1720,7 +1720,7 @@ describe('ItineraryService', () => {
     })
   })
 
-  fdescribe('inviteToItinerary', () => {
+  describe('inviteToItinerary', () => {
     it('should send invitations to the provided emails', async () => {
       const itineraryId = 'itinerary-123'
       const emails = ['test1@example.com', 'test2@example.com']
