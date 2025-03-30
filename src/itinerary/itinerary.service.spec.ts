@@ -1934,5 +1934,37 @@ describe('ItineraryService', () => {
         mockPrismaService.pendingItineraryInvite.delete
       ).not.toHaveBeenCalled()
     })
+
+    it('should throw ForbiddenException if user is not authorized to accept the invitation', async () => {
+      const pendingItineraryInviteId = 'invite-123'
+
+      const mockPendingInvite = {
+        id: pendingItineraryInviteId,
+        itineraryId: 'itinerary-456',
+        email: 'test@example.com',
+      }
+
+      mockPrismaService.pendingItineraryInvite.findUnique.mockResolvedValue(
+        mockPendingInvite
+      )
+
+      await expect(
+        service.acceptItineraryInvitation(pendingItineraryInviteId, mockUser)
+      ).rejects.toThrow(
+        new ForbiddenException(
+          'You are not authorized to accept this invitation'
+        )
+      )
+
+      expect(
+        mockPrismaService.pendingItineraryInvite.findUnique
+      ).toHaveBeenCalledWith({
+        where: { id: pendingItineraryInviteId },
+      })
+      expect(mockPrismaService.itineraryAccess.create).not.toHaveBeenCalled()
+      expect(
+        mockPrismaService.pendingItineraryInvite.delete
+      ).not.toHaveBeenCalled()
+    })
   })
 })
