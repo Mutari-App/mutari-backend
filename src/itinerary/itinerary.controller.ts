@@ -208,6 +208,21 @@ export class ItineraryController {
     @Param('userId') targetId: string,
     @GetUser() user: User
   ) {
-    return null
+    const deletedParticipant =
+      await this.itineraryService.removeUserFromItinerary(
+        itineraryId,
+        targetId,
+        user
+      )
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'User removed from itinerary successfully.',
+      },
+      {
+        deletedParticipant,
+      }
+    )
   }
 }
