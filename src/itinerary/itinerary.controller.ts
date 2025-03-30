@@ -164,6 +164,19 @@ export class ItineraryController {
     @Param('id') id: string,
     @Body() inviteToItineraryDto: InviteToItineraryDTO
   ) {
-    return null
+    const result = await this.itineraryService.inviteToItinerary(
+      id,
+      inviteToItineraryDto.emails
+    )
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Invitations sent successfully.',
+      },
+      {
+        pendingItineraryInvites: result,
+      }
+    )
   }
 }

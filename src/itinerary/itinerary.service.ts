@@ -404,4 +404,6 @@ export class ItineraryService {
     })
     return tags
   }
+
+  async inviteToItinerary(itineraryId: string, emails: string[]) {}
 }
