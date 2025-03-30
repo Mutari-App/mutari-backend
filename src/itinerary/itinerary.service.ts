@@ -444,16 +444,21 @@ export class ItineraryService {
       where: { id: pendingItineraryInviteId },
     })
 
-    const newItineraryAccess = await this.prisma.itineraryAccess.create({
-      data: {
-        itineraryId: pendingInvite.itineraryId,
-        userId: userId,
-      },
-    })
+    const newItineraryAccess = await this.prisma.$transaction(
+      async (prisma) => {
+        const newItineraryAccess = await prisma.itineraryAccess.create({
+          data: {
+            itineraryId: pendingInvite.itineraryId,
+            userId: userId,
+          },
+        })
 
-    await this.prisma.pendingItineraryInvite.delete({
-      where: { id: pendingItineraryInviteId },
-    })
+        await prisma.pendingItineraryInvite.delete({
+          where: { id: pendingItineraryInviteId },
+        })
+        return newItineraryAccess
+      }
+    )
 
     return newItineraryAccess
   }
