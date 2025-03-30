@@ -503,8 +503,17 @@ export class ItineraryService {
   async removeUserFromItinerary(
     itineraryId: string,
     userTargetId: string,
-    user
+    user: User
   ) {
-    return null
+    const deletedAccess = await this.prisma.itineraryAccess.delete({
+      where: {
+        itineraryId_userId: {
+          itineraryId,
+          userId: userTargetId,
+        },
+      },
+    })
+
+    return deletedAccess
   }
 }
