@@ -436,7 +436,25 @@ export class ItineraryService {
     return pendingItineraryInvites
   }
 
-  async acceptItineraryInvitation(pendingItineraryInviteId, userId) {
-    return null
+  async acceptItineraryInvitation(
+    pendingItineraryInviteId: string,
+    userId: string
+  ) {
+    const pendingInvite = await this.prisma.pendingItineraryInvite.findUnique({
+      where: { id: pendingItineraryInviteId },
+    })
+
+    const newItineraryAccess = await this.prisma.itineraryAccess.create({
+      data: {
+        itineraryId: pendingInvite.itineraryId,
+        userId: userId,
+      },
+    })
+
+    await this.prisma.pendingItineraryInvite.delete({
+      where: { id: pendingItineraryInviteId },
+    })
+
+    return newItineraryAccess
   }
 }
