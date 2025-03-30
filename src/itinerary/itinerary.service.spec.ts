@@ -85,6 +85,15 @@ describe('ItineraryService', () => {
 
     service = module.get<ItineraryService>(ItineraryService)
     prismaService = module.get<PrismaService>(PrismaService)
+
+    mockPrismaService.$transaction.mockReset()
+    mockPrismaService.$transaction.mockImplementation((arg) => {
+      if (typeof arg === 'function') {
+        return arg(mockPrismaService)
+      } else if (Array.isArray(arg)) {
+        return Promise.all(arg)
+      }
+    })
   })
 
   afterEach(() => {
