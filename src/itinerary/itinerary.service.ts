@@ -418,6 +418,12 @@ export class ItineraryService {
       throw new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
     }
 
+    if (itinerary.userId !== userId) {
+      throw new ForbiddenException(
+        'Not authorized to invite users to this itinerary'
+      )
+    }
+
     const pendingItineraryInvites =
       await this.prisma.pendingItineraryInvite.createMany({
         data: emails.map((email) => ({
