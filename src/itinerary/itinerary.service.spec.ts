@@ -33,6 +33,9 @@ describe('ItineraryService', () => {
     itineraryAccess: {
       findUnique: jest.fn(),
     },
+    pendingItineraryInvite: {
+      createMany: jest.fn(),
+    },
   }
 
   const mockUser: User = {
@@ -1714,6 +1717,40 @@ describe('ItineraryService', () => {
         },
       })
       expect(result).toEqual([])
+    })
+  })
+
+  describe('inviteToItinerary', () => {
+    it('should send invitations to the provided emails', async () => {
+      // Arrange
+      const itineraryId = 'itinerary-123'
+      const emails = ['test1@example.com', 'test2@example.com']
+
+      // Mock itinerary existence
+      mockPrismaService.itinerary.findUnique.mockResolvedValue({
+        id: itineraryId,
+        userId: mockUser.id,
+      })
+
+      mockPrismaService.pendingItineraryInvite.createMany.mockResolvedValue({
+        count: emails.length,
+      })
+
+      const result = await service.inviteToItinerary(itineraryId, emails)
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: itineraryId },
+      })
+      expect(
+        mockPrismaService.pendingItineraryInvite.createMany
+      ).toHaveBeenCalledWith({
+        data: emails.map((email) => ({
+          itineraryId,
+          email,
+        })),
+        skipDuplicates: true,
+      })
+      expect(result).toEqual({ count: emails.length })
     })
   })
 })
