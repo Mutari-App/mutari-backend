@@ -1816,10 +1816,9 @@ describe('ItineraryService', () => {
     })
   })
 
-  fdescribe('acceptItineraryInvitation', () => {
+  describe('acceptItineraryInvitation', () => {
     it('should accept an itinerary invitation and link the user to the itinerary', async () => {
       const pendingItineraryInviteId = 'invite-123'
-      const userId = 'user-123'
 
       const mockPendingInvite = {
         id: pendingItineraryInviteId,
@@ -1832,7 +1831,7 @@ describe('ItineraryService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         itineraryId: 'itinerary-456',
-        userId,
+        userId: mockUser.id,
       }
 
       mockPrismaService.pendingItineraryInvite.findUnique = jest
@@ -1853,7 +1852,7 @@ describe('ItineraryService', () => {
 
       const result = await service.acceptItineraryInvitation(
         pendingItineraryInviteId,
-        userId
+        mockUser
       )
 
       expect(
@@ -1865,7 +1864,7 @@ describe('ItineraryService', () => {
       expect(mockPrismaService.itineraryAccess.create).toHaveBeenCalledWith({
         data: {
           itineraryId: mockPendingInvite.itineraryId,
-          userId,
+          userId: mockUser.id,
         },
       })
 
@@ -1878,14 +1877,13 @@ describe('ItineraryService', () => {
 
     it('should throw NotFoundException if the pending invitation does not exist', async () => {
       const pendingItineraryInviteId = 'non-existent-invite'
-      const userId = 'user-123'
 
       mockPrismaService.pendingItineraryInvite.findUnique.mockResolvedValue(
         null
       )
 
       await expect(
-        service.acceptItineraryInvitation(pendingItineraryInviteId, userId)
+        service.acceptItineraryInvitation(pendingItineraryInviteId, mockUser)
       ).rejects.toThrow(NotFoundException)
       expect(
         mockPrismaService.pendingItineraryInvite.findUnique
@@ -1900,7 +1898,6 @@ describe('ItineraryService', () => {
 
     it('should throw NotFoundException if itineraryId is not found when accepting an invitation', async () => {
       const pendingItineraryInviteId = 'invite-123'
-      const userId = 'user-123'
 
       const mockPendingInvite = {
         id: pendingItineraryInviteId,
@@ -1915,7 +1912,7 @@ describe('ItineraryService', () => {
       mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
 
       await expect(
-        service.acceptItineraryInvitation(pendingItineraryInviteId, userId)
+        service.acceptItineraryInvitation(pendingItineraryInviteId, mockUser)
       ).rejects.toThrow(
         new NotFoundException(
           `Itinerary with ID ${mockPendingInvite.itineraryId} not found`

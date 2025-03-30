@@ -1228,7 +1228,7 @@ describe('ItineraryController', () => {
 
       expect(
         mockItineraryService.acceptItineraryInvitation
-      ).toHaveBeenCalledWith(pendingItineraryInviteId, mockUser.id)
+      ).toHaveBeenCalledWith(pendingItineraryInviteId, mockUser)
       expect(result).toEqual(mockResponse)
     })
 
@@ -1248,7 +1248,7 @@ describe('ItineraryController', () => {
 
       expect(
         mockItineraryService.acceptItineraryInvitation
-      ).toHaveBeenCalledWith(itineraryId, mockUser.id)
+      ).toHaveBeenCalledWith(itineraryId, mockUser)
     })
 
     it('should throw ForbiddenException if the user is not authorized to accept the invitation', async () => {
@@ -1266,7 +1266,7 @@ describe('ItineraryController', () => {
 
       expect(
         mockItineraryService.acceptItineraryInvitation
-      ).toHaveBeenCalledWith(itineraryId, mockUser.id)
+      ).toHaveBeenCalledWith(itineraryId, mockUser)
     })
   })
 })

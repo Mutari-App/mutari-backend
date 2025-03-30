@@ -438,7 +438,7 @@ export class ItineraryService {
 
   async acceptItineraryInvitation(
     pendingItineraryInviteId: string,
-    userId: string
+    user: User
   ) {
     const pendingInvite = await this.prisma.pendingItineraryInvite.findUnique({
       where: { id: pendingItineraryInviteId },
@@ -465,7 +465,7 @@ export class ItineraryService {
         const newItineraryAccess = await prisma.itineraryAccess.create({
           data: {
             itineraryId: pendingInvite.itineraryId,
-            userId: userId,
+            userId: user.id,
           },
         })
 

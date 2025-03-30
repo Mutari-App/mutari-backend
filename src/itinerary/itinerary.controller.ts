@@ -189,7 +189,7 @@ export class ItineraryController {
   ) {
     const itinerary = await this.itineraryService.acceptItineraryInvitation(
       pendingItineraryInviteId,
-      user.id
+      user
     )
     return this.responseUtil.response(
       {
@@ -200,5 +200,14 @@ export class ItineraryController {
         itinerary,
       }
     )
+  }
+
+  @Delete(':id/:userId/remove')
+  async removeUserFromItinerary(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @GetUser() user: User
+  ) {
+    return null
   }
 }
