@@ -499,4 +499,12 @@ export class ItineraryService {
 
     return newItineraryAccess
   }
+
+  async removeUserFromItinerary(
+    itineraryId: string,
+    userTargetId: string,
+    user
+  ) {
+    return null
+  }
 }

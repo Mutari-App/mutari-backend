@@ -204,8 +204,8 @@ export class ItineraryController {
 
   @Delete(':id/:userId/remove')
   async removeUserFromItinerary(
-    @Param('id') id: string,
-    @Param('userId') userId: string,
+    @Param('id') itineraryId: string,
+    @Param('userId') targetId: string,
     @GetUser() user: User
   ) {
     return null

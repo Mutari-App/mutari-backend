@@ -46,6 +46,7 @@ describe('ItineraryController', () => {
     findAllTags: jest.fn(),
     inviteToItinerary: jest.fn(),
     acceptItineraryInvitation: jest.fn(),
+    removeUserFromItinerary: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -1267,6 +1268,41 @@ describe('ItineraryController', () => {
       expect(
         mockItineraryService.acceptItineraryInvitation
       ).toHaveBeenCalledWith(itineraryId, mockUser)
+    })
+  })
+
+  fdescribe('removeUserFromItinerary', () => {
+    it('should remove a user from an itinerary and return a formatted response', async () => {
+      const itineraryId = 'itinerary-123'
+      const userId = 'user-456'
+      const deletedParticipant = {
+        id: `itinerary-access-id`,
+        itineraryId,
+        userId,
+      }
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'User removed from itinerary successfully.',
+        deletedParticipant,
+      }
+
+      mockItineraryService.removeUserFromItinerary = jest
+        .fn()
+        .mockResolvedValue(deletedParticipant)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.removeUserFromItinerary(
+        itineraryId,
+        userId,
+        mockUser
+      )
+
+      expect(mockItineraryService.removeUserFromItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        userId,
+        mockUser
+      )
+      expect(result).toEqual(mockResponse)
     })
   })
 })
