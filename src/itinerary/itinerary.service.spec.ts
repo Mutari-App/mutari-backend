@@ -33,6 +33,7 @@ describe('ItineraryService', () => {
     itineraryAccess: {
       findUnique: jest.fn(),
       create: jest.fn(),
+      delete: jest.fn(),
     },
     pendingItineraryInvite: {
       createMany: jest.fn(),
@@ -2023,6 +2024,42 @@ describe('ItineraryService', () => {
       expect(
         mockPrismaService.pendingItineraryInvite.delete
       ).not.toHaveBeenCalled()
+    })
+  })
+
+  fdescribe('removeUserFromItinerary', () => {
+    it('should remove a user from the itinerary successfully', async () => {
+      const itineraryId = 'itinerary-123'
+      const userTargetId = 'user-target-123'
+
+      const mockDeletedAccess = {
+        id: 'access-123',
+        itineraryId,
+        userId: userTargetId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      mockPrismaService.itineraryAccess.delete.mockResolvedValue(
+        mockDeletedAccess
+      )
+
+      const result = await service.removeUserFromItinerary(
+        itineraryId,
+        userTargetId,
+        mockUser
+      )
+
+      expect(mockPrismaService.itineraryAccess.delete).toHaveBeenCalledWith({
+        where: {
+          itineraryId_userId: {
+            itineraryId,
+            userId: userTargetId,
+          },
+        },
+      })
+
+      expect(result).toEqual(mockDeletedAccess)
     })
   })
 })
