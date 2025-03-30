@@ -466,6 +466,21 @@ export class ItineraryService {
       )
     }
 
+    const existingParticipant = await this.prisma.itineraryAccess.findUnique({
+      where: {
+        itineraryId_userId: {
+          itineraryId: pendingInvite.itineraryId,
+          userId: user.id,
+        },
+      },
+    })
+
+    if (existingParticipant) {
+      throw new BadRequestException(
+        'You are already a participant of this itinerary'
+      )
+    }
+
     const newItineraryAccess = await this.prisma.$transaction(
       async (prisma) => {
         const newItineraryAccess = await prisma.itineraryAccess.create({
