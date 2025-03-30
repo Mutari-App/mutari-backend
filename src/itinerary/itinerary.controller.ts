@@ -162,11 +162,13 @@ export class ItineraryController {
   @Post(':id/invite')
   async inviteToItinerary(
     @Param('id') id: string,
-    @Body() inviteToItineraryDto: InviteToItineraryDTO
+    @Body() inviteToItineraryDto: InviteToItineraryDTO,
+    @GetUser() user: User
   ) {
     const result = await this.itineraryService.inviteToItinerary(
       id,
-      inviteToItineraryDto.emails
+      inviteToItineraryDto.emails,
+      user.id
     )
 
     return this.responseUtil.response(

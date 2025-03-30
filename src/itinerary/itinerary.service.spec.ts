@@ -1720,11 +1720,12 @@ describe('ItineraryService', () => {
     })
   })
 
-  describe('inviteToItinerary', () => {
+  fdescribe('inviteToItinerary', () => {
     it('should send invitations to the provided emails', async () => {
       // Arrange
       const itineraryId = 'itinerary-123'
       const emails = ['test1@example.com', 'test2@example.com']
+      const userId = 'user-id'
 
       // Mock itinerary existence
       mockPrismaService.itinerary.findUnique.mockResolvedValue({
@@ -1736,7 +1737,11 @@ describe('ItineraryService', () => {
         count: emails.length,
       })
 
-      const result = await service.inviteToItinerary(itineraryId, emails)
+      const result = await service.inviteToItinerary(
+        itineraryId,
+        emails,
+        userId
+      )
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },

@@ -1135,13 +1135,18 @@ describe('ItineraryController', () => {
         .mockResolvedValue(pendingItineraryInvitesResult)
       mockResponseUtil.response.mockReturnValue(mockResponse)
 
-      const result = await controller.inviteToItinerary(itineraryId, {
-        emails: inviteeEmails,
-      })
+      const result = await controller.inviteToItinerary(
+        itineraryId,
+        {
+          emails: inviteeEmails,
+        },
+        mockUser
+      )
 
       expect(mockItineraryService.inviteToItinerary).toHaveBeenCalledWith(
         itineraryId,
-        inviteeEmails
+        inviteeEmails,
+        mockUser.id
       )
 
       expect(result).toEqual(mockResponse)
@@ -1159,13 +1164,18 @@ describe('ItineraryController', () => {
         .mockRejectedValue(mockError)
 
       await expect(
-        controller.inviteToItinerary(itineraryId, {
-          emails: inviteeEmails,
-        })
+        controller.inviteToItinerary(
+          itineraryId,
+          {
+            emails: inviteeEmails,
+          },
+          mockUser
+        )
       ).rejects.toThrow(mockError)
       expect(mockItineraryService.inviteToItinerary).toHaveBeenCalledWith(
         itineraryId,
-        inviteeEmails
+        inviteeEmails,
+        mockUser.id
       )
     })
 
@@ -1183,11 +1193,16 @@ describe('ItineraryController', () => {
 
       // Act & Assert
       await expect(
-        controller.inviteToItinerary(itineraryId, { emails: inviteeEmails })
+        controller.inviteToItinerary(
+          itineraryId,
+          { emails: inviteeEmails },
+          mockUser
+        )
       ).rejects.toThrow(ForbiddenException)
       expect(mockItineraryService.inviteToItinerary).toHaveBeenCalledWith(
         itineraryId,
-        inviteeEmails
+        inviteeEmails,
+        mockUser.id
       )
     })
   })

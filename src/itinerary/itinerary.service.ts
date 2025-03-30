@@ -405,7 +405,11 @@ export class ItineraryService {
     return tags
   }
 
-  async inviteToItinerary(itineraryId: string, emails: string[]) {
+  async inviteToItinerary(
+    itineraryId: string,
+    emails: string[],
+    userId: string
+  ) {
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id: itineraryId },
     })
