@@ -1966,5 +1966,63 @@ describe('ItineraryService', () => {
         mockPrismaService.pendingItineraryInvite.delete
       ).not.toHaveBeenCalled()
     })
+
+    it('should throw BadRequestException if user is already a participant of the itinerary', async () => {
+      const pendingItineraryInviteId = 'invite-123'
+
+      const mockPendingInvite = {
+        id: pendingItineraryInviteId,
+        itineraryId: 'itinerary-456',
+        email: mockUser.email,
+      }
+
+      const mockExistingParticipant = {
+        id: 'access-123',
+        itineraryId: 'itinerary-456',
+        userId: mockUser.id,
+      }
+
+      mockPrismaService.pendingItineraryInvite.findUnique.mockResolvedValue(
+        mockPendingInvite
+      )
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue({
+        id: mockPendingInvite.itineraryId,
+      })
+
+      mockPrismaService.itineraryAccess.findUnique.mockResolvedValue(
+        mockExistingParticipant
+      )
+
+      await expect(
+        service.acceptItineraryInvitation(pendingItineraryInviteId, mockUser)
+      ).rejects.toThrow(
+        new BadRequestException(
+          'You are already a participant of this itinerary'
+        )
+      )
+
+      expect(
+        mockPrismaService.pendingItineraryInvite.findUnique
+      ).toHaveBeenCalledWith({
+        where: { id: pendingItineraryInviteId },
+      })
+
+      expect(mockPrismaService.itineraryAccess.findUnique).toHaveBeenCalledWith(
+        {
+          where: {
+            itineraryId_userId: {
+              itineraryId: mockPendingInvite.itineraryId,
+              userId: mockUser.id,
+            },
+          },
+        }
+      )
+
+      expect(mockPrismaService.itineraryAccess.create).not.toHaveBeenCalled()
+      expect(
+        mockPrismaService.pendingItineraryInvite.delete
+      ).not.toHaveBeenCalled()
+    })
   })
 })
