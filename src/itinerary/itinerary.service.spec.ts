@@ -2040,6 +2040,14 @@ describe('ItineraryService', () => {
         updatedAt: new Date(),
       }
 
+      mockPrismaService.itinerary.findUnique.mockResolvedValue({
+        id: itineraryId,
+        userId: mockUser.id,
+      })
+      mockPrismaService.itineraryAccess.findUnique.mockResolvedValue({
+        id: itineraryId,
+        userId: userTargetId,
+      })
       mockPrismaService.itineraryAccess.delete.mockResolvedValue(
         mockDeletedAccess
       )
@@ -2060,6 +2068,84 @@ describe('ItineraryService', () => {
       })
 
       expect(result).toEqual(mockDeletedAccess)
+    })
+    it('should throw NotFoundException if the itinerary does not exist', async () => {
+      const itineraryId = 'non-existent-itinerary'
+      const userTargetId = 'user-target-123'
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.removeUserFromItinerary(itineraryId, userTargetId, mockUser)
+      ).rejects.toThrow(
+        new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
+      )
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: itineraryId },
+      })
+      expect(mockPrismaService.itineraryAccess.delete).not.toHaveBeenCalled()
+    })
+
+    it('should throw ForbiddenException if the user is not the owner of the itinerary', async () => {
+      const itineraryId = 'itinerary-123'
+      const userTargetId = 'user-target-123'
+
+      const mockItinerary = {
+        id: itineraryId,
+        userId: 'another-user-id',
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+
+      await expect(
+        service.removeUserFromItinerary(itineraryId, userTargetId, mockUser)
+      ).rejects.toThrow(
+        new ForbiddenException(
+          'You are not authorized to remove users from this itinerary'
+        )
+      )
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: itineraryId },
+      })
+      expect(mockPrismaService.itineraryAccess.delete).not.toHaveBeenCalled()
+    })
+
+    it('should throw NotFoundException if the user to be removed is not a participant', async () => {
+      const itineraryId = 'itinerary-123'
+      const userTargetId = 'non-existent-user'
+
+      const mockItinerary = {
+        id: itineraryId,
+        userId: mockUser.id,
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+      mockPrismaService.itineraryAccess.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.removeUserFromItinerary(itineraryId, userTargetId, mockUser)
+      ).rejects.toThrow(
+        new NotFoundException(
+          `User with ID ${userTargetId} is not a participant of this itinerary`
+        )
+      )
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: itineraryId },
+      })
+      expect(mockPrismaService.itineraryAccess.findUnique).toHaveBeenCalledWith(
+        {
+          where: {
+            itineraryId_userId: {
+              itineraryId,
+              userId: userTargetId,
+            },
+          },
+        }
+      )
+      expect(mockPrismaService.itineraryAccess.delete).not.toHaveBeenCalled()
     })
   })
 })
