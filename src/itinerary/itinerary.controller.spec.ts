@@ -45,6 +45,7 @@ describe('ItineraryController', () => {
     removeItinerary: jest.fn(),
     findAllTags: jest.fn(),
     inviteToItinerary: jest.fn(),
+    acceptItineraryInvitation: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -1204,6 +1205,31 @@ describe('ItineraryController', () => {
         inviteeEmails,
         mockUser.id
       )
+    })
+  })
+
+  describe('acceptItineraryInvitation', () => {
+    it('should accept an itinerary invitation', async () => {
+      const pendingItineraryInviteId = 'pending-invite-123'
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Invitation accepted successfully.',
+      }
+
+      mockItineraryService.acceptItineraryInvitation = jest
+        .fn()
+        .mockResolvedValue(undefined)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.acceptItineraryInvitation(
+        pendingItineraryInviteId,
+        mockUser
+      )
+
+      expect(
+        mockItineraryService.acceptItineraryInvitation
+      ).toHaveBeenCalledWith(pendingItineraryInviteId, mockUser.id)
+      expect(result).toEqual(mockResponse)
     })
   })
 })

@@ -435,4 +435,8 @@ export class ItineraryService {
 
     return pendingItineraryInvites
   }
+
+  async acceptItineraryInvitation(pendingItineraryInviteId, userId) {
+    return null
+  }
 }

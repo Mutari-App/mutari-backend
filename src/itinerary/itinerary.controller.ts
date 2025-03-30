@@ -181,4 +181,12 @@ export class ItineraryController {
       }
     )
   }
+
+  @Post(':pendingItineraryInviteId/accept-invitation')
+  async acceptItineraryInvitation(
+    @Param('pendingItineraryInviteId') pendingItineraryInviteId: string,
+    @GetUser() user: User
+  ) {
+    return null
+  }
 }
