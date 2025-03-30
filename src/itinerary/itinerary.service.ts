@@ -405,5 +405,24 @@ export class ItineraryService {
     return tags
   }
 
-  async inviteToItinerary(itineraryId: string, emails: string[]) {}
+  async inviteToItinerary(itineraryId: string, emails: string[]) {
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: itineraryId },
+    })
+
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
+    }
+
+    const pendingItineraryInvites =
+      await this.prisma.pendingItineraryInvite.createMany({
+        data: emails.map((email) => ({
+          itineraryId: itinerary.id,
+          email,
+        })),
+        skipDuplicates: true,
+      })
+
+    return pendingItineraryInvites
+  }
 }
