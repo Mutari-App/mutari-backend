@@ -44,6 +44,7 @@ describe('ItineraryController', () => {
     findOne: jest.fn(),
     removeItinerary: jest.fn(),
     findAllTags: jest.fn(),
+    inviteToItinerary: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -1107,6 +1108,43 @@ describe('ItineraryController', () => {
         }
       )
       expect(result).toEqual(expectedResponse)
+    })
+  })
+
+  fdescribe('inviteToItinerary', () => {
+    it('should invite a user to an itinerary and return a formatted response', async () => {
+      const itineraryId = 'itinerary-123'
+      const inviteeEmails = ['invitee@example.com']
+      const pendingItineraryInvitesResult = [
+        {
+          id: 'invite-123',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          itineraryId: itineraryId,
+          email: inviteeEmails[0],
+        },
+      ]
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'User invited successfully.',
+        pendingItineraryInvites: pendingItineraryInvitesResult,
+      }
+
+      mockItineraryService.inviteToItinerary = jest
+        .fn()
+        .mockResolvedValue(pendingItineraryInvitesResult)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.inviteToItinerary(itineraryId, {
+        emails: inviteeEmails,
+      })
+
+      expect(mockItineraryService.inviteToItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        inviteeEmails
+      )
+
+      expect(result).toEqual(mockResponse)
     })
   })
 })

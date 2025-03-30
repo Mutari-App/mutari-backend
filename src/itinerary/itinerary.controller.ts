@@ -18,6 +18,7 @@ import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { PaginationDto } from './dto/pagination.dto'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { Public } from 'src/common/decorators/public.decorator'
+import { InviteToItineraryDTO } from './dto/invite-to-itinerary.dto'
 
 @Controller('itineraries')
 export class ItineraryController {
@@ -156,5 +157,13 @@ export class ItineraryController {
       },
       null
     )
+  }
+
+  @Post(':id/invite')
+  async inviteToItinerary(
+    @Param('id') id: string,
+    @Body() inviteToItineraryDto: InviteToItineraryDTO
+  ) {
+    return null
   }
 }
