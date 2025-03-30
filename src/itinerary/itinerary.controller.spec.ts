@@ -1111,7 +1111,7 @@ describe('ItineraryController', () => {
     })
   })
 
-  fdescribe('inviteToItinerary', () => {
+  describe('inviteToItinerary', () => {
     it('should invite a user to an itinerary and return a formatted response', async () => {
       const itineraryId = 'itinerary-123'
       const inviteeEmails = ['invitee@example.com']
@@ -1145,6 +1145,50 @@ describe('ItineraryController', () => {
       )
 
       expect(result).toEqual(mockResponse)
+    })
+
+    it('should throw NotFoundException if the itinerary does not exist', async () => {
+      const itineraryId = 'non-existent-id'
+      const inviteeEmails = ['invitee@example.com']
+      const mockError = new NotFoundException(
+        `Itinerary with ID ${itineraryId} not found`
+      )
+
+      mockItineraryService.inviteToItinerary = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.inviteToItinerary(itineraryId, {
+          emails: inviteeEmails,
+        })
+      ).rejects.toThrow(mockError)
+      expect(mockItineraryService.inviteToItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        inviteeEmails
+      )
+    })
+
+    it('should throw ForbiddenException if the user is not authorized to invite', async () => {
+      const itineraryId = 'itinerary-123'
+      const inviteeEmails = ['invitee@example.com']
+
+      mockItineraryService.inviteToItinerary = jest
+        .fn()
+        .mockRejectedValue(
+          new ForbiddenException(
+            'Not authorized to invite users to this itinerary'
+          )
+        )
+
+      // Act & Assert
+      await expect(
+        controller.inviteToItinerary(itineraryId, { emails: inviteeEmails })
+      ).rejects.toThrow(ForbiddenException)
+      expect(mockItineraryService.inviteToItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        inviteeEmails
+      )
     })
   })
 })
