@@ -187,6 +187,18 @@ export class ItineraryController {
     @Param('pendingItineraryInviteId') pendingItineraryInviteId: string,
     @GetUser() user: User
   ) {
-    return null
+    const itinerary = await this.itineraryService.acceptItineraryInvitation(
+      pendingItineraryInviteId,
+      user.id
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Invitation accepted successfully.',
+      },
+      {
+        itinerary,
+      }
+    )
   }
 }
