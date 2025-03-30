@@ -172,7 +172,7 @@ export class ItineraryController {
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.OK,
-        message: 'Invitations sent successfully.',
+        message: 'User invited successfully.',
       },
       {
         pendingItineraryInvites: result,
