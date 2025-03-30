@@ -1231,5 +1231,42 @@ describe('ItineraryController', () => {
       ).toHaveBeenCalledWith(pendingItineraryInviteId, mockUser.id)
       expect(result).toEqual(mockResponse)
     })
+
+    it('should throw NotFoundException if the invitation does not exist', async () => {
+      const itineraryId = 'non-existent-id'
+      const mockError = new NotFoundException(
+        `Invitation for itinerary with ID ${itineraryId} not found`
+      )
+
+      mockItineraryService.acceptItineraryInvitation = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.acceptItineraryInvitation(itineraryId, mockUser)
+      ).rejects.toThrow(mockError)
+
+      expect(
+        mockItineraryService.acceptItineraryInvitation
+      ).toHaveBeenCalledWith(itineraryId, mockUser.id)
+    })
+
+    it('should throw ForbiddenException if the user is not authorized to accept the invitation', async () => {
+      const itineraryId = 'itinerary-123'
+
+      mockItineraryService.acceptItineraryInvitation = jest
+        .fn()
+        .mockRejectedValue(
+          new ForbiddenException('Not authorized to accept this invitation')
+        )
+
+      await expect(
+        controller.acceptItineraryInvitation(itineraryId, mockUser)
+      ).rejects.toThrow(ForbiddenException)
+
+      expect(
+        mockItineraryService.acceptItineraryInvitation
+      ).toHaveBeenCalledWith(itineraryId, mockUser.id)
+    })
   })
 })
