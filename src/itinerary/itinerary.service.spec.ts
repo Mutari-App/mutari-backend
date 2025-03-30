@@ -1823,7 +1823,7 @@ describe('ItineraryService', () => {
       const mockPendingInvite = {
         id: pendingItineraryInviteId,
         itineraryId: 'itinerary-456',
-        email: 'test@example.com',
+        email: mockUser.email,
       }
 
       const mockNewitineraryAccess = {
@@ -1902,7 +1902,7 @@ describe('ItineraryService', () => {
       const mockPendingInvite = {
         id: pendingItineraryInviteId,
         itineraryId: 'non-existent-itinerary',
-        email: 'test@example.com',
+        email: mockUser.email,
       }
 
       mockPrismaService.pendingItineraryInvite.findUnique.mockResolvedValue(

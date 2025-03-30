@@ -450,7 +450,7 @@ export class ItineraryService {
       )
     }
 
-    if (pendingInvite.email === user.email) {
+    if (pendingInvite.email !== user.email) {
       throw new ForbiddenException(
         'You are not authorized to accept this invitation'
       )
