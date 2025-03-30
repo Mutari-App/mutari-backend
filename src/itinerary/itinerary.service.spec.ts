@@ -1722,15 +1722,13 @@ describe('ItineraryService', () => {
 
   fdescribe('inviteToItinerary', () => {
     it('should send invitations to the provided emails', async () => {
-      // Arrange
       const itineraryId = 'itinerary-123'
       const emails = ['test1@example.com', 'test2@example.com']
       const userId = 'user-id'
 
-      // Mock itinerary existence
       mockPrismaService.itinerary.findUnique.mockResolvedValue({
         id: itineraryId,
-        userId: mockUser.id,
+        userId,
       })
 
       mockPrismaService.pendingItineraryInvite.createMany.mockResolvedValue({
@@ -1756,6 +1754,53 @@ describe('ItineraryService', () => {
         skipDuplicates: true,
       })
       expect(result).toEqual({ count: emails.length })
+    })
+
+    it('should throw NotFoundException if itinerary does not exist', async () => {
+      const itineraryId = 'non-existent-itinerary-id'
+      const emails = ['test1@example.com', 'test2@example.com']
+      const userId = 'user-id'
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.inviteToItinerary(itineraryId, emails, userId)
+      ).rejects.toThrow(
+        new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
+      )
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: itineraryId },
+      })
+      expect(
+        mockPrismaService.pendingItineraryInvite.createMany
+      ).not.toHaveBeenCalled()
+    })
+
+    it('should throw ForbiddenException if user is not the owner of the itinerary', async () => {
+      const itineraryId = 'itinerary-123'
+      const emails = ['test1@example.com', 'test2@example.com']
+      const userId = 'another-user-id'
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue({
+        id: itineraryId,
+        userId: 'different-user-id',
+      })
+
+      await expect(
+        service.inviteToItinerary(itineraryId, emails, userId)
+      ).rejects.toThrow(
+        new ForbiddenException(
+          'Not authorized to invite users to this itinerary'
+        )
+      )
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: itineraryId },
+      })
+      expect(
+        mockPrismaService.pendingItineraryInvite.createMany
+      ).not.toHaveBeenCalled()
     })
   })
 })
