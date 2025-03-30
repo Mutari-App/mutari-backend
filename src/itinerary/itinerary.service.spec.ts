@@ -32,9 +32,12 @@ describe('ItineraryService', () => {
     },
     itineraryAccess: {
       findUnique: jest.fn(),
+      create: jest.fn(),
     },
     pendingItineraryInvite: {
       createMany: jest.fn(),
+      findUnique: jest.fn(),
+      delete: jest.fn(),
     },
   }
 
@@ -1801,6 +1804,63 @@ describe('ItineraryService', () => {
       expect(
         mockPrismaService.pendingItineraryInvite.createMany
       ).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('acceptItineraryInvitation', () => {
+    it('should accept an itinerary invitation and link the user to the itinerary', async () => {
+      const pendingItineraryInviteId = 'invite-123'
+      const userId = 'user-123'
+
+      const mockPendingInvite = {
+        id: pendingItineraryInviteId,
+        itineraryId: 'itinerary-456',
+        email: 'test@example.com',
+      }
+
+      const mockNewitineraryAccess = {
+        id: 'access-123',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        itineraryId: 'itinerary-456',
+        userId,
+      }
+
+      mockPrismaService.pendingItineraryInvite.findUnique = jest
+        .fn()
+        .mockResolvedValue(mockPendingInvite)
+
+      mockPrismaService.itineraryAccess.create = jest
+        .fn()
+        .mockResolvedValue(mockNewitineraryAccess)
+
+      mockPrismaService.pendingItineraryInvite.delete = jest
+        .fn()
+        .mockResolvedValue(mockPendingInvite)
+
+      const result = await service.acceptItineraryInvitation(
+        pendingItineraryInviteId,
+        userId
+      )
+
+      expect(
+        mockPrismaService.pendingItineraryInvite.findUnique
+      ).toHaveBeenCalledWith({
+        where: { id: pendingItineraryInviteId },
+      })
+
+      expect(mockPrismaService.itineraryAccess.create).toHaveBeenCalledWith({
+        data: {
+          itineraryId: mockPendingInvite.itineraryId,
+          userId,
+        },
+      })
+
+      expect(
+        mockPrismaService.pendingItineraryInvite.delete
+      ).toHaveBeenCalledWith({ where: { id: pendingItineraryInviteId } })
+
+      expect(result).toEqual(mockNewitineraryAccess)
     })
   })
 })
