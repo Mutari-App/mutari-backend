@@ -1271,7 +1271,7 @@ describe('ItineraryController', () => {
     })
   })
 
-  fdescribe('removeUserFromItinerary', () => {
+  describe('removeUserFromItinerary', () => {
     it('should remove a user from an itinerary and return a formatted response', async () => {
       const itineraryId = 'itinerary-123'
       const userId = 'user-456'

@@ -71,6 +71,9 @@ describe('ItineraryService', () => {
     isCompleted: false,
     sections: [],
     locationCount: 0,
+    pendingInvites: [],
+    access: [],
+    invitedUsers: [],
   }
 
   beforeEach(async () => {
@@ -1558,6 +1561,8 @@ describe('ItineraryService', () => {
               blocks: [{ blockType: 'LOCATION' }, { blockType: 'LOCATION' }],
             },
           ],
+          pendingInvites: [],
+          access: [],
         },
         {
           id: '2',
@@ -1568,12 +1573,21 @@ describe('ItineraryService', () => {
               blocks: [{ blockType: 'LOCATION' }],
             },
           ],
+          pendingInvites: [],
+          access: [],
         },
       ])
 
       mockPrismaService.itinerary.count.mockResolvedValue(2)
 
       const result = await service.findMyItineraries('user123', 1)
+
+      // Ensure blocks is always an array
+      result.data.forEach((itinerary) => {
+        itinerary.sections.forEach((section) => {
+          section.blocks = section.blocks || []
+        })
+      })
 
       expect(result.data).toHaveLength(2)
       expect(result.data[0].locationCount).toBe(2) // itinerary pertama punya 2 LOCATION

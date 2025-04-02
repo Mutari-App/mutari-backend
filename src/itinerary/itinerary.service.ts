@@ -278,13 +278,27 @@ export class ItineraryService {
           sections: {
             include: {
               blocks: {
-                where: { blockType: 'LOCATION' }, // Ambil hanya block dengan blockType = LOCATION
+                where: { blockType: 'LOCATION' },
               },
             },
           },
           tags: {
             include: {
               tag: true,
+            },
+          },
+          pendingInvites: true,
+          access: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  photoProfile: true,
+                  email: true,
+                },
+              },
             },
           },
         },
@@ -294,10 +308,13 @@ export class ItineraryService {
 
     const formattedData = data.map((itinerary) => ({
       ...itinerary,
+      invitedUsers: itinerary.access.map((access) => ({
+        ...access.user,
+      })),
       locationCount: itinerary.sections.reduce(
         (acc, section) => acc + section.blocks.length,
         0
-      ), // Hitung total block LOCATION
+      ),
     }))
 
     const totalPages =
