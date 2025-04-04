@@ -18,6 +18,7 @@ import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { PaginationDto } from './dto/pagination.dto'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { Public } from 'src/common/decorators/public.decorator'
+import { InviteToItineraryDTO } from './dto/invite-to-itinerary.dto'
 
 @Controller('itineraries')
 export class ItineraryController {
@@ -54,6 +55,53 @@ export class ItineraryController {
       {
         statusCode: HttpStatus.OK,
         message: 'Itineraries fetched successfully.',
+      },
+      {
+        itinerary,
+      }
+    )
+  }
+
+  @Get('me/all')
+  async findAllMyItineraries(
+    @GetUser() user: User,
+    @Query() paginationDto: PaginationDto,
+    @Query('shared') shared?: string,
+    @Query('finished') finished?: string
+  ) {
+    const sharedBool = shared === 'true'
+    const finishedBool = finished === 'true'
+
+    const itinerary = await this.itineraryService.findAllMyItineraries(
+      user.id,
+      parseInt(paginationDto.page),
+      sharedBool,
+      finishedBool
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'All itineraries fetched successfully.',
+      },
+      {
+        itinerary,
+      }
+    )
+  }
+
+  @Get('me/shared')
+  async findMyShareditineraries(
+    @GetUser() user: User,
+    @Query() paginationDto: PaginationDto
+  ) {
+    const itinerary = await this.itineraryService.findMySharedItineraries(
+      user.id,
+      parseInt(paginationDto.page)
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Shared itineraries fetched successfully.',
       },
       {
         itinerary,
@@ -155,6 +203,70 @@ export class ItineraryController {
         message: 'Itinerary deleted successfully.',
       },
       null
+    )
+  }
+
+  @Post(':id/invite')
+  async inviteToItinerary(
+    @Param('id') id: string,
+    @Body() inviteToItineraryDto: InviteToItineraryDTO,
+    @GetUser() user: User
+  ) {
+    const result = await this.itineraryService.inviteToItinerary(
+      id,
+      inviteToItineraryDto.emails,
+      user.id
+    )
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'User invited successfully.',
+      },
+      {
+        pendingItineraryInvites: result,
+      }
+    )
+  }
+
+  @Post(':itineraryId/accept-invitation')
+  async acceptItineraryInvitation(
+    @Param('itineraryId') itineraryId: string,
+    @GetUser() user: User
+  ) {
+    await this.itineraryService.acceptItineraryInvitation(itineraryId, user)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Invitation accepted successfully.',
+      },
+      {
+        itineraryId,
+      }
+    )
+  }
+
+  @Delete(':id/:userId/remove')
+  async removeUserFromItinerary(
+    @Param('id') itineraryId: string,
+    @Param('userId') targetId: string,
+    @GetUser() user: User
+  ) {
+    const deletedParticipant =
+      await this.itineraryService.removeUserFromItinerary(
+        itineraryId,
+        targetId,
+        user
+      )
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'User removed from itinerary successfully.',
+      },
+      {
+        deletedParticipant,
+      }
     )
   }
 }
