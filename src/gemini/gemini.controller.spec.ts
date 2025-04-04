@@ -1,47 +1,87 @@
-import { Test, TestingModule } from '@nestjs/testing'
-import { GeminiController } from './gemini.controller'
-import { GeminiService } from './gemini.service'
-import { GenerateFeedbackDto } from './model/generate-feedback.dto'
+import { Test, TestingModule } from '@nestjs/testing' 
+import { GeminiController } from './gemini.controller' 
+import { GeminiService } from './gemini.service' 
+import { GenerateFeedbackDto } from './model/generate-feedback.dto' 
 
 describe('GeminiController', () => {
-  let geminiController: GeminiController
-  let geminiService: GeminiService
+  let controller: GeminiController 
+  let geminiService: GeminiService 
 
   const mockGeminiService = {
-    generateFeedback: jest.fn().mockResolvedValue('Mocked feedback response'),
-  }
+    generateFeedback: jest.fn(),
+  } 
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [GeminiController],
-      providers: [{ provide: GeminiService, useValue: mockGeminiService }],
+      providers: [
+        {
+          provide: GeminiService,
+          useValue: mockGeminiService,
+        },
+      ],
     }).compile()
 
-    geminiController = module.get<GeminiController>(GeminiController)
+    controller = module.get<GeminiController>(GeminiController)
     geminiService = module.get<GeminiService>(GeminiService)
-  })
+  }) 
 
   it('should be defined', () => {
-    expect(geminiController).toBeDefined()
+    expect(controller).toBeDefined()
   })
 
-  it('should call generateFeedback and return response', async () => {
-    const dto: GenerateFeedbackDto = {
-      prompt: 'Improve my public speaking skills',
-    }
-    const response = await geminiController.generate(dto)
+  it('should throw an error if itineraryData.sections is empty', async () => {
+    const invalidDto: GenerateFeedbackDto = {
+      itineraryData: {
+        title: 'Trip to Bali',
+        description: 'A relaxing trip',
+        coverImage: 'bali.jpg',
+        startDate: '2025-04-10',
+        endDate: '2025-04-15',
+        tags: ['beach', 'relax'],
+        sections: [],
+      },
+    } 
 
-    expect(geminiService.generateFeedback).toHaveBeenCalledWith(dto)
-    expect(response).toBe('Mocked feedback response')
-  })
+    await expect(controller.generate(invalidDto)).rejects.toThrowError(
+      'ItineraryData must contain sections.'
+    ) 
+  }) 
 
-  it('should handle service errors', async () => {
-    jest
-      .spyOn(geminiService, 'generateFeedback')
-      .mockRejectedValue(new Error('Service Error'))
+  it('should call geminiService.generateFeedback with valid dto', async () => {
+    const validDto: GenerateFeedbackDto = {
+      itineraryData: {
+        title: 'Trip to Japan',
+        description: 'Cultural exploration',
+        coverImage: 'japan.jpg',
+        startDate: '2025-05-01',
+        endDate: '2025-05-10',
+        tags: ['culture', 'food'],
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1 - Tokyo',
+            blocks: [
+              {
+                blockType: 'activity',
+                title: 'Visit Sensoji Temple',
+                description: 'Explore Asakusa and its surroundings',
+                startTime: '09:00',
+                endTime: '11:00',
+                price: 0,
+              },
+            ],
+          },
+        ],
+      },
+    } 
 
-    await expect(geminiController.generate({ prompt: 'Test' })).rejects.toThrow(
-      'Service Error'
-    )
-  })
-})
+    const mockResult = { feedback: 'Looks good!' } 
+    mockGeminiService.generateFeedback.mockResolvedValue(mockResult) 
+
+    const result = await controller.generate(validDto) 
+
+    expect(geminiService.generateFeedback).toHaveBeenCalledWith(validDto) 
+    expect(result).toEqual(mockResult) 
+  }) 
+}) 
