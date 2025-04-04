@@ -67,15 +67,13 @@ model Block extends Base {
   @@unique([sectionId, position])
 }
 
-model Route {
-  id                 String   @id() @unique() @default(uuid())
+model Route extends Base {
   sourceBlockId      String   @unique
   destinationBlockId String   @unique
   distance           Int      // Distance in meters
   duration           Int      // Duration in seconds
   polyline           String?
-  createdAt          DateTime @default(now()) @db.Timestamptz()
-  updatedAt          DateTime @updatedAt() @db.Timestamptz()
+  transportMode      TRANSPORT_MODE? @default(DRIVE)
   
   sourceBlock        Block    @relation("SourceBlock", fields: [sourceBlockId], references: [id], onDelete: Cascade)
   destinationBlock   Block    @relation("DestinationBlock", fields: [destinationBlockId], references: [id], onDelete: Cascade)
