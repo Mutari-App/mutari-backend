@@ -182,22 +182,19 @@ export class ItineraryController {
     )
   }
 
-  @Post(':pendingItineraryInviteId/accept-invitation')
+  @Post(':itineraryId/accept-invitation')
   async acceptItineraryInvitation(
-    @Param('pendingItineraryInviteId') pendingItineraryInviteId: string,
+    @Param('itineraryId') itineraryId: string,
     @GetUser() user: User
   ) {
-    const itinerary = await this.itineraryService.acceptItineraryInvitation(
-      pendingItineraryInviteId,
-      user
-    )
+    await this.itineraryService.acceptItineraryInvitation(itineraryId, user)
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.OK,
         message: 'Invitation accepted successfully.',
       },
       {
-        itinerary,
+        itineraryId,
       }
     )
   }

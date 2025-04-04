@@ -11,10 +11,15 @@ import { User } from '@prisma/client'
 import { CreateSectionDto } from './dto/create-section.dto'
 import { PAGINATION_LIMIT } from 'src/common/constants/itinerary.constant'
 import { PrismaService } from 'src/prisma/prisma.service'
+import { EmailService } from 'src/email/email.service'
+import { invitationTemplate } from './templates/invitation-template'
 
 @Injectable()
 export class ItineraryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService
+  ) {}
   async createItinerary(data: CreateItineraryDto, user: User) {
     const startDate = new Date(data.startDate)
     const endDate = new Date(data.endDate)
@@ -112,6 +117,7 @@ export class ItineraryService {
 
   async updateItinerary(id: string, data: UpdateItineraryDto, user: User) {
     await this._checkItineraryExists(id, user)
+    await this._checkUpdateItineraryPermission(id, user)
     this._validateItineraryDates(data)
     this._validateItinerarySections(data)
     await this._validateItineraryTags(data)
@@ -162,6 +168,29 @@ export class ItineraryService {
   async _checkItineraryExists(id: string, user: User) {
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id },
+      include: {
+        access: {
+          where: { userId: user.id },
+        },
+      },
+    })
+
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${id} not found`)
+    }
+
+    if (itinerary.userId !== user.id && itinerary.access.length === 0) {
+      throw new ForbiddenException(
+        'You do not have permission to update or view this itinerary'
+      )
+    }
+
+    return itinerary
+  }
+
+  async _checkUpdateItineraryPermission(id: string, user: User) {
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id },
     })
 
     if (!itinerary) {
@@ -170,7 +199,7 @@ export class ItineraryService {
 
     if (itinerary.userId !== user.id) {
       throw new ForbiddenException(
-        'You do not have permission to update or view this itinerary'
+        'You do not have permission to update this itinerary'
       )
     }
 
@@ -450,52 +479,50 @@ export class ItineraryService {
         skipDuplicates: true,
       })
 
+    await Promise.all(
+      emails.map((email) =>
+        this.emailService.sendEmail(
+          email,
+          'Invitation to join itinerary',
+          invitationTemplate(email, this._generateInvitationLink(itineraryId))
+        )
+      )
+    )
+
     return pendingItineraryInvites
   }
 
-  async acceptItineraryInvitation(
-    pendingItineraryInviteId: string,
-    user: User
-  ) {
-    const pendingInvite = await this.prisma.pendingItineraryInvite.findUnique({
-      where: { id: pendingItineraryInviteId },
-    })
+  _generateInvitationLink(itineraryId: string) {
+    return `${process.env.CLIENT_URL}/itinerary/${itineraryId}/accept-invite`
+  }
 
-    if (!pendingInvite) {
-      throw new NotFoundException(
-        `Invitation with ID ${pendingItineraryInviteId} not found`
-      )
-    }
-
-    if (pendingInvite.email !== user.email) {
-      throw new ForbiddenException(
-        'You are not authorized to accept this invitation'
-      )
-    }
-
+  async acceptItineraryInvitation(itineraryId: string, user: User) {
     const itinerary = await this.prisma.itinerary.findUnique({
-      where: { id: pendingInvite.itineraryId },
-    })
-
-    if (!itinerary) {
-      throw new NotFoundException(
-        `Itinerary with ID ${pendingInvite.itineraryId} not found`
-      )
-    }
-
-    const existingParticipant = await this.prisma.itineraryAccess.findUnique({
-      where: {
-        itineraryId_userId: {
-          itineraryId: pendingInvite.itineraryId,
-          userId: user.id,
+      where: { id: itineraryId },
+      include: {
+        pendingInvites: {
+          where: { email: user.email },
+        },
+        access: {
+          where: { userId: user.id },
         },
       },
     })
 
-    if (existingParticipant) {
-      throw new BadRequestException(
-        'You are already a participant of this itinerary'
-      )
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
+    }
+
+    const existingAccess = itinerary.access[0]
+
+    if (existingAccess) {
+      return itinerary.id
+    }
+
+    const pendingInvite = itinerary.pendingInvites[0]
+
+    if (!pendingInvite) {
+      throw new NotFoundException(`Invitation not found`)
     }
 
     const newItineraryAccess = await this.prisma.$transaction(
@@ -508,13 +535,14 @@ export class ItineraryService {
         })
 
         await prisma.pendingItineraryInvite.delete({
-          where: { id: pendingItineraryInviteId },
+          where: { id: pendingInvite.id },
         })
+
         return newItineraryAccess
       }
     )
 
-    return newItineraryAccess
+    return newItineraryAccess.itineraryId
   }
 
   async removeUserFromItinerary(

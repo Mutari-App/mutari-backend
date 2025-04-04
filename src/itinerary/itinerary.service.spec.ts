@@ -10,6 +10,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common'
+import { EmailService } from 'src/email/email.service'
 
 describe('ItineraryService', () => {
   let service: ItineraryService
@@ -84,6 +85,7 @@ describe('ItineraryService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
+        EmailService,
       ],
     }).compile()
 
@@ -1069,6 +1071,8 @@ describe('ItineraryService', () => {
             blocks: [], // Empty blocks
           },
         ],
+        pendingInvites: [],
+        access: [],
       }
 
       mockPrismaService.itinerary.findUnique.mockResolvedValue(
@@ -1383,6 +1387,35 @@ describe('ItineraryService', () => {
       })
     })
 
+    it('should allow user to see itinerary if invited', async () => {
+      const mockItinerary = {
+        id: '123',
+        userId: 'different-user-123',
+        access: [{ userId: mockUser.id }],
+        sections: [
+          {
+            id: '1',
+            blocks: [{ id: 'block1' }, { id: 'block2' }],
+          },
+        ],
+      }
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+      const result = await service.findOne('123', mockUser)
+
+      expect(result).toEqual(mockItinerary)
+      expect(prismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: '123' },
+        include: {
+          sections: { include: { blocks: true } },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+        },
+      })
+    })
+
     it('should throw NotFoundException if itinerary does not exist', async () => {
       const itineraryId = 'non-existent-id'
 
@@ -1394,7 +1427,7 @@ describe('ItineraryService', () => {
     })
 
     it('should throw ForbiddenException if user is not authorized', async () => {
-      const mockItinerary = { id: '1', userId: '999' }
+      const mockItinerary = { id: '1', userId: '999', access: [] }
 
       mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
 
@@ -1832,79 +1865,99 @@ describe('ItineraryService', () => {
   })
 
   describe('acceptItineraryInvitation', () => {
-    it('should accept an itinerary invitation and link the user to the itinerary', async () => {
-      const pendingItineraryInviteId = 'invite-123'
+    it('should accept an itinerary invitation and link the user to the itinerary using itineraryId', async () => {
+      const itineraryId = 'itinerary-456'
 
       const mockPendingInvite = {
-        id: pendingItineraryInviteId,
-        itineraryId: 'itinerary-456',
+        id: 'invite-123',
+        itineraryId,
         email: mockUser.email,
       }
 
-      const mockNewitineraryAccess = {
+      const mockNewItineraryAccess = {
         id: 'access-123',
         createdAt: new Date(),
         updatedAt: new Date(),
-        itineraryId: 'itinerary-456',
+        itineraryId,
         userId: mockUser.id,
       }
 
-      mockPrismaService.pendingItineraryInvite.findUnique = jest
-        .fn()
-        .mockResolvedValue(mockPendingInvite)
-
-      mockPrismaService.itinerary.findUnique = jest
-        .fn()
-        .mockResolvedValue({ id: mockPendingInvite.itineraryId })
+      mockPrismaService.itinerary.findUnique = jest.fn().mockResolvedValue({
+        id: itineraryId,
+        access: [],
+        pendingInvites: [mockPendingInvite],
+      })
 
       mockPrismaService.itineraryAccess.create = jest
         .fn()
-        .mockResolvedValue(mockNewitineraryAccess)
+        .mockResolvedValue(mockNewItineraryAccess)
 
       mockPrismaService.pendingItineraryInvite.delete = jest
         .fn()
         .mockResolvedValue(mockPendingInvite)
 
       const result = await service.acceptItineraryInvitation(
-        pendingItineraryInviteId,
+        itineraryId,
         mockUser
       )
 
-      expect(
-        mockPrismaService.pendingItineraryInvite.findUnique
-      ).toHaveBeenCalledWith({
-        where: { id: pendingItineraryInviteId },
-      })
-
       expect(mockPrismaService.itineraryAccess.create).toHaveBeenCalledWith({
         data: {
-          itineraryId: mockPendingInvite.itineraryId,
+          itineraryId,
           userId: mockUser.id,
         },
       })
 
       expect(
         mockPrismaService.pendingItineraryInvite.delete
-      ).toHaveBeenCalledWith({ where: { id: pendingItineraryInviteId } })
+      ).toHaveBeenCalledWith({
+        where: { id: mockPendingInvite.id },
+      })
 
-      expect(result).toEqual(mockNewitineraryAccess)
+      expect(result).toEqual(itineraryId)
+    })
+
+    it('should return itineraryId if user already has access to the itinerary', async () => {
+      const itineraryId = 'itinerary-456'
+
+      const mockExistingAccess = {
+        id: 'access-123',
+        itineraryId,
+        userId: mockUser.id,
+      }
+
+      mockPrismaService.itinerary.findUnique = jest.fn().mockResolvedValue({
+        id: itineraryId,
+        access: [mockExistingAccess],
+        pendingInvites: [],
+      })
+
+      const result = await service.acceptItineraryInvitation(
+        itineraryId,
+        mockUser
+      )
+
+      expect(mockPrismaService.itineraryAccess.create).not.toHaveBeenCalled()
+      expect(
+        mockPrismaService.pendingItineraryInvite.delete
+      ).not.toHaveBeenCalled()
+
+      expect(result).toEqual(itineraryId)
     })
 
     it('should throw NotFoundException if the pending invitation does not exist', async () => {
-      const pendingItineraryInviteId = 'non-existent-invite'
+      const itineraryId = 'itinerary-123'
 
-      mockPrismaService.pendingItineraryInvite.findUnique.mockResolvedValue(
-        null
-      )
+      mockPrismaService.itinerary.findUnique.mockResolvedValue({
+        id: itineraryId,
+        access: [],
+        pendingInvites: [],
+      })
 
       await expect(
-        service.acceptItineraryInvitation(pendingItineraryInviteId, mockUser)
+        service.acceptItineraryInvitation(itineraryId, mockUser)
       ).rejects.toThrow(NotFoundException)
-      expect(
-        mockPrismaService.pendingItineraryInvite.findUnique
-      ).toHaveBeenCalledWith({
-        where: { id: pendingItineraryInviteId },
-      })
+
       expect(mockPrismaService.itineraryAccess.create).not.toHaveBeenCalled()
       expect(
         mockPrismaService.pendingItineraryInvite.delete
@@ -1912,37 +1965,15 @@ describe('ItineraryService', () => {
     })
 
     it('should throw NotFoundException if itineraryId is not found when accepting an invitation', async () => {
-      const pendingItineraryInviteId = 'invite-123'
-
-      const mockPendingInvite = {
-        id: pendingItineraryInviteId,
-        itineraryId: 'non-existent-itinerary',
-        email: mockUser.email,
-      }
-
-      mockPrismaService.pendingItineraryInvite.findUnique.mockResolvedValue(
-        mockPendingInvite
-      )
+      const itineraryId = 'itinerary-123'
 
       mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
 
       await expect(
-        service.acceptItineraryInvitation(pendingItineraryInviteId, mockUser)
+        service.acceptItineraryInvitation(itineraryId, mockUser)
       ).rejects.toThrow(
-        new NotFoundException(
-          `Itinerary with ID ${mockPendingInvite.itineraryId} not found`
-        )
+        new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
       )
-
-      expect(
-        mockPrismaService.pendingItineraryInvite.findUnique
-      ).toHaveBeenCalledWith({
-        where: { id: pendingItineraryInviteId },
-      })
-
-      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
-        where: { id: mockPendingInvite.itineraryId },
-      })
 
       expect(mockPrismaService.itineraryAccess.create).not.toHaveBeenCalled()
       expect(
@@ -1950,89 +1981,18 @@ describe('ItineraryService', () => {
       ).not.toHaveBeenCalled()
     })
 
-    it('should throw ForbiddenException if user is not authorized to accept the invitation', async () => {
-      const pendingItineraryInviteId = 'invite-123'
-
-      const mockPendingInvite = {
-        id: pendingItineraryInviteId,
-        itineraryId: 'itinerary-456',
-        email: 'test@example.com',
-      }
-
-      mockPrismaService.pendingItineraryInvite.findUnique.mockResolvedValue(
-        mockPendingInvite
-      )
-
-      await expect(
-        service.acceptItineraryInvitation(pendingItineraryInviteId, mockUser)
-      ).rejects.toThrow(
-        new ForbiddenException(
-          'You are not authorized to accept this invitation'
-        )
-      )
-
-      expect(
-        mockPrismaService.pendingItineraryInvite.findUnique
-      ).toHaveBeenCalledWith({
-        where: { id: pendingItineraryInviteId },
-      })
-      expect(mockPrismaService.itineraryAccess.create).not.toHaveBeenCalled()
-      expect(
-        mockPrismaService.pendingItineraryInvite.delete
-      ).not.toHaveBeenCalled()
-    })
-
-    it('should throw BadRequestException if user is already a participant of the itinerary', async () => {
-      const pendingItineraryInviteId = 'invite-123'
-
-      const mockPendingInvite = {
-        id: pendingItineraryInviteId,
-        itineraryId: 'itinerary-456',
-        email: mockUser.email,
-      }
-
-      const mockExistingParticipant = {
-        id: 'access-123',
-        itineraryId: 'itinerary-456',
-        userId: mockUser.id,
-      }
-
-      mockPrismaService.pendingItineraryInvite.findUnique.mockResolvedValue(
-        mockPendingInvite
-      )
+    it('should throw NotFound if user email is not found to accept the invitation', async () => {
+      const itineraryId = 'itinerary-123'
 
       mockPrismaService.itinerary.findUnique.mockResolvedValue({
-        id: mockPendingInvite.itineraryId,
+        id: itineraryId,
+        access: [],
+        pendingInvites: [],
       })
-
-      mockPrismaService.itineraryAccess.findUnique.mockResolvedValue(
-        mockExistingParticipant
-      )
 
       await expect(
-        service.acceptItineraryInvitation(pendingItineraryInviteId, mockUser)
-      ).rejects.toThrow(
-        new BadRequestException(
-          'You are already a participant of this itinerary'
-        )
-      )
-
-      expect(
-        mockPrismaService.pendingItineraryInvite.findUnique
-      ).toHaveBeenCalledWith({
-        where: { id: pendingItineraryInviteId },
-      })
-
-      expect(mockPrismaService.itineraryAccess.findUnique).toHaveBeenCalledWith(
-        {
-          where: {
-            itineraryId_userId: {
-              itineraryId: mockPendingInvite.itineraryId,
-              userId: mockUser.id,
-            },
-          },
-        }
-      )
+        service.acceptItineraryInvitation(itineraryId, mockUser)
+      ).rejects.toThrow(new NotFoundException(`Invitation not found`))
 
       expect(mockPrismaService.itineraryAccess.create).not.toHaveBeenCalled()
       expect(
