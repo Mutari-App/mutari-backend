@@ -1354,7 +1354,16 @@ describe('ItineraryService', () => {
       expect(prismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: '123' },
         include: {
-          sections: { include: { blocks: true } },
+          sections: {
+            include: {
+              blocks: {
+                include: {
+                  routeToNext: true,
+                  routeFromPrevious: true,
+                },
+              },
+            },
+          },
           tags: {
             include: {
               tag: true,
@@ -1517,6 +1526,10 @@ describe('ItineraryService', () => {
           sections: {
             include: {
               blocks: {
+                include: {
+                  routeFromPrevious: true,
+                  routeToNext: true,
+                },
                 where: { blockType: 'LOCATION' },
               },
             },
@@ -1578,6 +1591,10 @@ describe('ItineraryService', () => {
           sections: {
             include: {
               blocks: {
+                include: {
+                  routeFromPrevious: true,
+                  routeToNext: true,
+                },
                 where: { blockType: 'LOCATION' },
               },
             },
