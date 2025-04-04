@@ -39,6 +39,8 @@ describe('ItineraryController', () => {
     createItinerary: jest.fn(),
     updateItinerary: jest.fn(),
     findMyItineraries: jest.fn(),
+    findAllMyItineraries: jest.fn(),
+    findMySharedItineraries: jest.fn(),
     markAsComplete: jest.fn(),
     findMyCompletedItineraries: jest.fn(),
     findOne: jest.fn(),
@@ -525,6 +527,224 @@ describe('ItineraryController', () => {
         1
       )
       expect(result).toEqual(mockResponse)
+    })
+  })
+
+  describe('findAllMyItineraries', () => {
+    it('should return all itineraries with default parameters', async () => {
+      const mockResult = {
+        data: [{ id: 1, title: 'Test Itinerary', userId: 'user-123' }],
+        total: 1,
+        page: 1,
+        totalPages: 1,
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'All itineraries fetched successfully.',
+        data: mockResult,
+      }
+
+      mockItineraryService.findAllMyItineraries.mockResolvedValue(mockResult)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findAllMyItineraries(
+        mockUser,
+        { page: '1' },
+        undefined,
+        undefined
+      )
+
+      expect(mockItineraryService.findAllMyItineraries).toHaveBeenCalledWith(
+        mockUser.id,
+        1,
+        false,
+        false
+      )
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'All itineraries fetched successfully.',
+        },
+        { itinerary: mockResult }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should filter itineraries with shared=true and finished=true', async () => {
+      const mockResult = {
+        data: [
+          {
+            id: 2,
+            title: 'Shared Completed Trip',
+            userId: 'user-123',
+            isCompleted: true,
+          },
+        ],
+        total: 1,
+        page: 1,
+        totalPages: 1,
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'All itineraries fetched successfully.',
+        data: mockResult,
+      }
+
+      mockItineraryService.findAllMyItineraries.mockResolvedValue(mockResult)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findAllMyItineraries(
+        mockUser,
+        { page: '1' },
+        'true',
+        'true'
+      )
+
+      expect(mockItineraryService.findAllMyItineraries).toHaveBeenCalledWith(
+        mockUser.id,
+        1,
+        true,
+        true
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should filter itineraries with shared=false and finished=false', async () => {
+      const mockResult = {
+        data: [
+          {
+            id: 3,
+            title: 'Private Ongoing Trip',
+            userId: 'user-123',
+            isCompleted: false,
+          },
+        ],
+        total: 1,
+        page: 1,
+        totalPages: 1,
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'All itineraries fetched successfully.',
+        data: mockResult,
+      }
+
+      mockItineraryService.findAllMyItineraries.mockResolvedValue(mockResult)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findAllMyItineraries(
+        mockUser,
+        { page: '1' },
+        'false',
+        'false'
+      )
+
+      expect(mockItineraryService.findAllMyItineraries).toHaveBeenCalledWith(
+        mockUser.id,
+        1,
+        false,
+        false
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should handle service errors correctly', async () => {
+      const errorMessage = 'Failed to retrieve itineraries'
+      mockItineraryService.findAllMyItineraries.mockRejectedValue(
+        new Error(errorMessage)
+      )
+
+      await expect(
+        controller.findAllMyItineraries(mockUser, { page: '1' })
+      ).rejects.toThrow(errorMessage)
+
+      expect(mockItineraryService.findAllMyItineraries).toHaveBeenCalledWith(
+        mockUser.id,
+        1,
+        false,
+        false
+      )
+    })
+  })
+
+  describe('findMySharedItineraries', () => {
+    it('should return shared itineraries successfully', async () => {
+      const mockResult = {
+        data: [
+          { id: 4, title: 'Shared Trip 1', userId: 'other-user' },
+          { id: 5, title: 'Shared Trip 2', userId: 'another-user' },
+        ],
+        total: 2,
+        page: 1,
+        totalPages: 1,
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Shared itineraries fetched successfully.',
+        data: mockResult,
+      }
+
+      mockItineraryService.findMySharedItineraries.mockResolvedValue(mockResult)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findMyShareditineraries(mockUser, {
+        page: '1',
+      })
+
+      expect(mockItineraryService.findMySharedItineraries).toHaveBeenCalledWith(
+        mockUser.id,
+        1
+      )
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Shared itineraries fetched successfully.',
+        },
+        { itinerary: mockResult }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should return empty data when there are no shared itineraries', async () => {
+      const mockResult = { data: [], total: 0, page: 1, totalPages: 0 }
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Shared itineraries fetched successfully.',
+        data: mockResult,
+      }
+
+      mockItineraryService.findMySharedItineraries.mockResolvedValue(mockResult)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findMyShareditineraries(mockUser, {
+        page: '1',
+      })
+
+      expect(mockItineraryService.findMySharedItineraries).toHaveBeenCalledWith(
+        mockUser.id,
+        1
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should handle service errors for shared itineraries', async () => {
+      const errorMessage = 'Failed to retrieve shared itineraries'
+      mockItineraryService.findMySharedItineraries.mockRejectedValue(
+        new Error(errorMessage)
+      )
+
+      await expect(
+        controller.findMyShareditineraries(mockUser, { page: '1' })
+      ).rejects.toThrow(errorMessage)
+
+      expect(mockItineraryService.findMySharedItineraries).toHaveBeenCalledWith(
+        mockUser.id,
+        1
+      )
     })
   })
 
