@@ -85,7 +85,12 @@ describe('ItineraryService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
-        EmailService,
+        {
+          provide: EmailService,
+          useValue: {
+            sendEmail: jest.fn(), // Mock any methods used in the service
+          },
+        },
       ],
     }).compile()
 
