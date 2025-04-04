@@ -62,6 +62,53 @@ export class ItineraryController {
     )
   }
 
+  @Get('me/all')
+  async findAllMyItineraries(
+    @GetUser() user: User,
+    @Query() paginationDto: PaginationDto,
+    @Query('shared') shared?: string,
+    @Query('finished') finished?: string
+  ) {
+    const sharedBool = shared === 'true'
+    const finishedBool = finished === 'true'
+
+    const itinerary = await this.itineraryService.findAllMyItineraries(
+      user.id,
+      parseInt(paginationDto.page),
+      sharedBool,
+      finishedBool
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'All itineraries fetched successfully.',
+      },
+      {
+        itinerary,
+      }
+    )
+  }
+
+  @Get('me/shared')
+  async findMyShareditineraries(
+    @GetUser() user: User,
+    @Query() paginationDto: PaginationDto
+  ) {
+    const itinerary = await this.itineraryService.findMySharedItineraries(
+      user.id,
+      parseInt(paginationDto.page)
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Shared itineraries fetched successfully.',
+      },
+      {
+        itinerary,
+      }
+    )
+  }
+
   @Get('me/completed')
   async findMyCompletedItineraries(@GetUser() user: User) {
     const itinerary = await this.itineraryService.findMyCompletedItineraries(
