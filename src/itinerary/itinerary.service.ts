@@ -361,6 +361,158 @@ export class ItineraryService {
     }
   }
 
+  async findAllMyItineraries(
+    userId: string,
+    page: number,
+    sharedBool: boolean,
+    finishedBool: boolean
+  ) {
+    if (page < 1) throw new HttpException('Invalid page number', 400)
+
+    const limit = PAGINATION_LIMIT
+    const skip = (page - 1) * limit
+
+    const whereClause = {
+      ...(sharedBool
+        ? { access: { some: { userId } } }
+        : { OR: [{ userId }, { access: { some: { userId } } }] }),
+      ...(finishedBool && { isCompleted: true }),
+    }
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.itinerary.findMany({
+        where: whereClause,
+        take: limit,
+        skip,
+        orderBy: { startDate: 'asc' },
+        include: {
+          sections: {
+            include: {
+              blocks: {
+                where: { blockType: 'LOCATION' },
+              },
+            },
+          },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+          pendingInvites: true,
+          access: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  photoProfile: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.itinerary.count({ where: whereClause }),
+    ])
+
+    const formattedData = data.map((itinerary) => ({
+      ...itinerary,
+      invitedUsers: itinerary.access.map((access) => ({
+        ...access.user,
+      })),
+      locationCount: itinerary.sections.reduce(
+        (acc, section) => acc + section.blocks.length,
+        0
+      ),
+    }))
+
+    const totalPages =
+      Math.ceil(total / limit) < 1 ? 1 : Math.ceil(total / limit)
+    if (page > totalPages)
+      throw new HttpException('Page number exceeds total available pages', 400)
+
+    return {
+      data: formattedData,
+      metadata: {
+        total,
+        page,
+        totalPages,
+      },
+    }
+  }
+
+  async findMySharedItineraries(userId: string, page: number) {
+    if (page < 1) throw new HttpException('Invalid page number', 400)
+
+    const limit = PAGINATION_LIMIT
+    const skip = (page - 1) * limit
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.itinerary.findMany({
+        where: { access: { some: { userId } } },
+        take: limit,
+        skip,
+        orderBy: { startDate: 'asc' },
+        include: {
+          sections: {
+            include: {
+              blocks: {
+                where: { blockType: 'LOCATION' },
+              },
+            },
+          },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+          pendingInvites: true,
+          access: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  photoProfile: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.itinerary.count({ where: { userId, isCompleted: false } }),
+    ])
+
+    const formattedData = data.map((itinerary) => ({
+      ...itinerary,
+      invitedUsers: itinerary.access.map((access) => ({
+        ...access.user,
+      })),
+      locationCount: itinerary.sections.reduce(
+        (acc, section) => acc + section.blocks.length,
+        0
+      ),
+    }))
+
+    const totalPages =
+      Math.ceil(total / limit) < 1 ? 1 : Math.ceil(total / limit)
+    if (page > totalPages)
+      throw new HttpException('Page number exceeds total available pages', 400)
+
+    return {
+      data: formattedData,
+      metadata: {
+        total,
+        page,
+        totalPages,
+      },
+    }
+  }
+
   async findMyCompletedItineraries(userId: string) {
     const completedItineraries = await this.prisma.itinerary.findMany({
       where: { userId, isCompleted: true },
