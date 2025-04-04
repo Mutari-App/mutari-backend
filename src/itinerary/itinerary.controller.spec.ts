@@ -1524,5 +1524,53 @@ describe('ItineraryController', () => {
       )
       expect(result).toEqual(mockResponse)
     })
+
+    it('should throw NotFoundException if the itinerary does not exist', async () => {
+      const itineraryId = 'non-existent-id'
+      const userId = 'user-456'
+      const mockError = new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
+
+      mockItineraryService.removeUserFromItinerary = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.removeUserFromItinerary(itineraryId, userId, mockUser)
+      ).rejects.toThrow(mockError)
+
+      expect(mockItineraryService.removeUserFromItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        userId,
+        mockUser
+      )
+    })
+
+    it('should throw NotFoundException if the user to be removed does not exist', async () => {
+      const itineraryId = 'itinerary-123'
+      const userId = 'non-existent-user'
+      const mockError = new NotFoundException(`User with ID ${userId} not found in itinerary ${itineraryId}`)
+
+      mockItineraryService.removeUserFromItinerary = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.removeUserFromItinerary(itineraryId, userId, mockUser)
+      ).rejects.toThrow(mockError)
+    })
+
+    it('should throw ForbiddenException if the user is not authorized to remove participants', async () => {
+      const itineraryId = 'itinerary-123'
+      const userId = 'user-456'
+      const mockError = new ForbiddenException('Not authorized to remove users from this itinerary')
+
+      mockItineraryService.removeUserFromItinerary = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.removeUserFromItinerary(itineraryId, userId, mockUser)
+      ).rejects.toThrow(mockError)
+    })
   })
 })

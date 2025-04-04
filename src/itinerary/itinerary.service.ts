@@ -485,7 +485,7 @@ export class ItineraryService {
           },
         },
       }),
-      this.prisma.itinerary.count({ where: { userId, isCompleted: false } }),
+      this.prisma.itinerary.count({ where: { access: { some: { userId } } } }),
     ])
 
     const formattedData = data.map((itinerary) => ({
