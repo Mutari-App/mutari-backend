@@ -95,8 +95,8 @@ export class GeminiService {
     try {
       const prompt = await this.createPrompt(dto.itineraryData)
       const result = await this.model.generateContent(prompt.prompt)
-      const response = result.response
-      const feedbackText = response.text()
+      const response = await result.response
+      const feedbackText = await response.text()
 
       let feedbackArray: FeedbackItem[]
 
