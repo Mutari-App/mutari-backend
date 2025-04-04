@@ -1,66 +1,165 @@
-import { ConfigService } from '@nestjs/config'
 import { Test, TestingModule } from '@nestjs/testing'
 import { GeminiService } from './gemini.service'
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai'
+import { ConfigService } from '@nestjs/config'
+import { InternalServerErrorException } from '@nestjs/common'
 import { GenerateFeedbackDto } from './model/generate-feedback.dto'
 
 describe('GeminiService', () => {
-  let geminiService: GeminiService
-  let mockConfigService: ConfigService
-  let mockGenerativeAI: GoogleGenerativeAI
-  let mockGenerativeModel: GenerativeModel
+  let service: GeminiService
+
+  const mockApiKey = 'FAKE-API-KEY'
+
+  const mockGenerateContent = jest.fn()
+  const mockModel = {
+    generateContent: mockGenerateContent,
+  }
+
+  const mockGoogleAI = {
+    getGenerativeModel: jest.fn(() => mockModel),
+  }
 
   beforeEach(async () => {
-    mockConfigService = {
-      get: jest.fn().mockReturnValue('FAKE_API_KEY'),
-    } as unknown as ConfigService
-
-    mockGenerativeModel = {
-      generateContent: jest.fn().mockResolvedValue({
-        response: {
-          text: jest.fn().mockReturnValue('Mocked feedback response'),
-        },
-      }),
-    } as unknown as GenerativeModel
-
-    mockGenerativeAI = {
-      getGenerativeModel: jest.fn().mockReturnValue(mockGenerativeModel),
-    } as unknown as GoogleGenerativeAI
+    jest.resetAllMocks()
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GeminiService,
-        { provide: ConfigService, useValue: mockConfigService },
-        { provide: GoogleGenerativeAI, useValue: mockGenerativeAI },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn(() => mockApiKey),
+          },
+        },
       ],
-    }).compile()
+    })
+      .overrideProvider(GeminiService)
+      .useFactory({
+        factory: (configService: ConfigService) => {
+          const service = new GeminiService(configService)
+          // override GoogleGenerativeAI with mocked version
+          ;(service as any).googleAI = mockGoogleAI
+          ;(service as any).model = mockModel
+          return service
+        },
+        inject: [ConfigService],
+      })
+      .compile()
 
-    geminiService = module.get<GeminiService>(GeminiService)
+    service = module.get<GeminiService>(GeminiService)
   })
 
   it('should be defined', () => {
-    expect(geminiService).toBeDefined()
+    expect(service).toBeDefined()
   })
 
-  // it('should generate feedback successfully', async () => {
-  //   const dto: GenerateFeedbackDto = {
-  //     prompt:
-  //       'Hari 1: Tiba di Bandara Ngurah Rai, check-in hotel, makan malam di Jimbaran. Hari 2: Mengunjungi Ubud Monkey Forest, eksplorasi Ubud. Hari 3: Snorkeling di Nusa Penida, menikmati pantai Kelingking. Hari 4: Wisata budaya ke Pura Besakih dan Tirta Empul. Hari 5: Bersantai di Pantai Seminyak, menikmati sunset. Hari 6: Belanja oleh-oleh di Pasar Sukawati, menikmati kuliner lokal. Hari 7: Kembali ke Jakarta',
-  //   }
+  describe('generateFeedback', () => {
+    const dto: GenerateFeedbackDto = {
+      itineraryData: {
+        title: 'Trip to Japan',
+        description: 'A cultural journey',
+        coverImage: 'cover.jpg',
+        startDate: '2025-05-01',
+        endDate: '2025-05-10',
+        tags: ['culture'],
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: 'LOCATION',
+                title: 'Tokyo Tower',
+                startTime: '10:00',
+                endTime: '12:00',
+                price: 500,
+              },
+              {
+                blockType: 'NOTE',
+                description: 'Remember to bring your camera!',
+              },
+            ],
+          },
+        ],
+      },
+    }
 
-  //   const result = await geminiService.generateFeedback(dto)
+    it('should return parsed feedback array from AI response', async () => {
+      const mockJson = JSON.stringify([
+        {
+          target: {
+            sectionIndex: 0,
+            blockIndex: 0,
+            blockType: 'LOCATION',
+            field: 'price',
+          },
+          suggestion:
+            'Tambahkan estimasi harga agar pengguna bisa mempersiapkan budget.',
+        },
+      ])
 
-  //   expect(typeof result).toBe('string')
-  //   expect(result.length).toBeGreaterThan(0)
-  // })
+      const mockResponse = {
+        text: () => mockJson,
+      }
 
-  it('should handle errors in generateFeedback', async () => {
-    (mockGenerativeModel.generateContent as jest.Mock).mockRejectedValue(
-      new Error('API Error')
-    )
+      mockGenerateContent.mockResolvedValueOnce({
+        response: Promise.resolve(mockResponse),
+      })
 
-    await expect(
-      geminiService.generateFeedback({ prompt: 'Test' })
-    ).rejects.toThrow('Failed to generate feedback')
+      const result = await service.generateFeedback(dto)
+
+      expect(result).toEqual({
+        feedback: [
+          {
+            target: {
+              sectionIndex: 0,
+              blockIndex: 0,
+              blockType: 'LOCATION',
+              field: 'price',
+            },
+            suggestion:
+              'Tambahkan estimasi harga agar pengguna bisa mempersiapkan budget.',
+          },
+        ],
+      })
+    })
+
+    it('should parse JSON even if AI returns extra text', async () => {
+      const wrappedJson = `
+        Berikut adalah saran dari AI:
+        [
+          {
+            "target": {
+              "sectionIndex": 0,
+              "blockIndex": 1,
+              "blockType": "NOTE",
+              "field": "description"
+            },
+            "suggestion": "Bisa ditambahkan catatan lebih detail tentang lokasi."
+          }
+        ]
+        Terima kasih!
+      `
+
+      const mockResponse = {
+        text: () => wrappedJson,
+      }
+
+      mockGenerateContent.mockResolvedValueOnce({
+        response: Promise.resolve(mockResponse),
+      })
+
+      const result = await service.generateFeedback(dto)
+
+      expect(result.feedback[0].target.blockType).toBe('NOTE')
+      expect(result.feedback[0].suggestion).toContain('Bisa ditambahkan')
+    })
+
+    it('should throw InternalServerErrorException on AI error', async () => {
+      mockGenerateContent.mockRejectedValueOnce(new Error('AI Error'))
+
+      await expect(service.generateFeedback(dto)).rejects.toThrow(
+        InternalServerErrorException
+      )
+    })
   })
 })
