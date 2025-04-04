@@ -11,6 +11,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common'
 import { EmailService } from 'src/email/email.service'
+import { first } from 'rxjs'
 
 describe('ItineraryService', () => {
   let service: ItineraryService
@@ -1363,6 +1364,63 @@ describe('ItineraryService', () => {
     })
   })
 
+  describe('_checkUpdateItineraryPermission', () => {
+    it('should throw NotFoundException when itinerary does not exist', async () => {
+      // Arrange
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      // Act & Assert
+      await expect(
+        service._checkUpdateItineraryPermission('non-existent-id', mockUser)
+      ).rejects.toThrow(NotFoundException)
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: 'non-existent-id' },
+      })
+    })
+
+    it('should throw ForbiddenException when user is not the owner', async () => {
+      // Arrange
+      const mockItinerary = {
+        id: 'itinerary-123',
+        userId: 'different-user-id',
+        title: "Someone else's itinerary",
+      }
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+
+      // Act & Assert
+      await expect(
+        service._checkUpdateItineraryPermission('itinerary-123', mockUser)
+      ).rejects.toThrow(ForbiddenException)
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: 'itinerary-123' },
+      })
+    })
+
+    it('should return the itinerary if user is the owner', async () => {
+      // Arrange
+      const mockItinerary = {
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        title: 'My itinerary',
+      }
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+
+      // Act
+      const result = await service._checkUpdateItineraryPermission(
+        'itinerary-123',
+        mockUser
+      )
+
+      // Assert
+      expect(result).toEqual(mockItinerary)
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: 'itinerary-123' },
+      })
+    })
+  })
+
   describe('findOneItinerary', () => {
     it('should return itinerary when found and user has access to it', async () => {
       const mockItinerary = {
@@ -1444,7 +1502,47 @@ describe('ItineraryService', () => {
 
   describe('findMyItineraries', () => {
     it('should return paginated itineraries', async () => {
-      const mockData = [mockItineraryData]
+      const mockData = [
+        {
+          ...mockItineraryData,
+          access: [
+            {
+              user: {
+                id: 'invited-user',
+                firstName: 'Jane',
+                lastName: 'Doe',
+                photoProfile: 'link.png',
+                email: 'janedoe@example.com',
+              },
+            },
+          ],
+        },
+      ]
+      const mockResult = [
+        {
+          ...mockItineraryData,
+          access: [
+            {
+              user: {
+                id: 'invited-user',
+                firstName: 'Jane',
+                lastName: 'Doe',
+                photoProfile: 'link.png',
+                email: 'janedoe@example.com',
+              },
+            },
+          ],
+          invitedUsers: [
+            {
+              id: 'invited-user',
+              firstName: 'Jane',
+              lastName: 'Doe',
+              photoProfile: 'link.png',
+              email: 'janedoe@example.com',
+            },
+          ],
+        },
+      ]
       const mockTotal = 10
       const mockPage = 1
       const mockLimit = PAGINATION_LIMIT
@@ -1458,7 +1556,7 @@ describe('ItineraryService', () => {
       const result = await service.findMyItineraries('user1', mockPage)
 
       expect(result).toEqual({
-        data: mockData,
+        data: mockResult,
         metadata: {
           total: mockTotal,
           page: mockPage,
@@ -1510,6 +1608,284 @@ describe('ItineraryService', () => {
           totalPages: 1,
         },
       })
+    })
+  })
+
+  describe('findAllMyItineraries', () => {
+    it('should return paginated itineraries for both owned and shared when sharedBool is false', async () => {
+      const userId = 'user-123'
+      const page = 1
+      const sharedBool = false
+      const finishedBool = false
+
+      const mockData = [
+        {
+          ...mockItineraryData,
+          userId,
+          access: [],
+          sections: [{ blocks: [{ blockType: 'LOCATION' }] }],
+        },
+        {
+          ...mockItineraryData,
+          id: '2',
+          userId: 'other-user',
+          access: [
+            {
+              userId,
+              user: {
+                id: userId,
+                firstName: 'John',
+                lastName: 'Doe',
+                photoProfile: null,
+                email: 'john@example.com',
+              },
+            },
+          ],
+          sections: [{ blocks: [{ blockType: 'LOCATION' }] }],
+        },
+      ]
+      const mockTotal = 2
+
+      mockPrismaService.$transaction.mockResolvedValue([mockData, mockTotal])
+
+      const result = await service.findAllMyItineraries(
+        userId,
+        page,
+        sharedBool,
+        finishedBool
+      )
+
+      expect(mockPrismaService.$transaction).toHaveBeenCalled()
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
+        where: {
+          OR: [{ userId }, { access: { some: { userId } } }],
+        },
+        take: PAGINATION_LIMIT,
+        skip: 0,
+        orderBy: { startDate: 'asc' },
+        include: expect.any(Object),
+      })
+
+      expect(result).toEqual({
+        data: expect.any(Array),
+        metadata: {
+          total: mockTotal,
+          page,
+          totalPages: Math.ceil(mockTotal / PAGINATION_LIMIT),
+        },
+      })
+
+      // Verify data was properly formatted
+      expect(result.data[0].locationCount).toBe(1)
+      expect(result.data[1].locationCount).toBe(1)
+      expect(result.data[1].invitedUsers).toEqual([
+        {
+          id: userId,
+          firstName: 'John',
+          lastName: 'Doe',
+          photoProfile: null,
+          email: 'john@example.com',
+        },
+      ])
+    })
+
+    it('should return only shared itineraries when sharedBool is true', async () => {
+      const userId = 'user-123'
+      const page = 1
+      const sharedBool = true
+      const finishedBool = false
+
+      const mockData = [
+        {
+          ...mockItineraryData,
+          id: '2',
+          userId: 'other-user',
+          access: [
+            {
+              userId,
+              user: {
+                id: userId,
+                firstName: 'John',
+                lastName: 'Doe',
+                photoProfile: null,
+                email: 'john@example.com',
+              },
+            },
+          ],
+          sections: [{ blocks: [{ blockType: 'LOCATION' }] }],
+        },
+      ]
+      const mockTotal = 1
+
+      mockPrismaService.$transaction.mockResolvedValue([mockData, mockTotal])
+
+      const result = await service.findAllMyItineraries(
+        userId,
+        page,
+        sharedBool,
+        finishedBool
+      )
+
+      expect(mockPrismaService.$transaction).toHaveBeenCalled()
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
+        where: {
+          access: { some: { userId } },
+        },
+        take: PAGINATION_LIMIT,
+        skip: 0,
+        orderBy: { startDate: 'asc' },
+        include: expect.any(Object),
+      })
+
+      expect(result.data.length).toBe(1)
+      expect(result.metadata.total).toBe(1)
+    })
+
+    it('should return only completed itineraries when finishedBool is true', async () => {
+      const userId = 'user-123'
+      const page = 1
+      const sharedBool = false
+      const finishedBool = true
+
+      const mockData = [
+        {
+          ...mockItineraryData,
+          userId,
+          isCompleted: true,
+          access: [],
+          sections: [{ blocks: [{ blockType: 'LOCATION' }] }],
+        },
+      ]
+      const mockTotal = 1
+
+      mockPrismaService.$transaction.mockResolvedValue([mockData, mockTotal])
+
+      const result = await service.findAllMyItineraries(
+        userId,
+        page,
+        sharedBool,
+        finishedBool
+      )
+
+      expect(mockPrismaService.$transaction).toHaveBeenCalled()
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
+        where: {
+          OR: [{ userId }, { access: { some: { userId } } }],
+          isCompleted: true,
+        },
+        take: PAGINATION_LIMIT,
+        skip: 0,
+        orderBy: { startDate: 'asc' },
+        include: expect.any(Object),
+      })
+
+      expect(result.data.length).toBe(1)
+      expect(result.metadata.total).toBe(1)
+    })
+
+    it('should throw an error for invalid page number', async () => {
+      await expect(
+        service.findAllMyItineraries('user-123', 0, false, false)
+      ).rejects.toThrow('Invalid page number')
+    })
+
+    it('should throw an error when page number exceeds total pages', async () => {
+      mockPrismaService.$transaction.mockResolvedValue([[], 0])
+
+      await expect(
+        service.findAllMyItineraries('user-123', 2, false, false)
+      ).rejects.toThrow('Page number exceeds total available pages')
+    })
+  })
+
+  describe('findMySharedItineraries', () => {
+    it('should return itineraries shared with the user', async () => {
+      const userId = 'user-123'
+      const page = 1
+
+      const mockData = [
+        {
+          ...mockItineraryData,
+          id: '2',
+          userId: 'other-user',
+          access: [
+            {
+              userId,
+              user: {
+                id: userId,
+                firstName: 'John',
+                lastName: 'Doe',
+                photoProfile: null,
+                email: 'john@example.com',
+              },
+            },
+          ],
+          sections: [{ blocks: [{ blockType: 'LOCATION' }] }],
+        },
+      ]
+      const mockTotal = 1
+
+      mockPrismaService.$transaction.mockResolvedValue([mockData, mockTotal])
+
+      const result = await service.findMySharedItineraries(userId, page)
+
+      expect(mockPrismaService.$transaction).toHaveBeenCalled()
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
+        where: { access: { some: { userId } } },
+        take: PAGINATION_LIMIT,
+        skip: 0,
+        orderBy: { startDate: 'asc' },
+        include: expect.any(Object),
+      })
+
+      expect(result).toEqual({
+        data: expect.any(Array),
+        metadata: {
+          total: mockTotal,
+          page,
+          totalPages: Math.ceil(mockTotal / PAGINATION_LIMIT),
+        },
+      })
+
+      expect(result.data[0].locationCount).toBe(1)
+      expect(result.data[0].invitedUsers).toEqual([
+        {
+          id: userId,
+          firstName: 'John',
+          lastName: 'Doe',
+          photoProfile: null,
+          email: 'john@example.com',
+        },
+      ])
+    })
+
+    it('should return empty data when user has no shared itineraries', async () => {
+      mockPrismaService.$transaction.mockResolvedValue([[], 0])
+
+      const result = await service.findMySharedItineraries('user-123', 1)
+
+      expect(result).toEqual({
+        data: [],
+        metadata: {
+          total: 0,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should throw an error for invalid page number', async () => {
+      await expect(
+        service.findMySharedItineraries('user-123', 0)
+      ).rejects.toThrow('Invalid page number')
+    })
+
+    it('should throw an error when page number exceeds total pages', async () => {
+      mockPrismaService.$transaction.mockResolvedValue([[], 0])
+
+      await expect(
+        service.findMySharedItineraries('user-123', 2)
+      ).rejects.toThrow('Page number exceeds total available pages')
     })
   })
 
