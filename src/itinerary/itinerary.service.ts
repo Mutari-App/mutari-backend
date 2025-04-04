@@ -11,6 +11,7 @@ import { User } from '@prisma/client'
 import { CreateSectionDto } from './dto/create-section.dto'
 import { PAGINATION_LIMIT } from 'src/common/constants/itinerary.constant'
 import { PrismaService } from 'src/prisma/prisma.service'
+import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
 
 @Injectable()
 export class ItineraryService {
@@ -403,5 +404,53 @@ export class ItineraryService {
       },
     })
     return tags
+  }
+
+  async createContingencyPlan(data: CreateContingencyPlanDto, user: User) {
+    const itinerary = await this._checkItineraryExists(data.itineraryId, user)
+    return this.prisma.$transaction(async (prisma) => {
+      const contingencyPlan = await prisma.contingencyPlan.create({
+        data: {
+          itineraryId: itinerary.id,
+          title: data.title,
+          description: data.description,
+          sections: {
+            create: data.sections.map((section) => ({
+              sectionNumber: section.sectionNumber,
+              title: section.title || `Hari ke-${section.sectionNumber}`,
+              itinerary: {
+                connect: { id: itinerary.id },
+              },
+              blocks: {
+                create:
+                  section.blocks && section.blocks.length > 0
+                    ? section.blocks.map((block, index) => ({
+                        position: index,
+                        blockType: block.blockType,
+                        title: block.title,
+                        description: block.description,
+                        startTime: block.startTime
+                          ? new Date(block.startTime)
+                          : null,
+                        endTime: block.endTime ? new Date(block.endTime) : null,
+                        location: block.location,
+                        price: block.price || 0,
+                        photoUrl: block.photoUrl,
+                      }))
+                    : [],
+              },
+            })),
+          },
+        },
+        include: {
+          sections: {
+            include: {
+              blocks: true,
+            },
+          },
+        },
+      })
+      return contingencyPlan
+    })
   }
 }
