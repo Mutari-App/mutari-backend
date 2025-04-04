@@ -1,11 +1,32 @@
-import { IsNotEmpty, IsString } from 'class-validator'
-
 export class GenerateFeedbackDto {
-  // @IsNotEmpty()
-  // @IsObject()
-  // itinerary: object;
+  itineraryData: {
+    title: string
+    description: string
+    coverImage: string
+    startDate: string
+    endDate: string
+    tags: string[]
+    sections: {
+      sectionNumber: number
+      title: string
+      blocks: {
+        blockType: string
+        title?: string
+        description?: string
+        startTime?: string
+        endTime?: string
+        price?: number
+      }[]
+    }[]
+  }
+}
 
-  @IsString()
-  @IsNotEmpty()
-  prompt: string
+export type FeedbackItem = {
+  target: {
+    sectionIndex: number
+    blockIndex: number
+    blockType: 'LOCATION' | 'NOTE'
+    field?: 'startTime' | 'endTime' | 'price' | 'description' | 'title'
+  }
+  suggestion: string
 }
