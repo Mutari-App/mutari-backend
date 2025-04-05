@@ -77,7 +77,7 @@ export class UmamiService {
     try {
       const webhookUrl = process.env.UMAMI_DISCORD_WEBHOOK_URL ?? ''
       if (!webhookUrl) {
-        console.error('DISCORD_WEBHOOK_URL is not set')
+        console.error('UMAMI_DISCORD_WEBHOOK_URL is not set')
         return
       }
 

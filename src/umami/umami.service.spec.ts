@@ -281,7 +281,6 @@ describe('UmamiService', () => {
       totaltime: { value: 5000, prev: 0 },
     }
 
-    // Unset the UMAMI_DISCORD_WEBHOOK_URL environment variable
     delete process.env.UMAMI_DISCORD_WEBHOOK_URL
 
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
@@ -289,7 +288,7 @@ describe('UmamiService', () => {
     await service.sendToDiscord(mockData)
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'DISCORD_WEBHOOK_URL is not set'
+      'UMAMI_DISCORD_WEBHOOK_URL is not set'
     )
     expect(fetchMock).not.toHaveBeenCalled()
   })
