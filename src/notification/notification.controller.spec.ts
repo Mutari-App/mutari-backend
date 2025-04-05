@@ -31,6 +31,7 @@ describe('NotificationController', () => {
   const mockNotificationService = {
     create: jest.fn(),
     update: jest.fn(),
+    remove: jest.fn(),
     scheduleEmail: jest.fn(),
     cancelScheduledEmail: jest.fn(),
   }
@@ -177,6 +178,55 @@ describe('NotificationController', () => {
         {
           data: expectedItineraryReminder,
         }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+  })
+
+  describe('removeAndCancel', () => {
+    it('should remove an itinerary reminder and cancel the cron job', async () => {
+      const baseDate = Date.now()
+      const data: EmailScheduleDto = {
+        itineraryId: 'ITN-123',
+        recipient: 'test@example.com',
+        recipientName: 'John Doe',
+        tripName: 'Hawaii Trip',
+        startDate: new Date(baseDate + 1000 * 60 * 60).toISOString(),
+        reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
+      }
+
+      const expectedItineraryReminder = {
+        id: 'RMNDR-123',
+        itineraryId: 'ITN-123',
+        email: 'test@example.com',
+        reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary Reminder deleted successfully.',
+        data: {
+          data: null,
+        },
+      }
+
+      mockNotificationService.remove.mockResolvedValue(
+        expectedItineraryReminder
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.removeAndCancel('ITN-123', data)
+
+      expect(service.remove).toHaveBeenCalledWith(data.itineraryId)
+      expect(service.cancelScheduledEmail).toHaveBeenCalledWith(data)
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Itinerary Reminder deleted succesfully',
+        },
+        null
       )
       expect(result).toEqual(mockResponse)
     })
