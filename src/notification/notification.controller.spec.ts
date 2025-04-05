@@ -4,7 +4,7 @@ import { NotificationService } from './notification.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { REMINDER_OPTION, User } from '@prisma/client'
 import { EmailScheduleDto } from './dto/email-schedule.dto'
-import { BadRequestException, HttpStatus } from '@nestjs/common'
+import { HttpStatus } from '@nestjs/common'
 
 describe('NotificationController', () => {
   let controller: NotificationController
@@ -158,7 +158,7 @@ describe('NotificationController', () => {
       mockResponseUtil.response.mockReturnValue(mockResponse)
 
       const result = await controller.updateAndReschedule(
-        'RMNDR-123',
+        'ITN-123',
         mockUser,
         data
       )

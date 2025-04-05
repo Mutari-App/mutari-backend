@@ -1,6 +1,5 @@
 import {
   Controller,
-  Get,
   Post,
   Body,
   Patch,
@@ -13,8 +12,6 @@ import { User } from '@prisma/client'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { EmailScheduleDto } from './dto/email-schedule.dto'
-import { CreateItineraryReminderDto } from './dto/create-itinerary-reminder.dto'
-import { UpdateItineraryReminderDto } from './dto/update-itinerary-reminder.dto'
 
 @Controller('notification')
 export class NotificationController {
@@ -52,7 +49,7 @@ export class NotificationController {
     @Body() data: EmailScheduleDto
   ) {
     const reminder = await this.notificationService.update({
-      itineraryId: data.itineraryId,
+      itineraryId: id,
       email: data.recipient,
       reminderOption: data.reminderOption,
     })

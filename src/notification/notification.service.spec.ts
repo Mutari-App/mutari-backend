@@ -3,12 +3,10 @@ import { NotificationService } from './notification.service'
 import { EmailService } from 'src/email/email.service'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { SchedulerRegistry } from '@nestjs/schedule'
-import { $Enums, REMINDER_OPTION } from '@prisma/client'
-import { CronJob } from 'cron'
+import { REMINDER_OPTION } from '@prisma/client'
 import { EmailScheduleDto } from './dto/email-schedule.dto'
 import { CreateItineraryReminderDto } from './dto/create-itinerary-reminder.dto'
 import { UpdateItineraryReminderDto } from './dto/update-itinerary-reminder.dto'
-import { itineraryReminderTemplate } from './templates/itinerary-reminder-template'
 import {
   BadRequestException,
   ConflictException,
@@ -308,8 +306,10 @@ describe('NotificationService', () => {
       }
 
       const jobSpy = jest.spyOn(schedulerRegistry, 'addCronJob')
+      const spy = jest.spyOn(service, 'scheduleEmail')
       service.scheduleEmail(emailSchedule)
       expect(jobSpy).toHaveBeenCalled()
+      spy.mockClear()
     })
 
     it('should throw a ConflictException on already scheduled reminders', async () => {
