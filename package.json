@@ -123,7 +123,12 @@
     "testEnvironment": "allure-jest/node",
     "coveragePathIgnorePatterns": [
       "/node_modules/",
-      ".module.ts$"
+      "/src/common/",
+      "/src/prisma/",
+      ".module.ts$",
+      ".dto.ts$",
+      ".entity.ts$",
+      ".guard.ts$"
     ]
   }
 }
