@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
-import { User } from '@prisma/client'
+import { User, TRANSPORT_MODE } from '@prisma/client'
 import { CreateSectionDto } from './dto/create-section.dto'
 import { PAGINATION_LIMIT } from 'src/common/constants/itinerary.constant'
 import { PrismaService } from 'src/prisma/prisma.service'
@@ -112,6 +112,52 @@ export class ItineraryService {
           },
         },
       })
+
+      // Create routes between blocks if they exist
+      if (data.sections && data.sections.length > 0) {
+        for (const section of data.sections) {
+          if (section.blocks && section.blocks.length > 0) {
+            const createdBlocks =
+              itinerary.sections.find(
+                (s) => s.sectionNumber === section.sectionNumber
+              )?.blocks || []
+
+            // Create route mappings by position
+            const blocksByPosition = new Map()
+            createdBlocks.forEach((block) => {
+              blocksByPosition.set(block.position, block)
+            })
+
+            // Process routes
+            for (let i = 0; i < section.blocks.length; i++) {
+              const block = section.blocks[i]
+              const createdBlock = blocksByPosition.get(i)
+
+              if (!createdBlock) continue
+
+              // Create route to next if it exists
+              if (block.routeToNext) {
+                const nextBlock = blocksByPosition.get(i + 1)
+                if (nextBlock) {
+                  await prisma.route.create({
+                    data: {
+                      sourceBlockId: createdBlock.id,
+                      destinationBlockId: nextBlock.id,
+                      distance: block.routeToNext.distance,
+                      duration: block.routeToNext.duration,
+                      polyline: block.routeToNext.polyline,
+                      transportMode:
+                        (block.routeToNext.transportMode as TRANSPORT_MODE) ||
+                        TRANSPORT_MODE.DRIVE,
+                    },
+                  })
+                }
+              }
+            }
+          }
+        }
+      }
+
       return itinerary
     })
   }
@@ -125,6 +171,35 @@ export class ItineraryService {
 
     // Update itinerary with id
     return this.prisma.$transaction(async (prisma) => {
+      // Collect all block IDs to delete routes
+      const existingItinerary = await prisma.itinerary.findUnique({
+        where: { id },
+        include: {
+          sections: {
+            include: {
+              blocks: {
+                include: {
+                  routeToNext: true,
+                  routeFromPrevious: true,
+                },
+              },
+            },
+          },
+        },
+      })
+
+      // Delete existing routes first
+      for (const section of existingItinerary.sections) {
+        for (const block of section.blocks) {
+          if (block.routeToNext) {
+            await prisma.route.delete({
+              where: { sourceBlockId: block.id },
+            })
+          }
+        }
+      }
+
+      // Update the itinerary
       const updatedItinerary = await prisma.itinerary.update({
         where: { id, userId: user.id },
         data: {
@@ -162,6 +237,52 @@ export class ItineraryService {
         },
       })
 
+      // Create new routes
+      if (data.sections && data.sections.length > 0) {
+        for (const sectionDto of data.sections) {
+          if (sectionDto.blocks && sectionDto.blocks.length > 0) {
+            const createdSection = updatedItinerary.sections.find(
+              (s) => s.sectionNumber === sectionDto.sectionNumber
+            )
+
+            if (!createdSection) continue
+
+            // Create block position mapping
+            const blocksByPosition = new Map()
+            createdSection.blocks.forEach((block) => {
+              blocksByPosition.set(block.position, block)
+            })
+
+            // Create routes
+            for (let i = 0; i < sectionDto.blocks.length; i++) {
+              const blockDto = sectionDto.blocks[i]
+              const createdBlock = blocksByPosition.get(i)
+
+              if (!createdBlock) continue
+
+              // Create route to next if it exists
+              if (blockDto.routeToNext) {
+                const nextBlock = blocksByPosition.get(i + 1)
+                if (nextBlock) {
+                  await prisma.route.create({
+                    data: {
+                      sourceBlockId: createdBlock.id,
+                      destinationBlockId: nextBlock.id,
+                      distance: blockDto.routeToNext.distance,
+                      duration: blockDto.routeToNext.duration,
+                      polyline: blockDto.routeToNext.polyline,
+                      transportMode:
+                        (blockDto.routeToNext
+                          .transportMode as TRANSPORT_MODE) ||
+                        TRANSPORT_MODE.DRIVE,
+                    },
+                  })
+                }
+              }
+            }
+          }
+        }
+      }
       return updatedItinerary
     })
   }
@@ -272,7 +393,7 @@ export class ItineraryService {
     return sections.map((section) => ({
       sectionNumber: section.sectionNumber,
       title: section.title || `Hari ke-${section.sectionNumber}`,
-      // Step 4: Create blocks within each section
+      // Create blocks within each section
       blocks: {
         create:
           section.blocks && section.blocks.length > 0
@@ -309,6 +430,10 @@ export class ItineraryService {
             include: {
               blocks: {
                 where: { blockType: 'LOCATION' },
+                include: {
+                  routeToNext: true,
+                  routeFromPrevious: true,
+                },
               },
             },
           },
@@ -522,7 +647,11 @@ export class ItineraryService {
         sections: {
           include: {
             blocks: {
-              where: { blockType: 'LOCATION' }, // Hanya ambil blocks yang punya blockType = LOCATION
+              where: { blockType: 'LOCATION' },
+              include: {
+                routeToNext: true,
+                routeFromPrevious: true,
+              },
             },
           },
         },
@@ -535,11 +664,11 @@ export class ItineraryService {
     })
 
     return completedItineraries.map((itinerary) => ({
-      ...itinerary, // Ambil semua data itinerary (id, title, dsb.)
+      ...itinerary,
       locationCount: itinerary.sections.reduce(
         (acc, section) => acc + section.blocks.length,
         0
-      ), // Hitung total block dengan type LOCATION
+      ),
     }))
   }
 
@@ -564,6 +693,7 @@ export class ItineraryService {
       data: { isCompleted: true },
     })
   }
+
   async findOne(id: string, user: User) {
     await this._checkItineraryExists(id, user)
     const itinerary = await this.prisma.itinerary.findUnique({
@@ -571,7 +701,12 @@ export class ItineraryService {
       include: {
         sections: {
           include: {
-            blocks: true,
+            blocks: {
+              include: {
+                routeToNext: true,
+                routeFromPrevious: true,
+              },
+            },
           },
         },
         tags: {
@@ -583,6 +718,7 @@ export class ItineraryService {
     })
     return itinerary
   }
+
   async removeItinerary(id: string) {
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id },

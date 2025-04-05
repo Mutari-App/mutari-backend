@@ -13,7 +13,7 @@ jobs:
 
       - name: Extract PBI Number from PR Title
         run: |
-          PBI_NUMBER=$(echo "${{ github.event.pull_request.title }}" | grep -oE 'PBI [0-9]+' | awk '{print $2}')
+          PBI_NUMBER=$(echo "${{ github.event.pull_request.title }}" | grep -ioE '[pP][bB][iI] [0-9]+' | awk '{print $2}')
           if [ -z "$PBI_NUMBER" ]; then
             echo "PBI number not found in PR title"
             exit 1
