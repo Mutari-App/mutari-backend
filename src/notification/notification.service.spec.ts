@@ -27,6 +27,7 @@ describe('NotificationService', () => {
     itineraryReminder: {
       create: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
       findUnique: jest.fn(),
     },
     itinerary: {
@@ -253,8 +254,43 @@ describe('NotificationService', () => {
   })
 
   describe('remove', () => {
-    it('should remove a notification', () => {
-      expect(service.remove(1)).toBe('This action removes a #1 notification')
+    it('should remove an itinerary reminder', async () => {
+      const itineraryId = 'ITN123'
+
+      const existingItineraryReminder = {
+        id: 'RMNDR-123',
+        itineraryId: itineraryId,
+        email: 'test@example.com',
+        reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      // Mocks
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(itineraryId)
+      mockPrismaService.itineraryReminder.findUnique.mockResolvedValue(
+        existingItineraryReminder
+      )
+      mockPrismaService.itineraryReminder.delete.mockResolvedValue({
+        id: itineraryId,
+      })
+      const result = await service.remove(itineraryId)
+      expect(mockPrismaService.$transaction).toHaveBeenCalled()
+      expect(mockPrismaService.itineraryReminder.delete).toHaveBeenCalledWith({
+        where: { itineraryId: itineraryId },
+      })
+      expect(result).toEqual({ id: itineraryId })
+    })
+
+    it('should throw NotFoundException if itinerary doesnt exist', async () => {
+      // Mocks
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      // Assert
+      await expect(service.remove('non-existant')).rejects.toThrow(
+        NotFoundException
+      )
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
     })
   })
 
