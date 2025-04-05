@@ -27,6 +27,7 @@ describe('NotificationService', () => {
       update: jest.fn(),
       delete: jest.fn(),
       findUnique: jest.fn(),
+      findMany: jest.fn(),
     },
     itinerary: {
       findUnique: jest.fn(),
@@ -154,14 +155,50 @@ describe('NotificationService', () => {
   })
 
   describe('findAll', () => {
-    it('should return all notifications', () => {
-      expect(service.findAll()).toBe('This action returns all notification')
-    })
-  })
+    it('should return an array of itinerary reminders', async () => {
+      const baseDate = Date.now()
+      const mockReminders = [
+        {
+          id: 'RMNDR-123',
+          itineraryId: 'ITN-123',
+          email: 'test@example.com',
+          recipientName: 'Example',
+          tripName: '',
+          reminderOption: REMINDER_OPTION.ONE_HOUR_BEFORE,
+          startDate: new Date(baseDate + 1000 * 60 * 60),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 'RMNDR-124',
+          itineraryId: 'ITN-124',
+          email: 'test@example.com',
+          recipientName: 'Example',
+          tripName: '',
+          reminderOption: REMINDER_OPTION.ONE_HOUR_BEFORE,
+          startDate: new Date(baseDate + 1000 * 60 * 60),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]
 
-  describe('findOne', () => {
-    it('should return a single notification', () => {
-      expect(service.findOne(1)).toBe('This action returns a #1 notification')
+      mockPrismaService.itineraryReminder.findMany.mockResolvedValue(
+        mockReminders
+      )
+      const result = await service.findAll()
+      expect(
+        mockPrismaService.itineraryReminder.findMany
+      ).toHaveBeenCalledWith()
+      expect(result).toEqual(mockReminders)
+    })
+
+    it('should return an empty array of itinerary reminders if none found', async () => {
+      mockPrismaService.itineraryReminder.findMany.mockResolvedValue([])
+      const result = await service.findAll()
+      expect(
+        mockPrismaService.itineraryReminder.findMany
+      ).toHaveBeenCalledWith()
+      expect(result).toEqual([])
     })
   })
 
