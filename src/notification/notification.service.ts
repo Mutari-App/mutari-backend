@@ -102,12 +102,8 @@ export class NotificationService {
     })
   }
 
-  findAll() {
-    return `This action returns all notification`
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} notification`
+  async findAll() {
+    return await this.prisma.itineraryReminder.findMany()
   }
 
   async update(data: UpdateItineraryReminderDto) {
