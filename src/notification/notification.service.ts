@@ -23,6 +23,27 @@ export class NotificationService {
     private readonly schedulerRegistry: SchedulerRegistry
   ) {}
 
+  async onModuleInit(): Promise<void> {
+    const reminders = await this.findAll()
+    for (let reminder of reminders) {
+      try {
+        this.scheduleEmail({
+          itineraryId: reminder.itineraryId,
+          recipient: reminder.email,
+          recipientName: reminder.recipientName,
+          tripName: reminder.tripName,
+          reminderOption: reminder.reminderOption as
+            | 'TEN_MINUTES_BEFORE'
+            | 'ONE_HOUR_BEFORE'
+            | 'ONE_DAY_BEFORE',
+          startDate: reminder.startDate.toISOString(),
+        })
+      } catch (error) {
+        continue
+      }
+    }
+  }
+
   scheduleEmail(data: EmailScheduleDto) {
     const scheduledDate = this._calculateScheduleDate(
       data.startDate,
