@@ -6,28 +6,43 @@ import {
   Patch,
   Param,
   Delete,
+  HttpStatus,
 } from '@nestjs/common'
 import { NotificationService } from './notification.service'
-import { CreateNotificationDto } from './dto/create-notification.dto'
-import { UpdateNotificationDto } from './dto/update-notification.dto'
+import { User } from '@prisma/client'
+import { GetUser } from 'src/common/decorators/getUser.decorator'
+import { ResponseUtil } from 'src/common/utils/response.util'
+import { EmailScheduleDto } from './dto/email-schedule.dto'
+import { CreateItineraryReminderDto } from './dto/create-itinerary-reminder.dto'
+import { UpdateItineraryReminderDto } from './dto/update-itinerary-reminder.dto'
 
 @Controller('notification')
 export class NotificationController {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly responseUtil: ResponseUtil
+  ) {}
 
   @Post()
-  create(@Body() createNotificationDto: CreateNotificationDto) {
-    return this.notificationService.create(createNotificationDto)
-  }
-
-  @Get()
-  findAll() {
-    return this.notificationService.findAll()
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.notificationService.findOne(+id)
+  async createAndSchedule(
+    @GetUser() user: User,
+    @Body() data: EmailScheduleDto
+  ) {
+    const reminder = await this.notificationService.create({
+      itineraryId: data.itineraryId,
+      email: data.recipient,
+      reminderOption: data.reminderOption,
+    })
+    this.notificationService.scheduleEmail(data)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary Reminder created succefully',
+      },
+      {
+        data: reminder,
+      }
+    )
   }
 
   @Patch(':id')
