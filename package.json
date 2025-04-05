@@ -11,7 +11,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/src/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -124,7 +124,13 @@
     "testEnvironment": "allure-jest/node",
     "coveragePathIgnorePatterns": [
       "/node_modules/",
-      ".module.ts$"
+      "/src/common/",
+      "/src/prisma/",
+      "/src/main.ts",
+      ".module.ts$",
+      ".dto.ts$",
+      ".entity.ts$",
+      ".guard.ts$"
     ]
   }
 }

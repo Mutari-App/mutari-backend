@@ -19,9 +19,12 @@ import { PaymentModule } from './payment/payment.module'
 import { TicketModule } from './ticket/ticket.module'
 import { MapModule } from './map/map.module'
 import { GeminiModule } from './gemini/gemini.module'
+import { UmamiModule } from './umami/umami.module'
+import { ScheduleModule } from '@nestjs/schedule'
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     SentryModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
@@ -37,6 +40,7 @@ import { GeminiModule } from './gemini/gemini.module'
     TicketModule,
     MapModule,
     GeminiModule,
+    UmamiModule,
   ],
   controllers: [AppController],
   providers: [

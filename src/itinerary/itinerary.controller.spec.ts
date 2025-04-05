@@ -39,11 +39,16 @@ describe('ItineraryController', () => {
     createItinerary: jest.fn(),
     updateItinerary: jest.fn(),
     findMyItineraries: jest.fn(),
+    findAllMyItineraries: jest.fn(),
+    findMySharedItineraries: jest.fn(),
     markAsComplete: jest.fn(),
     findMyCompletedItineraries: jest.fn(),
     findOne: jest.fn(),
     removeItinerary: jest.fn(),
     findAllTags: jest.fn(),
+    inviteToItinerary: jest.fn(),
+    acceptItineraryInvitation: jest.fn(),
+    removeUserFromItinerary: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -522,6 +527,224 @@ describe('ItineraryController', () => {
         1
       )
       expect(result).toEqual(mockResponse)
+    })
+  })
+
+  describe('findAllMyItineraries', () => {
+    it('should return all itineraries with default parameters', async () => {
+      const mockResult = {
+        data: [{ id: 1, title: 'Test Itinerary', userId: 'user-123' }],
+        total: 1,
+        page: 1,
+        totalPages: 1,
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'All itineraries fetched successfully.',
+        data: mockResult,
+      }
+
+      mockItineraryService.findAllMyItineraries.mockResolvedValue(mockResult)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findAllMyItineraries(
+        mockUser,
+        { page: '1' },
+        undefined,
+        undefined
+      )
+
+      expect(mockItineraryService.findAllMyItineraries).toHaveBeenCalledWith(
+        mockUser.id,
+        1,
+        false,
+        false
+      )
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'All itineraries fetched successfully.',
+        },
+        { itinerary: mockResult }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should filter itineraries with shared=true and finished=true', async () => {
+      const mockResult = {
+        data: [
+          {
+            id: 2,
+            title: 'Shared Completed Trip',
+            userId: 'user-123',
+            isCompleted: true,
+          },
+        ],
+        total: 1,
+        page: 1,
+        totalPages: 1,
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'All itineraries fetched successfully.',
+        data: mockResult,
+      }
+
+      mockItineraryService.findAllMyItineraries.mockResolvedValue(mockResult)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findAllMyItineraries(
+        mockUser,
+        { page: '1' },
+        'true',
+        'true'
+      )
+
+      expect(mockItineraryService.findAllMyItineraries).toHaveBeenCalledWith(
+        mockUser.id,
+        1,
+        true,
+        true
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should filter itineraries with shared=false and finished=false', async () => {
+      const mockResult = {
+        data: [
+          {
+            id: 3,
+            title: 'Private Ongoing Trip',
+            userId: 'user-123',
+            isCompleted: false,
+          },
+        ],
+        total: 1,
+        page: 1,
+        totalPages: 1,
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'All itineraries fetched successfully.',
+        data: mockResult,
+      }
+
+      mockItineraryService.findAllMyItineraries.mockResolvedValue(mockResult)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findAllMyItineraries(
+        mockUser,
+        { page: '1' },
+        'false',
+        'false'
+      )
+
+      expect(mockItineraryService.findAllMyItineraries).toHaveBeenCalledWith(
+        mockUser.id,
+        1,
+        false,
+        false
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should handle service errors correctly', async () => {
+      const errorMessage = 'Failed to retrieve itineraries'
+      mockItineraryService.findAllMyItineraries.mockRejectedValue(
+        new Error(errorMessage)
+      )
+
+      await expect(
+        controller.findAllMyItineraries(mockUser, { page: '1' })
+      ).rejects.toThrow(errorMessage)
+
+      expect(mockItineraryService.findAllMyItineraries).toHaveBeenCalledWith(
+        mockUser.id,
+        1,
+        false,
+        false
+      )
+    })
+  })
+
+  describe('findMySharedItineraries', () => {
+    it('should return shared itineraries successfully', async () => {
+      const mockResult = {
+        data: [
+          { id: 4, title: 'Shared Trip 1', userId: 'other-user' },
+          { id: 5, title: 'Shared Trip 2', userId: 'another-user' },
+        ],
+        total: 2,
+        page: 1,
+        totalPages: 1,
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Shared itineraries fetched successfully.',
+        data: mockResult,
+      }
+
+      mockItineraryService.findMySharedItineraries.mockResolvedValue(mockResult)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findMyShareditineraries(mockUser, {
+        page: '1',
+      })
+
+      expect(mockItineraryService.findMySharedItineraries).toHaveBeenCalledWith(
+        mockUser.id,
+        1
+      )
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Shared itineraries fetched successfully.',
+        },
+        { itinerary: mockResult }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should return empty data when there are no shared itineraries', async () => {
+      const mockResult = { data: [], total: 0, page: 1, totalPages: 0 }
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Shared itineraries fetched successfully.',
+        data: mockResult,
+      }
+
+      mockItineraryService.findMySharedItineraries.mockResolvedValue(mockResult)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findMyShareditineraries(mockUser, {
+        page: '1',
+      })
+
+      expect(mockItineraryService.findMySharedItineraries).toHaveBeenCalledWith(
+        mockUser.id,
+        1
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should handle service errors for shared itineraries', async () => {
+      const errorMessage = 'Failed to retrieve shared itineraries'
+      mockItineraryService.findMySharedItineraries.mockRejectedValue(
+        new Error(errorMessage)
+      )
+
+      await expect(
+        controller.findMyShareditineraries(mockUser, { page: '1' })
+      ).rejects.toThrow(errorMessage)
+
+      expect(mockItineraryService.findMySharedItineraries).toHaveBeenCalledWith(
+        mockUser.id,
+        1
+      )
     })
   })
 
@@ -1107,6 +1330,253 @@ describe('ItineraryController', () => {
         }
       )
       expect(result).toEqual(expectedResponse)
+    })
+  })
+
+  describe('inviteToItinerary', () => {
+    it('should invite a user to an itinerary and return a formatted response', async () => {
+      const itineraryId = 'itinerary-123'
+      const inviteeEmails = ['invitee@example.com']
+      const pendingItineraryInvitesResult = [
+        {
+          id: 'invite-123',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          itineraryId: itineraryId,
+          email: inviteeEmails[0],
+        },
+      ]
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'User invited successfully.',
+        pendingItineraryInvites: pendingItineraryInvitesResult,
+      }
+
+      mockItineraryService.inviteToItinerary = jest
+        .fn()
+        .mockResolvedValue(pendingItineraryInvitesResult)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.inviteToItinerary(
+        itineraryId,
+        {
+          emails: inviteeEmails,
+        },
+        mockUser
+      )
+
+      expect(mockItineraryService.inviteToItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        inviteeEmails,
+        mockUser.id
+      )
+
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should throw NotFoundException if the itinerary does not exist', async () => {
+      const itineraryId = 'non-existent-id'
+      const inviteeEmails = ['invitee@example.com']
+      const mockError = new NotFoundException(
+        `Itinerary with ID ${itineraryId} not found`
+      )
+
+      mockItineraryService.inviteToItinerary = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.inviteToItinerary(
+          itineraryId,
+          {
+            emails: inviteeEmails,
+          },
+          mockUser
+        )
+      ).rejects.toThrow(mockError)
+      expect(mockItineraryService.inviteToItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        inviteeEmails,
+        mockUser.id
+      )
+    })
+
+    it('should throw ForbiddenException if the user is not authorized to invite', async () => {
+      const itineraryId = 'itinerary-123'
+      const inviteeEmails = ['invitee@example.com']
+
+      mockItineraryService.inviteToItinerary = jest
+        .fn()
+        .mockRejectedValue(
+          new ForbiddenException(
+            'Not authorized to invite users to this itinerary'
+          )
+        )
+
+      // Act & Assert
+      await expect(
+        controller.inviteToItinerary(
+          itineraryId,
+          { emails: inviteeEmails },
+          mockUser
+        )
+      ).rejects.toThrow(ForbiddenException)
+      expect(mockItineraryService.inviteToItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        inviteeEmails,
+        mockUser.id
+      )
+    })
+  })
+
+  describe('acceptItineraryInvitation', () => {
+    it('should accept an itinerary invitation', async () => {
+      const pendingItineraryInviteId = 'pending-invite-123'
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Invitation accepted successfully.',
+      }
+
+      mockItineraryService.acceptItineraryInvitation = jest
+        .fn()
+        .mockResolvedValue(undefined)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.acceptItineraryInvitation(
+        pendingItineraryInviteId,
+        mockUser
+      )
+
+      expect(
+        mockItineraryService.acceptItineraryInvitation
+      ).toHaveBeenCalledWith(pendingItineraryInviteId, mockUser)
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should throw NotFoundException if the invitation does not exist', async () => {
+      const itineraryId = 'non-existent-id'
+      const mockError = new NotFoundException(
+        `Invitation for itinerary with ID ${itineraryId} not found`
+      )
+
+      mockItineraryService.acceptItineraryInvitation = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.acceptItineraryInvitation(itineraryId, mockUser)
+      ).rejects.toThrow(mockError)
+
+      expect(
+        mockItineraryService.acceptItineraryInvitation
+      ).toHaveBeenCalledWith(itineraryId, mockUser)
+    })
+
+    it('should throw ForbiddenException if the user is not authorized to accept the invitation', async () => {
+      const itineraryId = 'itinerary-123'
+
+      mockItineraryService.acceptItineraryInvitation = jest
+        .fn()
+        .mockRejectedValue(
+          new ForbiddenException('Not authorized to accept this invitation')
+        )
+
+      await expect(
+        controller.acceptItineraryInvitation(itineraryId, mockUser)
+      ).rejects.toThrow(ForbiddenException)
+
+      expect(
+        mockItineraryService.acceptItineraryInvitation
+      ).toHaveBeenCalledWith(itineraryId, mockUser)
+    })
+  })
+
+  describe('removeUserFromItinerary', () => {
+    it('should remove a user from an itinerary and return a formatted response', async () => {
+      const itineraryId = 'itinerary-123'
+      const userId = 'user-456'
+      const deletedParticipant = {
+        id: `itinerary-access-id`,
+        itineraryId,
+        userId,
+      }
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'User removed from itinerary successfully.',
+        deletedParticipant,
+      }
+
+      mockItineraryService.removeUserFromItinerary = jest
+        .fn()
+        .mockResolvedValue(deletedParticipant)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.removeUserFromItinerary(
+        itineraryId,
+        userId,
+        mockUser
+      )
+
+      expect(mockItineraryService.removeUserFromItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        userId,
+        mockUser
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should throw NotFoundException if the itinerary does not exist', async () => {
+      const itineraryId = 'non-existent-id'
+      const userId = 'user-456'
+      const mockError = new NotFoundException(
+        `Itinerary with ID ${itineraryId} not found`
+      )
+
+      mockItineraryService.removeUserFromItinerary = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.removeUserFromItinerary(itineraryId, userId, mockUser)
+      ).rejects.toThrow(mockError)
+
+      expect(mockItineraryService.removeUserFromItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        userId,
+        mockUser
+      )
+    })
+
+    it('should throw NotFoundException if the user to be removed does not exist', async () => {
+      const itineraryId = 'itinerary-123'
+      const userId = 'non-existent-user'
+      const mockError = new NotFoundException(
+        `User with ID ${userId} not found in itinerary ${itineraryId}`
+      )
+
+      mockItineraryService.removeUserFromItinerary = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.removeUserFromItinerary(itineraryId, userId, mockUser)
+      ).rejects.toThrow(mockError)
+    })
+
+    it('should throw ForbiddenException if the user is not authorized to remove participants', async () => {
+      const itineraryId = 'itinerary-123'
+      const userId = 'user-456'
+      const mockError = new ForbiddenException(
+        'Not authorized to remove users from this itinerary'
+      )
+
+      mockItineraryService.removeUserFromItinerary = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.removeUserFromItinerary(itineraryId, userId, mockUser)
+      ).rejects.toThrow(mockError)
     })
   })
 })
