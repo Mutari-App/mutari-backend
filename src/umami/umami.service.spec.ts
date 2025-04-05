@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { UmamiService } from './umami.service'
 import fetchMock from 'jest-fetch-mock'
+import { SendUmamiDataToDiscordDTO } from './dto/send-umami-data-to-discord.dto'
 fetchMock.enableMocks()
 
 describe('UmamiService', () => {
@@ -153,12 +154,12 @@ describe('UmamiService', () => {
 
   describe('sendToDiscord', () => {
     it('should send analytics data to Discord', async () => {
-      const mockData = {
-        pageviews: { value: 100 },
-        visitors: { value: 50 },
-        visits: { value: 75 },
-        bounces: { value: 10 },
-        totaltime: { value: 5000 },
+      const mockData: SendUmamiDataToDiscordDTO = {
+        pageviews: { value: 100, prev: 0 },
+        visitors: { value: 50, prev: 0 },
+        visits: { value: 75, prev: 0 },
+        bounces: { value: 10, prev: 0 },
+        totaltime: { value: 5000, prev: 0 },
       }
 
       const mockDate = new Date('2025-03-24T12:48:22.493Z')
@@ -214,12 +215,12 @@ describe('UmamiService', () => {
     })
 
     it('should handle Discord webhook errors gracefully', async () => {
-      const mockData = {
-        pageviews: { value: 100 },
-        visitors: { value: 50 },
-        visits: { value: 75 },
-        bounces: { value: 10 },
-        totaltime: { value: 5000 },
+      const mockData: SendUmamiDataToDiscordDTO = {
+        pageviews: { value: 100, prev: 0 },
+        visitors: { value: 50, prev: 0 },
+        visits: { value: 75, prev: 0 },
+        bounces: { value: 10, prev: 0 },
+        totaltime: { value: 5000, prev: 0 },
       }
 
       fetchMock.mockRejectedValue(new Error('Webhook error'))
@@ -272,12 +273,12 @@ describe('UmamiService', () => {
   })
 
   it('should log an error and return if UMAMI_DISCORD_WEBHOOK_URL is not set', async () => {
-    const mockData = {
-      pageviews: { value: 100 },
-      visitors: { value: 50 },
-      visits: { value: 75 },
-      bounces: { value: 10 },
-      totaltime: { value: 5000 },
+    const mockData: SendUmamiDataToDiscordDTO = {
+      pageviews: { value: 100, prev: 0 },
+      visitors: { value: 50, prev: 0 },
+      visits: { value: 75, prev: 0 },
+      bounces: { value: 10, prev: 0 },
+      totaltime: { value: 5000, prev: 0 },
     }
 
     // Unset the UMAMI_DISCORD_WEBHOOK_URL environment variable

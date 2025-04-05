@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
+import { SendUmamiDataToDiscordDTO } from './dto/send-umami-data-to-discord.dto'
 
 @Injectable()
 export class UmamiService {
@@ -44,7 +45,7 @@ export class UmamiService {
     }
   }
 
-  async sendToDiscord(data: any) {
+  async sendToDiscord(data: SendUmamiDataToDiscordDTO) {
     const MSG_CONTENT = {
       embeds: [
         {
