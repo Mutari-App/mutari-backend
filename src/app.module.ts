@@ -18,6 +18,7 @@ import { NotificationModule } from './notification/notification.module'
 import { PaymentModule } from './payment/payment.module'
 import { TicketModule } from './ticket/ticket.module'
 import { MapModule } from './map/map.module'
+import { GeminiModule } from './gemini/gemini.module'
 import { UmamiModule } from './umami/umami.module'
 import { ScheduleModule } from '@nestjs/schedule'
 
@@ -38,6 +39,7 @@ import { ScheduleModule } from '@nestjs/schedule'
     PaymentModule,
     TicketModule,
     MapModule,
+    GeminiModule,
     UmamiModule,
   ],
   controllers: [AppController],
