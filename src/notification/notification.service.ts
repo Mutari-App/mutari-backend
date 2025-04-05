@@ -126,8 +126,16 @@ export class NotificationService {
     })
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} notification`
+  async remove(id: string) {
+    await this._checkItineraryExists(id)
+    await this._checkItineraryReminderExists(id, true)
+
+    return this.prisma.$transaction(async (prisma) => {
+      const reminder = await prisma.itineraryReminder.delete({
+        where: { itineraryId: id },
+      })
+      return reminder
+    })
   }
 
   async _checkItineraryReminderExists(
