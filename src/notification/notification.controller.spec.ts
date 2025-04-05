@@ -90,7 +90,7 @@ describe('NotificationController', () => {
 
       const mockResponse = {
         statusCode: HttpStatus.OK,
-        message: 'Itinerary fetched successfully.',
+        message: 'Itinerary Reminder created succefully',
         data: {
           data: expectedItineraryReminder,
         },
@@ -113,6 +113,66 @@ describe('NotificationController', () => {
         {
           statusCode: HttpStatus.CREATED,
           message: 'Itinerary Reminder created succefully',
+        },
+        {
+          data: expectedItineraryReminder,
+        }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+  })
+
+  describe('updateAndReschedule', () => {
+    it('should update an itinerary reminder and reschdule the cron job', async () => {
+      const baseDate = Date.now()
+      const data: EmailScheduleDto = {
+        itineraryId: 'ITN-123',
+        recipient: 'test@example.com',
+        recipientName: 'John Doe',
+        tripName: 'Hawaii Trip',
+        startDate: new Date(baseDate + 1000 * 60 * 60).toISOString(),
+        reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
+      }
+
+      const expectedItineraryReminder = {
+        id: 'RMNDR-123',
+        itineraryId: 'ITN-123',
+        email: 'test@example.com',
+        reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary fetched successfully.',
+        data: {
+          data: expectedItineraryReminder,
+        },
+      }
+
+      mockNotificationService.update.mockResolvedValue(
+        expectedItineraryReminder
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.updateAndReschedule(
+        'RMNDR-123',
+        mockUser,
+        data
+      )
+
+      expect(service.update).toHaveBeenCalledWith({
+        itineraryId: data.itineraryId,
+        email: data.recipient,
+        reminderOption: data.reminderOption,
+      })
+      expect(service.cancelScheduledEmail).toHaveBeenCalledWith(data)
+      expect(service.scheduleEmail).toHaveBeenCalledWith(data)
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Itinerary Reminder updated succesfully',
         },
         {
           data: expectedItineraryReminder,
