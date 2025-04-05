@@ -299,6 +299,9 @@ model ItineraryReminder {
   id             String          @id() @unique() @default(uuid())
   itineraryId    String          @unique()
   email          String
+  recipientName  String?
+  tripName       String?
   reminderOption REMINDER_OPTION
+  startDate      DateTime        @default(now()) @db.Timestamptz()
   itinerary      Itinerary       @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
 }

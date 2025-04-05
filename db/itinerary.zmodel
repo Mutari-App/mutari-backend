@@ -131,7 +131,10 @@ model ItineraryLike extends Id, CreatedAt {
 model ItineraryReminder extends Base {
   itineraryId  String @unique
   email        String
+  recipientName String?
+  tripName String?
   reminderOption REMINDER_OPTION
+  startDate DateTime  @db.Timestamptz() @default(now())
   
   itinerary    Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
 }
