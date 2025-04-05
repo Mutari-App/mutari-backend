@@ -46,7 +46,7 @@ export class NotificationController {
   }
 
   @Patch(':id')
-  update(
+  async updateAndReschedule(
     @Param('id') id: string,
     @GetUser() user: User,
     @Body() data: EmailScheduleDto
@@ -70,7 +70,18 @@ export class NotificationController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.notificationService.remove(+id)
+  async removeAndCancel(
+    @Param('id') id: string,
+    @Body() data: EmailScheduleDto
+  ) {
+    await this.notificationService.remove(id)
+    this.notificationService.cancelScheduledEmail(data)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary Reminder deleted succesfully',
+      },
+      null
+    )
   }
 }
