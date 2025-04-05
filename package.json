@@ -125,6 +125,7 @@
       "/node_modules/",
       "/src/common/",
       "/src/prisma/",
+      "/src/main.ts",
       ".module.ts$",
       ".dto.ts$",
       ".entity.ts$",
