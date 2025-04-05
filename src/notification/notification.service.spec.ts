@@ -3,7 +3,7 @@ import { NotificationService } from './notification.service'
 import { EmailService } from 'src/email/email.service'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { SchedulerRegistry } from '@nestjs/schedule'
-import { REMINDER_OPTION } from '@prisma/client'
+import { ItineraryReminder, REMINDER_OPTION } from '@prisma/client'
 import { EmailScheduleDto } from './dto/email-schedule.dto'
 import { CreateItineraryReminderDto } from './dto/create-itinerary-reminder.dto'
 import { UpdateItineraryReminderDto } from './dto/update-itinerary-reminder.dto'
@@ -113,16 +113,23 @@ describe('NotificationService', () => {
 
   describe('create', () => {
     it('should create an itinerary reminder', async () => {
+      const baseDate = Date.now()
       const createItineraryReminder: CreateItineraryReminderDto = {
         itineraryId: 'ITN-123',
         email: 'test@example.com',
+        recipientName: 'Example',
+        tripName: 'Trip to Bahamas',
+        startDate: new Date(baseDate + 1000 * 60 * 60).toDateString(),
         reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
       }
 
-      const expectedItineraryReminder = {
+      const expectedItineraryReminder: ItineraryReminder = {
         id: 'RMNDR-123',
         itineraryId: 'ITN-123',
         email: 'test@example.com',
+        recipientName: 'Example',
+        tripName: 'Trip to Bahamas',
+        startDate: new Date(baseDate + 1000 * 60 * 60),
         reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -153,9 +160,13 @@ describe('NotificationService', () => {
     })
 
     it('should throw NotFoundException if itinerary doesnt exist', async () => {
+      const baseDate = Date.now()
       const createItineraryReminder: CreateItineraryReminderDto = {
         itineraryId: 'ITN-123',
         email: 'test@example.com',
+        recipientName: 'Example',
+        tripName: 'Trip to Bahamas',
+        startDate: new Date(baseDate + 1000 * 60 * 60).toDateString(),
         reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
       }
 
@@ -170,9 +181,13 @@ describe('NotificationService', () => {
     })
 
     it('should throw ConflictException if itinerary reminder already exist', async () => {
+      const baseDate = Date.now()
       const createItineraryReminder: CreateItineraryReminderDto = {
         itineraryId: 'ITN-123',
         email: 'test@example.com',
+        recipientName: 'Example',
+        tripName: 'Trip to Bahamas',
+        startDate: new Date(baseDate + 1000 * 60 * 60).toDateString(),
         reminderOption: REMINDER_OPTION.ONE_DAY_BEFORE,
       }
 

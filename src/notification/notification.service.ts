@@ -11,7 +11,7 @@ import { SchedulerRegistry } from '@nestjs/schedule'
 import { CronJob } from 'cron'
 import { itineraryReminderTemplate } from './templates/itinerary-reminder-template'
 import { PrismaService } from 'src/prisma/prisma.service'
-import { REMINDER_OPTION } from '@prisma/client'
+import { ItineraryReminder, REMINDER_OPTION } from '@prisma/client'
 import { CreateItineraryReminderDto } from './dto/create-itinerary-reminder.dto'
 import { EmailScheduleDto } from './dto/email-schedule.dto'
 
@@ -108,7 +108,7 @@ export class NotificationService {
   /**
    * Creates a new ItineraryReminder and saves it
    */
-  async create(data: CreateItineraryReminderDto) {
+  async create(data: CreateItineraryReminderDto): Promise<ItineraryReminder> {
     await this._checkItineraryExists(data.itineraryId)
     await this._checkItineraryReminderExists(data.itineraryId, false)
     return this.prisma.$transaction(async (prisma) => {
@@ -127,7 +127,7 @@ export class NotificationService {
     return await this.prisma.itineraryReminder.findMany()
   }
 
-  async update(data: UpdateItineraryReminderDto) {
+  async update(data: UpdateItineraryReminderDto): Promise<ItineraryReminder> {
     await this._checkItineraryExists(data.itineraryId)
     await this._checkItineraryReminderExists(data.itineraryId, true)
 
@@ -143,7 +143,7 @@ export class NotificationService {
     })
   }
 
-  async remove(id: string) {
+  async remove(id: string): Promise<ItineraryReminder> {
     await this._checkItineraryExists(id)
     await this._checkItineraryReminderExists(id, true)
 

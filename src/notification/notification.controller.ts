@@ -29,6 +29,9 @@ export class NotificationController {
       itineraryId: data.itineraryId,
       email: data.recipient,
       reminderOption: data.reminderOption,
+      recipientName: data.recipientName,
+      tripName: data.tripName,
+      startDate: data.startDate,
     })
     this.notificationService.scheduleEmail(data)
     return this.responseUtil.response(
@@ -52,6 +55,9 @@ export class NotificationController {
       itineraryId: id,
       email: data.recipient,
       reminderOption: data.reminderOption,
+      recipientName: data.recipientName,
+      tripName: data.tripName,
+      startDate: data.startDate,
     })
     this.notificationService.cancelScheduledEmail(data)
     this.notificationService.scheduleEmail(data)

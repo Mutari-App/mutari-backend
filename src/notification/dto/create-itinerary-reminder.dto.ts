@@ -1,5 +1,12 @@
 import { REMINDER_OPTION } from '@prisma/client'
-import { IsEmail, IsEnum, IsNotEmpty, IsString, IsUUID } from 'class-validator'
+import {
+  IsDateString,
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsString,
+  IsUUID,
+} from 'class-validator'
 
 export class CreateItineraryReminderDto {
   @IsString()
@@ -12,4 +19,13 @@ export class CreateItineraryReminderDto {
   @IsEnum(REMINDER_OPTION)
   @IsNotEmpty()
   reminderOption: 'TEN_MINUTES_BEFORE' | 'ONE_HOUR_BEFORE' | 'ONE_DAY_BEFORE'
+
+  @IsString()
+  recipientName?: string
+
+  @IsString()
+  tripName?: string
+
+  @IsDateString()
+  startDate: string
 }

@@ -85,6 +85,9 @@ describe('NotificationController', () => {
         itineraryId: 'ITN-123',
         email: 'test@example.com',
         reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
+        recipientName: data.recipientName,
+        tripName: data.tripName,
+        startDate: data.startDate,
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -107,6 +110,9 @@ describe('NotificationController', () => {
       expect(service.create).toHaveBeenCalledWith({
         itineraryId: data.itineraryId,
         email: data.recipient,
+        recipientName: data.recipientName,
+        tripName: data.tripName,
+        startDate: data.startDate,
         reminderOption: data.reminderOption,
       })
       expect(service.scheduleEmail).toHaveBeenCalledWith(data)
@@ -140,6 +146,9 @@ describe('NotificationController', () => {
         itineraryId: 'ITN-123',
         email: 'test@example.com',
         reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
+        recipientName: data.recipientName,
+        tripName: data.tripName,
+        startDate: data.startDate,
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -167,6 +176,9 @@ describe('NotificationController', () => {
         itineraryId: data.itineraryId,
         email: data.recipient,
         reminderOption: data.reminderOption,
+        recipientName: data.recipientName,
+        tripName: data.tripName,
+        startDate: data.startDate,
       })
       expect(service.cancelScheduledEmail).toHaveBeenCalledWith(data)
       expect(service.scheduleEmail).toHaveBeenCalledWith(data)
