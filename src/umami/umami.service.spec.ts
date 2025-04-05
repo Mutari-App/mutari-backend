@@ -98,15 +98,6 @@ describe('UmamiService', () => {
     })
 
     it('should return 401 Unauthorized if UMAMI_API_KEY is not set', async () => {
-      const mockAnalyticsData = {
-        pageviews: { value: 32, prev: 0 },
-        visitors: { value: 2, prev: 0 },
-        visits: { value: 4, prev: 0 },
-        bounces: { value: 0, prev: 0 },
-        totaltime: { value: 4863, prev: 0 },
-      }
-
-      // Unset the UMAMI_API_KEY environment variable
       delete process.env.UMAMI_API_KEY
 
       Object.defineProperty(service, '_getPreviousMonthRange', {
