@@ -47,6 +47,14 @@ enum REMINDER_OPTION {
   ONE_DAY_BEFORE
 }
 
+enum TRANSPORT_MODE {
+  DRIVE
+  WALK
+  BICYCLE
+  TRANSIT
+  TWO_WHEELER
+}
+
 model User {
   updatedAt        DateTime          @updatedAt() @db.Timestamptz()
   createdAt        DateTime          @default(now()) @db.Timestamptz()
@@ -227,16 +235,17 @@ model Block {
 }
 
 model Route {
-  id                 String   @id() @unique() @default(uuid())
-  sourceBlockId      String   @unique()
-  destinationBlockId String   @unique()
+  updatedAt          DateTime        @updatedAt() @db.Timestamptz()
+  createdAt          DateTime        @default(now()) @db.Timestamptz()
+  id                 String          @id() @unique() @default(uuid())
+  sourceBlockId      String          @unique()
+  destinationBlockId String          @unique()
   distance           Int
   duration           Int
   polyline           String?
-  createdAt          DateTime @default(now()) @db.Timestamptz()
-  updatedAt          DateTime @updatedAt() @db.Timestamptz()
-  sourceBlock        Block    @relation("SourceBlock", fields: [sourceBlockId], references: [id], onDelete: Cascade)
-  destinationBlock   Block    @relation("DestinationBlock", fields: [destinationBlockId], references: [id], onDelete: Cascade)
+  transportMode      TRANSPORT_MODE? @default(DRIVE)
+  sourceBlock        Block           @relation("SourceBlock", fields: [sourceBlockId], references: [id], onDelete: Cascade)
+  destinationBlock   Block           @relation("DestinationBlock", fields: [destinationBlockId], references: [id], onDelete: Cascade)
 }
 
 model Tag {
@@ -299,6 +308,9 @@ model ItineraryReminder {
   id             String          @id() @unique() @default(uuid())
   itineraryId    String          @unique()
   email          String
+  recipientName  String?
+  tripName       String?
   reminderOption REMINDER_OPTION
+  startDate      DateTime        @default(now()) @db.Timestamptz()
   itinerary      Itinerary       @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
 }
