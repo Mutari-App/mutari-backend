@@ -5,8 +5,8 @@ import {
   UseGuards,
   Res,
   Req,
-  HttpCode,
   HttpStatus,
+  Get,
 } from '@nestjs/common'
 import { AuthService } from './auth.service'
 import { LoginDTO } from './dto/login.dto'
@@ -20,6 +20,7 @@ import { RegisterDTO } from './dto/register-dto'
 import { VerifyRegistrationDTO } from './dto/verify-registration-dto'
 import { CreateUserDTO } from './dto/create-user-dto'
 import { PreRegistGuard } from './guards/pre-regist.guard'
+import { GetUser } from 'src/common/decorators/getUser.decorator'
 
 @UseGuards(PreRegistGuard)
 @Controller('auth')
@@ -118,5 +119,18 @@ export class AuthController {
       statusCode: HttpStatus.OK,
       message: 'Success Logout',
     })
+  }
+
+  @Get('me')
+  getme(@GetUser() user: User) {
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'User fetched successfully.',
+      },
+      {
+        user,
+      }
+    )
   }
 }
