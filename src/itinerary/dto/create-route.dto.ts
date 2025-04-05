@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator'
+import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator'
 import { TRANSPORT_MODE } from '@prisma/client'
 
 export class CreateRouteDto {
@@ -18,7 +18,7 @@ export class CreateRouteDto {
   @IsOptional()
   polyline?: string
 
-  @IsString()
+  @IsEnum(TRANSPORT_MODE)
   @IsOptional()
   transportMode?: TRANSPORT_MODE
 }

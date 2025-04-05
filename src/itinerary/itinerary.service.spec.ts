@@ -11,7 +11,6 @@ import {
   ForbiddenException,
 } from '@nestjs/common'
 import { EmailService } from 'src/email/email.service'
-import { first } from 'rxjs'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
 
 describe('ItineraryService', () => {

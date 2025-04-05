@@ -148,7 +148,7 @@ export class ItineraryService {
                       polyline: block.routeToNext.polyline,
                       transportMode:
                         (block.routeToNext.transportMode as TRANSPORT_MODE) ||
-                        'DRIVE',
+                        TRANSPORT_MODE.DRIVE,
                     },
                   })
                 }
@@ -273,7 +273,8 @@ export class ItineraryService {
                       polyline: blockDto.routeToNext.polyline,
                       transportMode:
                         (blockDto.routeToNext
-                          .transportMode as TRANSPORT_MODE) || 'DRIVE',
+                          .transportMode as TRANSPORT_MODE) ||
+                        TRANSPORT_MODE.DRIVE,
                     },
                   })
                 }
