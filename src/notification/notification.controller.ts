@@ -48,9 +48,25 @@ export class NotificationController {
   @Patch(':id')
   update(
     @Param('id') id: string,
-    @Body() updateNotificationDto: UpdateNotificationDto
+    @GetUser() user: User,
+    @Body() data: EmailScheduleDto
   ) {
-    return this.notificationService.update(+id, updateNotificationDto)
+    const reminder = await this.notificationService.update({
+      itineraryId: data.itineraryId,
+      email: data.recipient,
+      reminderOption: data.reminderOption,
+    })
+    this.notificationService.cancelScheduledEmail(data)
+    this.notificationService.scheduleEmail(data)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary Reminder updated succesfully',
+      },
+      {
+        data: reminder,
+      }
+    )
   }
 
   @Delete(':id')
