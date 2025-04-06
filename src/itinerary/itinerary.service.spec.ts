@@ -11,7 +11,6 @@ import {
   ForbiddenException,
 } from '@nestjs/common'
 import { EmailService } from 'src/email/email.service'
-import { first } from 'rxjs'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
 
 describe('ItineraryService', () => {
@@ -1444,7 +1443,16 @@ describe('ItineraryService', () => {
       expect(prismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: '123' },
         include: {
-          sections: { include: { blocks: true } },
+          sections: {
+            include: {
+              blocks: {
+                include: {
+                  routeToNext: true,
+                  routeFromPrevious: true,
+                },
+              },
+            },
+          },
           tags: {
             include: {
               tag: true,
@@ -1473,7 +1481,16 @@ describe('ItineraryService', () => {
       expect(prismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: '123' },
         include: {
-          sections: { include: { blocks: true } },
+          sections: {
+            include: {
+              blocks: {
+                include: {
+                  routeToNext: true,
+                  routeFromPrevious: true,
+                },
+              },
+            },
+          },
           tags: {
             include: {
               tag: true,
@@ -1954,6 +1971,10 @@ describe('ItineraryService', () => {
           sections: {
             include: {
               blocks: {
+                include: {
+                  routeFromPrevious: true,
+                  routeToNext: true,
+                },
                 where: { blockType: 'LOCATION' },
               },
             },
@@ -2026,6 +2047,10 @@ describe('ItineraryService', () => {
           sections: {
             include: {
               blocks: {
+                include: {
+                  routeFromPrevious: true,
+                  routeToNext: true,
+                },
                 where: { blockType: 'LOCATION' },
               },
             },
