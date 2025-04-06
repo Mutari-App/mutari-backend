@@ -255,6 +255,44 @@ describe('NotificationService', () => {
     })
   })
 
+  describe('findOne', () => {
+    it('should return an itinerary reminder with associated itinerary id', async () => {
+      const baseDate = Date.now()
+      const mockReminder = {
+        id: 'RMNDR-123',
+        itineraryId: 'ITN-123',
+        email: 'test@example.com',
+        recipientName: 'Example',
+        tripName: '',
+        reminderOption: REMINDER_OPTION.ONE_HOUR_BEFORE,
+        startDate: new Date(baseDate + 1000 * 60 * 60),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      mockPrismaService.itineraryReminder.findUnique.mockResolvedValue(
+        mockReminder
+      )
+      const result = await service.findOne('ITN-123')
+      expect(
+        mockPrismaService.itineraryReminder.findUnique
+      ).toHaveBeenCalledWith({
+        where: { itineraryId: 'ITN-123' },
+      })
+      expect(result).toEqual(mockReminder)
+    })
+
+    it("should throw NotFoundException if associated itinerary's reminder does not exist", async () => {
+      const itineraryId = 'non-existent-id'
+
+      mockPrismaService.itineraryReminder.findUnique.mockResolvedValue(null)
+
+      await expect(service.findOne(itineraryId)).rejects.toThrow(
+        NotFoundException
+      )
+    })
+  })
+
   describe('update', () => {
     it('should update an itinerary reminder', async () => {
       const updateItineraryReminder: UpdateItineraryReminderDto = {
