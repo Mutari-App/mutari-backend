@@ -2165,13 +2165,11 @@ describe('ItineraryService', () => {
         id: 'different-user-id',
       }
 
-      // Mock the itinerary with a different owner
-      mockPrismaService.itinerary.findUnique.mockResolvedValueOnce({
+      mockPrismaService.itinerary.findUnique.mockResolvedValue({
         id: itineraryId,
-        userId: 'original-owner-id', // Different from the requesting user
+        userId: 'original-owner-id',
       })
 
-      // Mock _checkUpdateItineraryPermission to throw ForbiddenException
       jest
         .spyOn(service, '_checkUpdateItineraryPermission')
         .mockImplementation(() => {
@@ -2180,7 +2178,6 @@ describe('ItineraryService', () => {
           )
         })
 
-      // Act & Assert
       await expect(
         service.removeItinerary(itineraryId, anotherUser)
       ).rejects.toThrow(ForbiddenException)
