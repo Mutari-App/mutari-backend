@@ -820,7 +820,9 @@ describe('ItineraryController', () => {
       mockResponseUtil.response.mockResolvedValue(mockResponse)
 
       // Call controller method
-      const result = await controller.findMyCompletedItineraries(mockUser)
+      const result = await controller.findMyCompletedItineraries(mockUser, {
+        page: '1',
+      })
 
       // Expected response
       expect(result).toEqual({
@@ -832,7 +834,7 @@ describe('ItineraryController', () => {
       // Ensure service method called correctly
       expect(
         mockItineraryService.findMyCompletedItineraries
-      ).toHaveBeenCalledWith('user-1')
+      ).toHaveBeenCalledWith('user-1', 1)
 
       // Ensure responseUtil.response called correctly
       expect(responseUtil.response).toHaveBeenCalledWith(
@@ -857,7 +859,9 @@ describe('ItineraryController', () => {
       mockItineraryService.findMyCompletedItineraries.mockResolvedValue([])
       mockResponseUtil.response.mockResolvedValue(mockResponse)
 
-      const result = await controller.findMyCompletedItineraries(mockUser)
+      const result = await controller.findMyCompletedItineraries(mockUser, {
+        page: '1',
+      })
 
       expect(result).toEqual({
         statusCode: HttpStatus.OK,
@@ -867,7 +871,7 @@ describe('ItineraryController', () => {
 
       expect(
         mockItineraryService.findMyCompletedItineraries
-      ).toHaveBeenCalledWith('user-2')
+      ).toHaveBeenCalledWith('user-2', 1)
     })
   })
 
@@ -1012,7 +1016,9 @@ describe('ItineraryController', () => {
       mockResponseUtil.response.mockResolvedValue(mockResponse)
 
       // Call controller method
-      const result = await controller.findMyCompletedItineraries(mockUser)
+      const result = await controller.findMyCompletedItineraries(mockUser, {
+        page: '1',
+      })
 
       // Expected response
       expect(result).toEqual({
@@ -1024,7 +1030,7 @@ describe('ItineraryController', () => {
       // Ensure service method called correctly
       expect(
         mockItineraryService.findMyCompletedItineraries
-      ).toHaveBeenCalledWith('user-1')
+      ).toHaveBeenCalledWith('user-1', 1)
 
       // Ensure responseUtil.response called correctly
       expect(responseUtil.response).toHaveBeenCalledWith(
@@ -1049,7 +1055,9 @@ describe('ItineraryController', () => {
       mockItineraryService.findMyCompletedItineraries.mockResolvedValue([])
       mockResponseUtil.response.mockResolvedValue(mockResponse)
 
-      const result = await controller.findMyCompletedItineraries(mockUser)
+      const result = await controller.findMyCompletedItineraries(mockUser, {
+        page: '1',
+      })
 
       expect(result).toEqual({
         statusCode: HttpStatus.OK,
@@ -1059,7 +1067,7 @@ describe('ItineraryController', () => {
 
       expect(
         mockItineraryService.findMyCompletedItineraries
-      ).toHaveBeenCalledWith('user-2')
+      ).toHaveBeenCalledWith('user-2', 1)
     })
   })
 
