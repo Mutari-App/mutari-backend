@@ -116,7 +116,10 @@ export class NotificationService {
         data: {
           itineraryId: data.itineraryId,
           email: data.email,
+          recipientName: data.recipientName,
+          tripName: data.tripName,
           reminderOption: data.reminderOption,
+          startDate: data.startDate,
         },
       })
       return reminder
@@ -141,6 +144,7 @@ export class NotificationService {
         data: {
           email: data.email,
           reminderOption: data.reminderOption,
+          startDate: data.startDate,
         },
       })
       return reminder
