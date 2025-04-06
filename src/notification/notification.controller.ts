@@ -28,9 +28,9 @@ export class NotificationController {
   ) {
     const reminder = await this.notificationService.create({
       itineraryId: data.itineraryId,
-      email: data.recipient,
+      email: user.email,
       reminderOption: data.reminderOption,
-      recipientName: data.recipientName,
+      recipientName: user.firstName,
       tripName: data.tripName,
       startDate: data.startDate,
     })
@@ -38,7 +38,7 @@ export class NotificationController {
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.CREATED,
-        message: 'Itinerary Reminder created succefully',
+        message: 'Itinerary Reminder created successfully',
       },
       {
         data: reminder,
@@ -54,9 +54,9 @@ export class NotificationController {
   ) {
     const reminder = await this.notificationService.update({
       itineraryId: id,
-      email: data.recipient,
+      email: user.email,
       reminderOption: data.reminderOption,
-      recipientName: data.recipientName,
+      recipientName: user.firstName,
       tripName: data.tripName,
       startDate: data.startDate,
     })
@@ -65,7 +65,7 @@ export class NotificationController {
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.OK,
-        message: 'Itinerary Reminder updated succesfully',
+        message: 'Itinerary Reminder updated successfully',
       },
       {
         data: reminder,
@@ -76,14 +76,16 @@ export class NotificationController {
   @Delete(':id')
   async removeAndCancel(
     @Param('id') id: string,
+    @GetUser() user: User,
     @Body() data: EmailScheduleDto
   ) {
+    data.recipient = user.email
     await this.notificationService.remove(id)
     this.notificationService.cancelScheduledEmail(data)
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.OK,
-        message: 'Itinerary Reminder deleted succesfully',
+        message: 'Itinerary Reminder deleted successfully',
       },
       null
     )
