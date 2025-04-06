@@ -1242,7 +1242,7 @@ describe('ItineraryController', () => {
 
       expect(mockItineraryService.removeItinerary).toHaveBeenCalledWith(
         itineraryId,
-        mockUser.id
+        mockUser
       )
       expect(responseUtil.response).toHaveBeenCalledWith(responseMock)
       expect(result).toEqual(responseMock)
@@ -1259,7 +1259,7 @@ describe('ItineraryController', () => {
 
       expect(mockItineraryService.removeItinerary).toHaveBeenCalledWith(
         itineraryId,
-        mockUser.id
+        mockUser
       )
     })
   })
