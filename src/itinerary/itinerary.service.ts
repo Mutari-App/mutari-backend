@@ -760,13 +760,15 @@ export class ItineraryService {
     return itinerary
   }
 
-  async removeItinerary(id: string) {
+  async removeItinerary(id: string, user: User) {
+    await this._checkUpdateItineraryPermission(id, user)
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id },
     })
     if (!itinerary) {
       throw new NotFoundException('Itinerary not found')
     }
+
     return this.prisma.itinerary.delete({
       where: { id },
     })
@@ -793,7 +795,7 @@ export class ItineraryService {
     if (!itinerary) {
       throw new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
     }
-
+    console.log(itinerary)
     if (itinerary.userId !== userId) {
       throw new ForbiddenException(
         'Not authorized to invite users to this itinerary'
