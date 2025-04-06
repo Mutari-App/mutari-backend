@@ -2124,10 +2124,12 @@ describe('ItineraryService', () => {
 
       mockPrismaService.itinerary.findUnique.mockResolvedValue({
         id: itineraryId,
+        userId: mockUser.id,
       })
       mockPrismaService.itinerary.delete.mockResolvedValue({ id: itineraryId })
 
-      await expect(service.removeItinerary(itineraryId)).resolves.toEqual({
+      const result = await service.removeItinerary(itineraryId, mockUser)
+      expect(result).toEqual({
         id: itineraryId,
       })
 
@@ -2135,7 +2137,7 @@ describe('ItineraryService', () => {
         where: { id: itineraryId },
       })
 
-      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+      expect(mockPrismaService.itinerary.delete).toHaveBeenCalledWith({
         where: { id: itineraryId },
       })
     })
@@ -2145,14 +2147,45 @@ describe('ItineraryService', () => {
 
       mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
 
-      await expect(service.removeItinerary(itineraryId)).rejects.toThrow(
-        NotFoundException
-      )
+      await expect(
+        service.removeItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(NotFoundException)
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
       })
 
+      expect(mockPrismaService.itinerary.delete).not.toHaveBeenCalled()
+    })
+
+    it('should throw ForbiddenException when user is not the owner of the itinerary', async () => {
+      const itineraryId = 'ITN456'
+      const anotherUser = {
+        ...mockUser,
+        id: 'different-user-id',
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue({
+        id: itineraryId,
+        userId: 'original-owner-id',
+      })
+
+      jest
+        .spyOn(service, '_checkUpdateItineraryPermission')
+        .mockImplementation(() => {
+          throw new ForbiddenException(
+            'You do not have permission to update this itinerary'
+          )
+        })
+
+      await expect(
+        service.removeItinerary(itineraryId, anotherUser)
+      ).rejects.toThrow(ForbiddenException)
+
+      expect(service._checkUpdateItineraryPermission).toHaveBeenCalledWith(
+        itineraryId,
+        anotherUser
+      )
       expect(mockPrismaService.itinerary.delete).not.toHaveBeenCalled()
     })
   })
