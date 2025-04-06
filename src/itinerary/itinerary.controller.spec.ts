@@ -1238,12 +1238,13 @@ describe('ItineraryController', () => {
 
       jest.spyOn(responseUtil, 'response').mockReturnValue(responseMock)
 
-      const result = await controller.removeItinerary(itineraryId)
+      const result = await controller.removeItinerary(itineraryId, mockUser)
 
       expect(mockItineraryService.removeItinerary).toHaveBeenCalledWith(
-        itineraryId
+        itineraryId,
+        mockUser.id
       )
-      expect(responseUtil.response).toHaveBeenCalledWith(responseMock, null)
+      expect(responseUtil.response).toHaveBeenCalledWith(responseMock)
       expect(result).toEqual(responseMock)
     })
     it('should throw an error if itinerary is not found', async () => {
@@ -1252,12 +1253,13 @@ describe('ItineraryController', () => {
 
       mockItineraryService.removeItinerary.mockRejectedValue(error)
 
-      await expect(controller.removeItinerary(itineraryId)).rejects.toThrow(
-        'Not Found'
-      )
+      await expect(
+        controller.removeItinerary(itineraryId, mockUser)
+      ).rejects.toThrow('Not Found')
 
       expect(mockItineraryService.removeItinerary).toHaveBeenCalledWith(
-        itineraryId
+        itineraryId,
+        mockUser.id
       )
     })
   })
