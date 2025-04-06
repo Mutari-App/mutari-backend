@@ -12,6 +12,7 @@ import { EmailModule } from './email/email.module'
 import { AuthGuard } from './auth/guards/auth.guard'
 import { AuthModule } from './auth/auth.module'
 import { SentryModule } from '@sentry/nestjs/setup'
+import { ScheduleModule } from '@nestjs/schedule'
 import { ProfileModule } from './profile/profile.module'
 import { ItineraryModule } from './itinerary/itinerary.module'
 import { NotificationModule } from './notification/notification.module'
@@ -20,7 +21,6 @@ import { TicketModule } from './ticket/ticket.module'
 import { MapModule } from './map/map.module'
 import { GeminiModule } from './gemini/gemini.module'
 import { UmamiModule } from './umami/umami.module'
-import { ScheduleModule } from '@nestjs/schedule'
 
 @Module({
   imports: [
