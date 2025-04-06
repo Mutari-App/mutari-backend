@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   Body,
   Patch,
@@ -85,6 +86,20 @@ export class NotificationController {
         message: 'Itinerary Reminder deleted succesfully',
       },
       null
+    )
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    const reminder = await this.notificationService.findOne(id)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary Reminder fetched successfully',
+      },
+      {
+        data: reminder,
+      }
     )
   }
 }
