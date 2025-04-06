@@ -639,37 +639,78 @@ export class ItineraryService {
     }
   }
 
-  async findMyCompletedItineraries(userId: string) {
-    const completedItineraries = await this.prisma.itinerary.findMany({
-      where: { userId, isCompleted: true },
-      orderBy: { startDate: 'asc' },
-      include: {
-        sections: {
-          include: {
-            blocks: {
-              where: { blockType: 'LOCATION' },
-              include: {
-                routeToNext: true,
-                routeFromPrevious: true,
+  async findMyCompletedItineraries(userId: string, page: number) {
+    if (page < 1) throw new HttpException('Invalid page number', 400)
+
+    const limit = PAGINATION_LIMIT
+    const skip = (page - 1) * limit
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.itinerary.findMany({
+        where: { userId, isCompleted: true },
+        take: limit,
+        skip,
+        orderBy: { startDate: 'asc' },
+        include: {
+          sections: {
+            include: {
+              blocks: {
+                where: { blockType: 'LOCATION' },
+                include: {
+                  routeToNext: true,
+                  routeFromPrevious: true,
+                },
+              },
+            },
+          },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+          pendingInvites: true,
+          access: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  photoProfile: true,
+                  email: true,
+                },
               },
             },
           },
         },
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
-      },
-    })
+      }),
+      this.prisma.itinerary.count({ where: { userId, isCompleted: true } }),
+    ])
 
-    return completedItineraries.map((itinerary) => ({
+    const formattedData = data.map((itinerary) => ({
       ...itinerary,
+      invitedUsers: itinerary.access.map((access) => ({
+        ...access.user,
+      })),
       locationCount: itinerary.sections.reduce(
         (acc, section) => acc + section.blocks.length,
         0
       ),
     }))
+
+    const totalPages =
+      Math.ceil(total / limit) < 1 ? 1 : Math.ceil(total / limit)
+    if (page > totalPages)
+      throw new HttpException('Page number exceeds total available pages', 400)
+
+    return {
+      data: formattedData,
+      metadata: {
+        total,
+        page,
+        totalPages,
+      },
+    }
   }
 
   async markAsComplete(itineraryId: string, userId: string) {

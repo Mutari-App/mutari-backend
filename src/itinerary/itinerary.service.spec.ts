@@ -1924,6 +1924,8 @@ describe('ItineraryService', () => {
             { blocks: [{ blockType: 'LOCATION' }, { blockType: 'LOCATION' }] },
             { blocks: [{ blockType: 'LOCATION' }] },
           ],
+          access: [],
+          pendingInvites: [],
         },
         {
           id: 'itinerary-2',
@@ -1932,6 +1934,8 @@ describe('ItineraryService', () => {
           isCompleted: true,
           startDate: new Date(),
           sections: [{ blocks: [{ blockType: 'LOCATION' }] }],
+          access: [],
+          pendingInvites: [],
         },
       ]
 
@@ -1939,10 +1943,10 @@ describe('ItineraryService', () => {
       mockPrismaService.itinerary.findMany.mockResolvedValue(mockItineraries)
 
       // Panggil fungsi yang akan diuji
-      const result = await service.findMyCompletedItineraries('user-1')
+      const result = await service.findMyCompletedItineraries('user-1', 1)
 
       // Cek hasilnya sesuai dengan ekspektasi
-      expect(result).toEqual([
+      expect(result.data).toEqual([
         {
           id: 'itinerary-1',
           userId: 'user-1',
@@ -1951,6 +1955,9 @@ describe('ItineraryService', () => {
           startDate: expect.any(Date),
           sections: expect.any(Array),
           locationCount: 3, // Total lokasi dalam itinerary ini
+          access: [],
+          pendingInvites: [],
+          invitedUsers: [],
         },
         {
           id: 'itinerary-2',
@@ -1960,28 +1967,47 @@ describe('ItineraryService', () => {
           startDate: expect.any(Date),
           sections: expect.any(Array),
           locationCount: 1, // Total lokasi dalam itinerary ini
+          access: [],
+          pendingInvites: [],
+          invitedUsers: [],
         },
       ])
 
       // Pastikan findMany terpanggil dengan benar
       expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1', isCompleted: true },
+        take: PAGINATION_LIMIT,
+        skip: (1 - 1) * PAGINATION_LIMIT,
         orderBy: { startDate: 'asc' },
         include: {
           sections: {
             include: {
               blocks: {
-                include: {
-                  routeFromPrevious: true,
-                  routeToNext: true,
-                },
                 where: { blockType: 'LOCATION' },
+                include: {
+                  routeToNext: true,
+                  routeFromPrevious: true,
+                },
               },
             },
           },
           tags: {
             include: {
               tag: true,
+            },
+          },
+          pendingInvites: true,
+          access: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  photoProfile: true,
+                  email: true,
+                },
+              },
             },
           },
         },
@@ -2034,33 +2060,21 @@ describe('ItineraryService', () => {
     })
 
     it('should return an empty array when there are no completed itineraries', async () => {
-      // Mock return value kosong
       mockPrismaService.itinerary.findMany.mockResolvedValue([])
 
-      const result = await service.findMyCompletedItineraries('user-2')
+      const result = await service.findMyCompletedItineraries('user-2', 1)
 
-      expect(result).toEqual([])
-      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
-        where: { userId: 'user-2', isCompleted: true },
-        orderBy: { startDate: 'asc' },
-        include: {
-          sections: {
-            include: {
-              blocks: {
-                include: {
-                  routeFromPrevious: true,
-                  routeToNext: true,
-                },
-                where: { blockType: 'LOCATION' },
-              },
-            },
-          },
-          tags: {
-            include: {
-              tag: true,
-            },
-          },
-        },
+      expect(result.data).toEqual([])
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalled()
+
+      const findManyCall = mockPrismaService.itinerary.findMany.mock.calls[0][0]
+      expect(findManyCall.where).toEqual({
+        userId: 'user-2',
+        isCompleted: true,
+      })
+      expect(findManyCall.orderBy).toEqual({ startDate: 'asc' })
+      expect(findManyCall.include.sections.include.blocks.where).toEqual({
+        blockType: 'LOCATION',
       })
     })
   })
