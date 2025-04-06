@@ -127,6 +127,10 @@ export class NotificationService {
     return await this.prisma.itineraryReminder.findMany()
   }
 
+  async findOne(itineraryId: string) {
+    return this._checkItineraryReminderExists(itineraryId, true)
+  }
+
   async update(data: UpdateItineraryReminderDto): Promise<ItineraryReminder> {
     await this._checkItineraryExists(data.itineraryId)
     await this._checkItineraryReminderExists(data.itineraryId, true)
