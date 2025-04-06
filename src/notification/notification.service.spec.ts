@@ -152,7 +152,10 @@ describe('NotificationService', () => {
       expect(mockPrismaService.itineraryReminder.create).toHaveBeenCalledWith({
         data: {
           itineraryId: createItineraryReminder.itineraryId,
+          recipientName: createItineraryReminder.recipientName,
           email: createItineraryReminder.email,
+          tripName: createItineraryReminder.tripName,
+          startDate: createItineraryReminder.startDate,
           reminderOption: createItineraryReminder.reminderOption,
         },
       })
