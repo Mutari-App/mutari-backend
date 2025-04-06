@@ -32,6 +32,7 @@ describe('NotificationController', () => {
     create: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
+    findOne: jest.fn(),
     scheduleEmail: jest.fn(),
     cancelScheduledEmail: jest.fn(),
   }
@@ -241,6 +242,65 @@ describe('NotificationController', () => {
         null
       )
       expect(result).toEqual(mockResponse)
+    })
+  })
+
+  describe('findOne', () => {
+    it('should fetch an itinerary reminder and return OK when found', async () => {
+      const baseDate = Date.now()
+      const expectedItineraryReminder: ItineraryReminder = {
+        id: 'RMNDR-123',
+        itineraryId: 'ITN-123',
+        email: 'test@example.com',
+        recipientName: mockUser.firstName,
+        reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        tripName: 'Trip to Bahamas',
+        startDate: new Date(baseDate + 1000 * 60 * 60),
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary Reminder fetched successfully',
+        data: {
+          data: expectedItineraryReminder,
+        },
+      }
+
+      mockNotificationService.findOne.mockResolvedValue(
+        expectedItineraryReminder
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findOne('ITN-123')
+
+      expect(service.findOne).toHaveBeenCalledWith('ITN-123')
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Itinerary Reminder fetched successfully',
+        },
+        {
+          data: expectedItineraryReminder,
+        }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should pass errors from service to the caller', async () => {
+      const mockError = new Error('Itinerary with ID non-existent-id not found')
+      mockNotificationService.findOne.mockRejectedValue(mockError)
+
+      // Act & Assert
+      await expect(controller.findOne('non-existent-id')).rejects.toThrow(
+        mockError
+      )
+
+      expect(mockNotificationService.findOne).toHaveBeenCalledWith(
+        'non-existent-id'
+      )
+      expect(mockResponseUtil.response).not.toHaveBeenCalled()
     })
   })
 })
