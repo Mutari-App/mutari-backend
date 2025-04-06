@@ -75,7 +75,7 @@ export class GeminiService {
       [
         {
           "target": {
-            "sectionIndex": 0,
+            "sectionIndex": 1,
             "blockIndex": 1,
             "blockType": "LOCATION",
             "field": "price"
@@ -84,6 +84,7 @@ export class GeminiService {
         }
       ]
       
+      Perhatikan bahwa sectionIndex dimulai dari 1 dan blockIndex dimulai dari 0.
       Berikan maksimal 5 saran. Jika semuanya sudah baik, kembalikan array kosong [].
       Jangan menambahkan teks apapun di luar JSON.`,
     }
