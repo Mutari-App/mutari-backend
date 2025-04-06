@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { NotificationController } from './notification.controller'
 import { NotificationService } from './notification.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
-import { REMINDER_OPTION, User } from '@prisma/client'
+import { ItineraryReminder, REMINDER_OPTION, User } from '@prisma/client'
 import { EmailScheduleDto } from './dto/email-schedule.dto'
 import { HttpStatus } from '@nestjs/common'
 
@@ -74,8 +74,8 @@ describe('NotificationController', () => {
       const baseDate = Date.now()
       const data: EmailScheduleDto = {
         itineraryId: 'ITN-123',
-        recipient: 'test@example.com',
-        recipientName: 'John Doe',
+        recipient: mockUser.email,
+        recipientName: mockUser.firstName,
         tripName: 'Hawaii Trip',
         startDate: new Date(baseDate + 1000 * 60 * 60).toISOString(),
         reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
@@ -84,9 +84,9 @@ describe('NotificationController', () => {
       const expectedItineraryReminder = {
         id: 'RMNDR-123',
         itineraryId: 'ITN-123',
-        email: 'test@example.com',
+        email: mockUser.email,
         reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
-        recipientName: data.recipientName,
+        recipientName: mockUser.firstName,
         tripName: data.tripName,
         startDate: data.startDate,
         createdAt: new Date(),
@@ -95,7 +95,7 @@ describe('NotificationController', () => {
 
       const mockResponse = {
         statusCode: HttpStatus.OK,
-        message: 'Itinerary Reminder created succefully',
+        message: 'Itinerary Reminder created successfully',
         data: {
           data: expectedItineraryReminder,
         },
@@ -110,8 +110,8 @@ describe('NotificationController', () => {
 
       expect(service.create).toHaveBeenCalledWith({
         itineraryId: data.itineraryId,
-        email: data.recipient,
-        recipientName: data.recipientName,
+        email: mockUser.email,
+        recipientName: mockUser.firstName,
         tripName: data.tripName,
         startDate: data.startDate,
         reminderOption: data.reminderOption,
@@ -120,7 +120,7 @@ describe('NotificationController', () => {
       expect(responseUtil.response).toHaveBeenCalledWith(
         {
           statusCode: HttpStatus.CREATED,
-          message: 'Itinerary Reminder created succefully',
+          message: 'Itinerary Reminder created successfully',
         },
         {
           data: expectedItineraryReminder,
@@ -135,8 +135,8 @@ describe('NotificationController', () => {
       const baseDate = Date.now()
       const data: EmailScheduleDto = {
         itineraryId: 'ITN-123',
-        recipient: 'test@example.com',
-        recipientName: 'John Doe',
+        recipient: mockUser.email,
+        recipientName: mockUser.firstName,
         tripName: 'Hawaii Trip',
         startDate: new Date(baseDate + 1000 * 60 * 60).toISOString(),
         reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
@@ -145,9 +145,9 @@ describe('NotificationController', () => {
       const expectedItineraryReminder = {
         id: 'RMNDR-123',
         itineraryId: 'ITN-123',
-        email: 'test@example.com',
+        email: mockUser.email,
         reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
-        recipientName: data.recipientName,
+        recipientName: mockUser.firstName,
         tripName: data.tripName,
         startDate: data.startDate,
         createdAt: new Date(),
@@ -175,9 +175,9 @@ describe('NotificationController', () => {
 
       expect(service.update).toHaveBeenCalledWith({
         itineraryId: data.itineraryId,
-        email: data.recipient,
+        email: mockUser.email,
         reminderOption: data.reminderOption,
-        recipientName: data.recipientName,
+        recipientName: mockUser.firstName,
         tripName: data.tripName,
         startDate: data.startDate,
       })
@@ -186,7 +186,7 @@ describe('NotificationController', () => {
       expect(responseUtil.response).toHaveBeenCalledWith(
         {
           statusCode: HttpStatus.OK,
-          message: 'Itinerary Reminder updated succesfully',
+          message: 'Itinerary Reminder updated successfully',
         },
         {
           data: expectedItineraryReminder,
@@ -201,8 +201,8 @@ describe('NotificationController', () => {
       const baseDate = Date.now()
       const data: EmailScheduleDto = {
         itineraryId: 'ITN-123',
-        recipient: 'test@example.com',
-        recipientName: 'John Doe',
+        recipient: mockUser.email,
+        recipientName: mockUser.firstName,
         tripName: 'Hawaii Trip',
         startDate: new Date(baseDate + 1000 * 60 * 60).toISOString(),
         reminderOption: REMINDER_OPTION.TEN_MINUTES_BEFORE,
@@ -219,7 +219,7 @@ describe('NotificationController', () => {
 
       const mockResponse = {
         statusCode: HttpStatus.OK,
-        message: 'Itinerary Reminder deleted successfully.',
+        message: 'Itinerary Reminder deleted successfully',
         data: {
           data: null,
         },
@@ -230,14 +230,14 @@ describe('NotificationController', () => {
       )
       mockResponseUtil.response.mockReturnValue(mockResponse)
 
-      const result = await controller.removeAndCancel('ITN-123', data)
+      const result = await controller.removeAndCancel('ITN-123', mockUser, data)
 
       expect(service.remove).toHaveBeenCalledWith(data.itineraryId)
       expect(service.cancelScheduledEmail).toHaveBeenCalledWith(data)
       expect(responseUtil.response).toHaveBeenCalledWith(
         {
           statusCode: HttpStatus.OK,
-          message: 'Itinerary Reminder deleted succesfully',
+          message: 'Itinerary Reminder deleted successfully',
         },
         null
       )
