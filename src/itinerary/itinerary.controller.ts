@@ -110,9 +110,13 @@ export class ItineraryController {
   }
 
   @Get('me/completed')
-  async findMyCompletedItineraries(@GetUser() user: User) {
+  async findMyCompletedItineraries(
+    @GetUser() user: User,
+    @Query() paginationDto: PaginationDto
+  ) {
     const itinerary = await this.itineraryService.findMyCompletedItineraries(
-      user.id
+      user.id,
+      parseInt(paginationDto.page)
     )
     return this.responseUtil.response(
       {
