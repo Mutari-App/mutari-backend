@@ -1,15 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing' 
-import { GeminiController } from './gemini.controller' 
-import { GeminiService } from './gemini.service' 
-import { GenerateFeedbackDto } from './model/generate-feedback.dto' 
+import { Test, TestingModule } from '@nestjs/testing'
+import { GeminiController } from './gemini.controller'
+import { GeminiService } from './gemini.service'
+import { GenerateFeedbackDto } from './model/generate-feedback.dto'
 
 describe('GeminiController', () => {
-  let controller: GeminiController 
-  let geminiService: GeminiService 
+  let controller: GeminiController
+  let geminiService: GeminiService
 
   const mockGeminiService = {
     generateFeedback: jest.fn(),
-  } 
+  }
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -24,7 +24,7 @@ describe('GeminiController', () => {
 
     controller = module.get<GeminiController>(GeminiController)
     geminiService = module.get<GeminiService>(GeminiService)
-  }) 
+  })
 
   it('should be defined', () => {
     expect(controller).toBeDefined()
@@ -41,12 +41,12 @@ describe('GeminiController', () => {
         tags: ['beach', 'relax'],
         sections: [],
       },
-    } 
+    }
 
     await expect(controller.generate(invalidDto)).rejects.toThrowError(
       'ItineraryData must contain sections.'
-    ) 
-  }) 
+    )
+  })
 
   it('should call geminiService.generateFeedback with valid dto', async () => {
     const validDto: GenerateFeedbackDto = {
@@ -74,14 +74,14 @@ describe('GeminiController', () => {
           },
         ],
       },
-    } 
+    }
 
-    const mockResult = { feedback: 'Looks good!' } 
-    mockGeminiService.generateFeedback.mockResolvedValue(mockResult) 
+    const mockResult = { feedback: 'Looks good!' }
+    mockGeminiService.generateFeedback.mockResolvedValue(mockResult)
 
-    const result = await controller.generate(validDto) 
+    const result = await controller.generate(validDto)
 
-    expect(geminiService.generateFeedback).toHaveBeenCalledWith(validDto) 
-    expect(result).toEqual(mockResult) 
-  }) 
-}) 
+    expect(geminiService.generateFeedback).toHaveBeenCalledWith(validDto)
+    expect(result).toEqual(mockResult)
+  })
+})
