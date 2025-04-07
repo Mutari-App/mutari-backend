@@ -14,6 +14,7 @@ import { PrismaService } from 'src/prisma/prisma.service'
 import { EmailService } from 'src/email/email.service'
 import { invitationTemplate } from './templates/invitation-template'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
+import { UpdateContingencyPlanDto } from './dto/update-contingency-plan.dto'
 
 @Injectable()
 export class ItineraryService {
@@ -147,8 +148,7 @@ export class ItineraryService {
                       duration: block.routeToNext.duration,
                       polyline: block.routeToNext.polyline,
                       transportMode:
-                        (block.routeToNext.transportMode as TRANSPORT_MODE) ||
-                        TRANSPORT_MODE.DRIVE,
+                        block.routeToNext.transportMode || TRANSPORT_MODE.DRIVE,
                     },
                   })
                 }
@@ -176,6 +176,9 @@ export class ItineraryService {
         where: { id },
         include: {
           sections: {
+            where: {
+              contingencyPlanId: null,
+            },
             include: {
               blocks: {
                 include: {
@@ -219,14 +222,19 @@ export class ItineraryService {
           },
 
           sections: {
-            deleteMany: { itineraryId: id },
+            deleteMany: { itineraryId: id, contingencyPlanId: null },
             create: this._generateBlockFromSections(data.sections),
           },
         },
         include: {
           sections: {
             include: {
-              blocks: true,
+              blocks: {
+                include: {
+                  routeToNext: true,
+                  routeFromPrevious: true,
+                },
+              },
             },
           },
           tags: {
@@ -272,8 +280,7 @@ export class ItineraryService {
                       duration: blockDto.routeToNext.duration,
                       polyline: blockDto.routeToNext.polyline,
                       transportMode:
-                        (blockDto.routeToNext
-                          .transportMode as TRANSPORT_MODE) ||
+                        blockDto.routeToNext.transportMode ||
                         TRANSPORT_MODE.DRIVE,
                     },
                   })
@@ -389,10 +396,26 @@ export class ItineraryService {
     }
   }
 
-  _generateBlockFromSections = (sections: CreateSectionDto[]) => {
+  _generateBlockFromSections = (
+    sections: CreateSectionDto[],
+    options?: {
+      itineraryId?: string
+      contingencyPlanId?: string
+    }
+  ) => {
     return sections.map((section) => ({
       sectionNumber: section.sectionNumber,
       title: section.title || `Hari ke-${section.sectionNumber}`,
+      ...(options?.itineraryId && {
+        itinerary: {
+          connect: { id: options.itineraryId },
+        },
+      }),
+      ...(options?.contingencyPlanId && {
+        contingencyPlan: {
+          connect: { id: options.contingencyPlanId },
+        },
+      }),
       // Create blocks within each section
       blocks: {
         create:
@@ -736,11 +759,14 @@ export class ItineraryService {
   }
 
   async findOne(id: string, user: User) {
-    await this._checkItineraryExists(id, user)
+    await this._checkUpdateItineraryPermission(id, user)
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id: id },
       include: {
         sections: {
+          where: {
+            contingencyPlanId: null,
+          },
           include: {
             blocks: {
               include: {
@@ -923,17 +949,97 @@ export class ItineraryService {
     return deletedAccess
   }
 
-  async createContingencyPlan(data: CreateContingencyPlanDto, user: User) {
-    const itinerary = await this._checkItineraryExists(data.itineraryId, user)
+  async findContingencyPlans(itineraryId: string, user: User) {
+    const itinerary = await this._checkUpdateItineraryPermission(
+      itineraryId,
+      user
+    )
+    const contingencyPlans = await this.prisma.contingencyPlan.findMany({
+      where: { itineraryId: itinerary.id },
+      orderBy: {
+        title: 'asc',
+      },
+    })
+    return contingencyPlans
+  }
+
+  async findContingencyPlan(
+    itineraryId: string,
+    contingencyPlanId: string,
+    user: User
+  ) {
+    const itinerary = await this._checkUpdateItineraryPermission(
+      itineraryId,
+      user
+    )
+
+    const contingencyPlan = await this.prisma.contingencyPlan.findUnique({
+      where: { id: contingencyPlanId },
+      include: {
+        sections: {
+          include: {
+            blocks: {
+              include: {
+                routeToNext: true,
+                routeFromPrevious: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!contingencyPlan) {
+      throw new NotFoundException(
+        `Contingency plan with ID ${contingencyPlanId} not found`
+      )
+    }
+
+    if (contingencyPlan.itineraryId !== itinerary.id) {
+      throw new ForbiddenException(
+        'You do not have permission to view or update this contingency plan'
+      )
+    }
+
+    const mappedSections = contingencyPlan.sections.map((section) => ({
+      ...section,
+      sectionNumber: section.sectionNumber % 1000,
+    }))
+
+    return { ...contingencyPlan, sections: mappedSections }
+  }
+
+  async _checkContingencyCount(itineraryId: string) {
+    const contingencyPlanCount = await this.prisma.contingencyPlan.count({
+      where: { itineraryId },
+    })
+
+    if (contingencyPlanCount >= 2) {
+      throw new BadRequestException(
+        `You can only have up to 2 contingency plans`
+      )
+    }
+    return contingencyPlanCount
+  }
+
+  async createContingencyPlan(
+    itineraryId: string,
+    data: CreateContingencyPlanDto,
+    user: User
+  ) {
+    const itinerary = await this._checkItineraryExists(itineraryId, user)
+    const contingencyCount = await this._checkContingencyCount(itinerary.id)
+    const CONTINGENCY_TITLE = ['B', 'C']
     return this.prisma.$transaction(async (prisma) => {
       const contingencyPlan = await prisma.contingencyPlan.create({
         data: {
           itineraryId: itinerary.id,
-          title: data.title,
+          title: `Plan ${CONTINGENCY_TITLE[contingencyCount]}`,
           description: data.description,
           sections: {
             create: data.sections.map((section) => ({
-              sectionNumber: section.sectionNumber,
+              sectionNumber:
+                section.sectionNumber + (contingencyCount + 1) * 1000,
               title: section.title || `Hari ke-${section.sectionNumber}`,
               itinerary: {
                 connect: { id: itinerary.id },
@@ -962,12 +1068,268 @@ export class ItineraryService {
         include: {
           sections: {
             include: {
-              blocks: true,
+              blocks: {
+                include: {
+                  routeToNext: true,
+                  routeFromPrevious: true,
+                },
+              },
             },
           },
         },
       })
-      return contingencyPlan
+
+      if (data.sections && data.sections.length > 0) {
+        for (const section of data.sections) {
+          if (section.blocks && section.blocks.length > 0) {
+            const createdBlocks =
+              contingencyPlan.sections.find(
+                (s) => s.sectionNumber % 1000 === section.sectionNumber
+              )?.blocks || []
+
+            // Create route mappings by position
+            const blocksByPosition = new Map()
+            createdBlocks.forEach((block) => {
+              blocksByPosition.set(block.position, block)
+            })
+
+            // Process routes
+            for (let i = 0; i < section.blocks.length; i++) {
+              const block = section.blocks[i]
+              const createdBlock = blocksByPosition.get(i)
+
+              if (!createdBlock) continue
+
+              // Create route to next if it exists
+              if (block.routeToNext) {
+                const nextBlock = blocksByPosition.get(i + 1)
+                if (nextBlock) {
+                  await prisma.route.create({
+                    data: {
+                      sourceBlockId: createdBlock.id,
+                      destinationBlockId: nextBlock.id,
+                      distance: block.routeToNext.distance,
+                      duration: block.routeToNext.duration,
+                      polyline: block.routeToNext.polyline,
+                      transportMode:
+                        block.routeToNext.transportMode || TRANSPORT_MODE.DRIVE,
+                    },
+                  })
+                }
+              }
+            }
+          }
+        }
+      }
+      const mappedSections = contingencyPlan.sections.map((section) => ({
+        ...section,
+        sectionNumber: section.sectionNumber % 1000,
+      }))
+
+      return { ...contingencyPlan, sections: mappedSections }
+    })
+  }
+
+  async selectContingencyPlan(
+    itineraryId: string,
+    contingencyPlanId: string,
+    user: User
+  ) {
+    const itinerary = await this._checkUpdateItineraryPermission(
+      itineraryId,
+      user
+    )
+    const contingencyPlan = await this.prisma.contingencyPlan.findUnique({
+      where: { id: contingencyPlanId },
+    })
+    if (!contingencyPlan) {
+      throw new NotFoundException(
+        `Contingency plan with ID ${contingencyPlanId} not found`
+      )
+    }
+    if (contingencyPlan.itineraryId !== itinerary.id) {
+      throw new ForbiddenException(
+        'You do not have permission to view or update this contingency plan'
+      )
+    }
+    const otherContingencyPlans = await this.findContingencyPlans(
+      itineraryId,
+      user
+    )
+    for (const plan of otherContingencyPlans) {
+      await this.prisma.contingencyPlan.update({
+        where: { id: plan.id },
+        data: { isSelected: false },
+      })
+    }
+    const updatedContingencyPlan = await this.prisma.contingencyPlan.update({
+      where: { id: contingencyPlan.id },
+      data: { isSelected: true },
+      include: {
+        sections: {
+          include: {
+            blocks: {
+              include: {
+                routeToNext: true,
+                routeFromPrevious: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    const mappedSections = updatedContingencyPlan.sections.map((section) => ({
+      ...section,
+      sectionNumber: section.sectionNumber % 1000,
+    }))
+
+    return { ...updatedContingencyPlan, sections: mappedSections }
+  }
+
+  async updateContingencyPlan(
+    itineraryId: string,
+    contingencyPlanId: string,
+    data: UpdateContingencyPlanDto,
+    user: User
+  ) {
+    const itinerary = await this._checkUpdateItineraryPermission(
+      itineraryId,
+      user
+    )
+    const contingencyPlan = await this.prisma.contingencyPlan.findUnique({
+      where: { id: contingencyPlanId },
+    })
+    if (!contingencyPlan) {
+      throw new NotFoundException(
+        `Contingency plan with ID ${contingencyPlanId} not found`
+      )
+    }
+    if (contingencyPlan.itineraryId !== itinerary.id) {
+      throw new ForbiddenException(
+        'You do not have permission to update this contingency plan'
+      )
+    }
+    this._validateItinerarySections(data)
+
+    const existingContingency = await this.prisma.contingencyPlan.findUnique({
+      where: { id: contingencyPlanId, itineraryId: itinerary.id },
+      include: {
+        sections: {
+          where: {
+            contingencyPlanId: contingencyPlanId,
+          },
+          include: {
+            blocks: {
+              include: {
+                routeToNext: true,
+                routeFromPrevious: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    // Update itinerary with id
+    return this.prisma.$transaction(async (prisma) => {
+      // Delete existing routes first
+      for (const section of existingContingency.sections) {
+        for (const block of section.blocks) {
+          if (block.routeToNext) {
+            await prisma.route.delete({
+              where: { sourceBlockId: block.id },
+            })
+          }
+        }
+      }
+      console.log(
+        'existing sectionnumber',
+        existingContingency.sections[0].sectionNumber
+      )
+
+      // Update the itinerary
+      const updatedContingency = await prisma.contingencyPlan.update({
+        where: { id: contingencyPlanId },
+        data: {
+          sections: {
+            deleteMany: { contingencyPlanId },
+            create: this._generateBlockFromSections(data.sections).map(
+              (section) => ({
+                ...section,
+                sectionNumber:
+                  section.sectionNumber +
+                  existingContingency.sections[0].sectionNumber * 1000,
+                itineraryId: itinerary.id,
+              })
+            ),
+          },
+        },
+        include: {
+          sections: {
+            include: {
+              blocks: {
+                include: {
+                  routeToNext: true,
+                  routeFromPrevious: true,
+                },
+              },
+            },
+          },
+        },
+      })
+
+      // Create new routes
+      if (data.sections && data.sections.length > 0) {
+        for (const sectionDto of data.sections) {
+          if (sectionDto.blocks && sectionDto.blocks.length > 0) {
+            const createdSection = updatedContingency.sections.find(
+              (s) => s.sectionNumber === sectionDto.sectionNumber
+            )
+
+            if (!createdSection) continue
+
+            // Create block position mapping
+            const blocksByPosition = new Map()
+            createdSection.blocks.forEach((block) => {
+              blocksByPosition.set(block.position, block)
+            })
+
+            // Create routes
+            for (let i = 0; i < sectionDto.blocks.length; i++) {
+              const blockDto = sectionDto.blocks[i]
+              const createdBlock = blocksByPosition.get(i)
+
+              if (!createdBlock) continue
+
+              // Create route to next if it exists
+              if (blockDto.routeToNext) {
+                const nextBlock = blocksByPosition.get(i + 1)
+                if (nextBlock) {
+                  await prisma.route.create({
+                    data: {
+                      sourceBlockId: createdBlock.id,
+                      destinationBlockId: nextBlock.id,
+                      distance: blockDto.routeToNext.distance,
+                      duration: blockDto.routeToNext.duration,
+                      polyline: blockDto.routeToNext.polyline,
+                      transportMode:
+                        blockDto.routeToNext.transportMode ||
+                        TRANSPORT_MODE.DRIVE,
+                    },
+                  })
+                }
+              }
+            }
+          }
+        }
+      }
+      const mappedSections = updatedContingency.sections.map((section) => ({
+        ...section,
+        sectionNumber: section.sectionNumber % 1000,
+      }))
+
+      return { ...updatedContingency, sections: mappedSections }
     })
   }
 }

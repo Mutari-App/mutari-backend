@@ -44,6 +44,7 @@ describe('ItineraryService', () => {
     },
     contingencyPlan: {
       create: jest.fn(),
+      findMany: jest.fn(),
     },
   }
 
@@ -2579,11 +2580,36 @@ describe('ItineraryService', () => {
     })
   })
 
+  describe('findContingencyPlans', () => {
+    it('should return all contingency plans for the given itinerary', async () => {
+      const itineraryId = 'itinerary-123'
+      const mockContingencyPlans = [
+        {
+          id: 'contingency-plan-123',
+          title: 'Contingency Plan 1',
+          sections: [],
+        },
+        {
+          id: 'contingency-plan-456',
+          title: 'Contingency Plan 2',
+          sections: [],
+        },
+      ]
+
+      mockPrismaService.contingencyPlan.findMany.mockResolvedValue(
+        mockContingencyPlans
+      )
+
+      const result = await service.findContingencyPlans(itineraryId, mockUser)
+      expect(result).toEqual(mockContingencyPlans)
+    })
+  })
+
   describe('createContingencyPlan', () => {
     it('should create a contingency plan with sections and blocks', async () => {
+      const itineraryId = 'itinerary-123'
       // Arrange
       const createContingencyPlanDto: CreateContingencyPlanDto = {
-        itineraryId: 'itinerary-123',
         title: 'Contingency Plan Title',
         description: 'Contingency Plan Description',
         sections: [
@@ -2650,13 +2676,14 @@ describe('ItineraryService', () => {
 
       // Act
       const result = await service.createContingencyPlan(
+        itineraryId,
         createContingencyPlanDto,
         mockUser
       )
 
       // Assert
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
-        where: { id: createContingencyPlanDto.itineraryId },
+        where: { id: itineraryId },
         include: {
           access: {
             where: {
@@ -2710,9 +2737,10 @@ describe('ItineraryService', () => {
     })
 
     it('should throw NotFoundException if itinerary does not exist', async () => {
+      const itineraryId = 'non-existent-itinerary'
+
       // Arrange
       const createContingencyPlanDto: CreateContingencyPlanDto = {
-        itineraryId: 'non-existent-itinerary',
         title: 'Contingency Plan Title',
         description: 'Contingency Plan Description',
         sections: [],
@@ -2722,10 +2750,14 @@ describe('ItineraryService', () => {
 
       // Act & Assert
       await expect(
-        service.createContingencyPlan(createContingencyPlanDto, mockUser)
+        service.createContingencyPlan(
+          itineraryId,
+          createContingencyPlanDto,
+          mockUser
+        )
       ).rejects.toThrow(NotFoundException)
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
-        where: { id: createContingencyPlanDto.itineraryId },
+        where: { id: itineraryId },
         include: {
           access: {
             where: {
@@ -2738,9 +2770,9 @@ describe('ItineraryService', () => {
     })
 
     it('should throw ForbiddenException if user does not own the itinerary', async () => {
+      const itineraryId = 'non-existent-itinerary'
       // Arrange
       const createContingencyPlanDto: CreateContingencyPlanDto = {
-        itineraryId: 'itinerary-123',
         title: 'Contingency Plan Title',
         description: 'Contingency Plan Description',
         sections: [],
@@ -2755,10 +2787,14 @@ describe('ItineraryService', () => {
       mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
       // Act & Assert
       await expect(
-        service.createContingencyPlan(createContingencyPlanDto, mockUser)
+        service.createContingencyPlan(
+          itineraryId,
+          createContingencyPlanDto,
+          mockUser
+        )
       ).rejects.toThrow(ForbiddenException)
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
-        where: { id: createContingencyPlanDto.itineraryId },
+        where: { id: itineraryId },
         include: {
           access: {
             where: {
