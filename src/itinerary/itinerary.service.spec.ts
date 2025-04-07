@@ -1925,6 +1925,8 @@ describe('ItineraryService', () => {
             { blocks: [{ blockType: 'LOCATION' }, { blockType: 'LOCATION' }] },
             { blocks: [{ blockType: 'LOCATION' }] },
           ],
+          access: [],
+          pendingInvites: [],
         },
         {
           id: 'itinerary-2',
@@ -1933,6 +1935,8 @@ describe('ItineraryService', () => {
           isCompleted: true,
           startDate: new Date(),
           sections: [{ blocks: [{ blockType: 'LOCATION' }] }],
+          access: [],
+          pendingInvites: [],
         },
       ]
 
@@ -1940,10 +1944,10 @@ describe('ItineraryService', () => {
       mockPrismaService.itinerary.findMany.mockResolvedValue(mockItineraries)
 
       // Panggil fungsi yang akan diuji
-      const result = await service.findMyCompletedItineraries('user-1')
+      const result = await service.findMyCompletedItineraries('user-1', 1)
 
       // Cek hasilnya sesuai dengan ekspektasi
-      expect(result).toEqual([
+      expect(result.data).toEqual([
         {
           id: 'itinerary-1',
           userId: 'user-1',
@@ -1952,6 +1956,9 @@ describe('ItineraryService', () => {
           startDate: expect.any(Date),
           sections: expect.any(Array),
           locationCount: 3, // Total lokasi dalam itinerary ini
+          access: [],
+          pendingInvites: [],
+          invitedUsers: [],
         },
         {
           id: 'itinerary-2',
@@ -1961,28 +1968,47 @@ describe('ItineraryService', () => {
           startDate: expect.any(Date),
           sections: expect.any(Array),
           locationCount: 1, // Total lokasi dalam itinerary ini
+          access: [],
+          pendingInvites: [],
+          invitedUsers: [],
         },
       ])
 
       // Pastikan findMany terpanggil dengan benar
       expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1', isCompleted: true },
+        take: PAGINATION_LIMIT,
+        skip: (1 - 1) * PAGINATION_LIMIT,
         orderBy: { startDate: 'asc' },
         include: {
           sections: {
             include: {
               blocks: {
-                include: {
-                  routeFromPrevious: true,
-                  routeToNext: true,
-                },
                 where: { blockType: 'LOCATION' },
+                include: {
+                  routeToNext: true,
+                  routeFromPrevious: true,
+                },
               },
             },
           },
           tags: {
             include: {
               tag: true,
+            },
+          },
+          pendingInvites: true,
+          access: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  photoProfile: true,
+                  email: true,
+                },
+              },
             },
           },
         },
@@ -2035,33 +2061,21 @@ describe('ItineraryService', () => {
     })
 
     it('should return an empty array when there are no completed itineraries', async () => {
-      // Mock return value kosong
       mockPrismaService.itinerary.findMany.mockResolvedValue([])
 
-      const result = await service.findMyCompletedItineraries('user-2')
+      const result = await service.findMyCompletedItineraries('user-2', 1)
 
-      expect(result).toEqual([])
-      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
-        where: { userId: 'user-2', isCompleted: true },
-        orderBy: { startDate: 'asc' },
-        include: {
-          sections: {
-            include: {
-              blocks: {
-                include: {
-                  routeFromPrevious: true,
-                  routeToNext: true,
-                },
-                where: { blockType: 'LOCATION' },
-              },
-            },
-          },
-          tags: {
-            include: {
-              tag: true,
-            },
-          },
-        },
+      expect(result.data).toEqual([])
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalled()
+
+      const findManyCall = mockPrismaService.itinerary.findMany.mock.calls[0][0]
+      expect(findManyCall.where).toEqual({
+        userId: 'user-2',
+        isCompleted: true,
+      })
+      expect(findManyCall.orderBy).toEqual({ startDate: 'asc' })
+      expect(findManyCall.include.sections.include.blocks.where).toEqual({
+        blockType: 'LOCATION',
       })
     })
   })
@@ -2111,10 +2125,12 @@ describe('ItineraryService', () => {
 
       mockPrismaService.itinerary.findUnique.mockResolvedValue({
         id: itineraryId,
+        userId: mockUser.id,
       })
       mockPrismaService.itinerary.delete.mockResolvedValue({ id: itineraryId })
 
-      await expect(service.removeItinerary(itineraryId)).resolves.toEqual({
+      const result = await service.removeItinerary(itineraryId, mockUser)
+      expect(result).toEqual({
         id: itineraryId,
       })
 
@@ -2122,7 +2138,7 @@ describe('ItineraryService', () => {
         where: { id: itineraryId },
       })
 
-      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+      expect(mockPrismaService.itinerary.delete).toHaveBeenCalledWith({
         where: { id: itineraryId },
       })
     })
@@ -2132,14 +2148,45 @@ describe('ItineraryService', () => {
 
       mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
 
-      await expect(service.removeItinerary(itineraryId)).rejects.toThrow(
-        NotFoundException
-      )
+      await expect(
+        service.removeItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(NotFoundException)
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
       })
 
+      expect(mockPrismaService.itinerary.delete).not.toHaveBeenCalled()
+    })
+
+    it('should throw ForbiddenException when user is not the owner of the itinerary', async () => {
+      const itineraryId = 'ITN456'
+      const anotherUser = {
+        ...mockUser,
+        id: 'different-user-id',
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue({
+        id: itineraryId,
+        userId: 'original-owner-id',
+      })
+
+      jest
+        .spyOn(service, '_checkUpdateItineraryPermission')
+        .mockImplementation(() => {
+          throw new ForbiddenException(
+            'You do not have permission to update this itinerary'
+          )
+        })
+
+      await expect(
+        service.removeItinerary(itineraryId, anotherUser)
+      ).rejects.toThrow(ForbiddenException)
+
+      expect(service._checkUpdateItineraryPermission).toHaveBeenCalledWith(
+        itineraryId,
+        anotherUser
+      )
       expect(mockPrismaService.itinerary.delete).not.toHaveBeenCalled()
     })
   })

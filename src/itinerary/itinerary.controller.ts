@@ -111,9 +111,13 @@ export class ItineraryController {
   }
 
   @Get('me/completed')
-  async findMyCompletedItineraries(@GetUser() user: User) {
+  async findMyCompletedItineraries(
+    @GetUser() user: User,
+    @Query() paginationDto: PaginationDto
+  ) {
     const itinerary = await this.itineraryService.findMyCompletedItineraries(
-      user.id
+      user.id,
+      parseInt(paginationDto.page)
     )
     return this.responseUtil.response(
       {
@@ -196,15 +200,12 @@ export class ItineraryController {
   }
 
   @Delete(':id')
-  async removeItinerary(@Param('id') id: string) {
-    await this.itineraryService.removeItinerary(id)
-    return this.responseUtil.response(
-      {
-        statusCode: HttpStatus.OK,
-        message: 'Itinerary deleted successfully.',
-      },
-      null
-    )
+  async removeItinerary(@Param('id') id: string, @GetUser() user: User) {
+    await this.itineraryService.removeItinerary(id, user)
+    return this.responseUtil.response({
+      statusCode: HttpStatus.OK,
+      message: 'Itinerary deleted successfully.',
+    })
   }
 
   @Post(':id/invite')
