@@ -247,11 +247,47 @@ describe('AuthController', () => {
       controller.logout(mockResponse)
 
       expect(mockResponse.clearCookie).toHaveBeenCalledWith(
-        COOKIE_CONFIG.refreshToken.name
+        COOKIE_CONFIG.refreshToken.name,
+        { ...COOKIE_CONFIG.refreshToken.options }
       )
-      expect(mockResponse.clearCookie).toHaveBeenCalledWith(
-        COOKIE_CONFIG.accessToken.name
+    })
+  })
+
+  describe('getme', () => {
+    it('should return the authenticated user', () => {
+      const mockUser = {
+        id: 1,
+        email: 'test@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+      }
+
+      jest
+        .spyOn(responseUtil, 'response')
+        .mockImplementation((data, payload) => ({
+          ...data,
+          ...payload,
+          success: true,
+        }))
+
+      const result = controller.getme(mockUser as any)
+
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: 200,
+          message: 'User fetched successfully.',
+        },
+        {
+          user: mockUser,
+        }
       )
+
+      expect(result).toEqual({
+        statusCode: 200,
+        message: 'User fetched successfully.',
+        user: mockUser,
+        success: true,
+      })
     })
   })
 })
