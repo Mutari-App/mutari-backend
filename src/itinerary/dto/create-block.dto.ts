@@ -5,8 +5,10 @@ import {
   IsOptional,
   IsEnum,
   IsNumber,
+  IsObject,
 } from 'class-validator'
 import { BLOCK_TYPE } from '@prisma/client'
+import { CreateRouteDto } from './create-route.dto'
 
 export class CreateBlockDto {
   @IsEnum(BLOCK_TYPE)
@@ -43,4 +45,12 @@ export class CreateBlockDto {
   @IsString()
   @IsOptional()
   photoUrl?: string
+
+  @IsObject()
+  @IsOptional()
+  routeToNext?: CreateRouteDto
+
+  @IsObject()
+  @IsOptional()
+  routeFromPrevious?: CreateRouteDto
 }
