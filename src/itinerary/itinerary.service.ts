@@ -759,7 +759,7 @@ export class ItineraryService {
   }
 
   async findOne(id: string, user: User) {
-    await this._checkUpdateItineraryPermission(id, user)
+    await this._checkItineraryExists(id, user)
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id: id },
       include: {
