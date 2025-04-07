@@ -19,6 +19,7 @@ import { PaginationDto } from './dto/pagination.dto'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { Public } from 'src/common/decorators/public.decorator'
 import { InviteToItineraryDTO } from './dto/invite-to-itinerary.dto'
+import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
 
 @Controller('itineraries')
 export class ItineraryController {
@@ -266,6 +267,116 @@ export class ItineraryController {
       },
       {
         deletedParticipant,
+      }
+    )
+  }
+
+  @Get('/:itineraryId/contingencies')
+  async findContingencies(
+    @Param('itineraryId') itineraryId: string,
+    @GetUser() user: User
+  ) {
+    const contingencies = await this.itineraryService.findContingencyPlans(
+      itineraryId,
+      user
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Contingencies fetched successfully.',
+      },
+      {
+        contingencies,
+      }
+    )
+  }
+
+  @Get('/:itineraryId/contingencies/:contingencyId')
+  async findContingencyById(
+    @Param('itineraryId') itineraryId: string,
+    @Param('contingencyId') contingencyId: string,
+    @GetUser() user: User
+  ) {
+    const contingency = await this.itineraryService.findContingencyPlan(
+      itineraryId,
+      contingencyId,
+      user
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Contingency fetched successfully.',
+      },
+      {
+        contingency,
+      }
+    )
+  }
+
+  @Post('/:itineraryId/contingencies')
+  async createContingency(
+    @Param('itineraryId') itineraryId: string,
+    @GetUser() user: User,
+    @Body() createContigencyPlanDto: CreateContingencyPlanDto
+  ) {
+    const contingency = await this.itineraryService.createContingencyPlan(
+      itineraryId,
+      createContigencyPlanDto,
+      user
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Contingency created successfully.',
+      },
+      {
+        contingency,
+      }
+    )
+  }
+
+  @Patch('/:itineraryId/contingencies/select/:contingencyId')
+  async selectContingency(
+    @Param('itineraryId') itineraryId: string,
+    @Param('contingencyId') contingencyId: string,
+    @GetUser() user: User
+  ) {
+    const contingency = await this.itineraryService.selectContingencyPlan(
+      itineraryId,
+      contingencyId,
+      user
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Contingency selected successfully.',
+      },
+      {
+        contingency,
+      }
+    )
+  }
+
+  @Patch('/:itineraryId/contingencies/:contingencyId')
+  async updateContingency(
+    @Param('itineraryId') itineraryId: string,
+    @Param('contingencyId') contingencyId: string,
+    @GetUser() user: User,
+    @Body() updateContingencyPlanDto: CreateContingencyPlanDto
+  ) {
+    const contingency = await this.itineraryService.updateContingencyPlan(
+      itineraryId,
+      contingencyId,
+      updateContingencyPlanDto,
+      user
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Contingency updated successfully.',
+      },
+      {
+        contingency,
       }
     )
   }
