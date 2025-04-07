@@ -759,7 +759,7 @@ export class ItineraryService {
   }
 
   async findOne(id: string, user: User) {
-    await this._checkUpdateItineraryPermission(id, user)
+    await this._checkItineraryExists(id, user)
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id: id },
       include: {
@@ -821,7 +821,6 @@ export class ItineraryService {
     if (!itinerary) {
       throw new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
     }
-    console.log(itinerary)
     if (itinerary.userId !== userId) {
       throw new ForbiddenException(
         'Not authorized to invite users to this itinerary'
@@ -984,6 +983,9 @@ export class ItineraryService {
                 routeFromPrevious: true,
               },
             },
+          },
+          orderBy: {
+            sectionNumber: 'asc',
           },
         },
       },
@@ -1212,27 +1214,26 @@ export class ItineraryService {
     }
     this._validateItinerarySections(data)
 
-    const existingContingency = await this.prisma.contingencyPlan.findUnique({
-      where: { id: contingencyPlanId, itineraryId: itinerary.id },
-      include: {
-        sections: {
-          where: {
-            contingencyPlanId: contingencyPlanId,
-          },
-          include: {
-            blocks: {
-              include: {
-                routeToNext: true,
-                routeFromPrevious: true,
+    // Update itinerary with id
+    return this.prisma.$transaction(async (prisma) => {
+      const existingContingency = await this.prisma.contingencyPlan.findUnique({
+        where: { id: contingencyPlanId, itineraryId: itinerary.id },
+        include: {
+          sections: {
+            where: {
+              contingencyPlanId: contingencyPlanId,
+            },
+            include: {
+              blocks: {
+                include: {
+                  routeToNext: true,
+                  routeFromPrevious: true,
+                },
               },
             },
           },
         },
-      },
-    })
-
-    // Update itinerary with id
-    return this.prisma.$transaction(async (prisma) => {
+      })
       // Delete existing routes first
       for (const section of existingContingency.sections) {
         for (const block of section.blocks) {
@@ -1243,10 +1244,6 @@ export class ItineraryService {
           }
         }
       }
-      console.log(
-        'existing sectionnumber',
-        existingContingency.sections[0].sectionNumber
-      )
 
       // Update the itinerary
       const updatedContingency = await prisma.contingencyPlan.update({
@@ -1259,7 +1256,10 @@ export class ItineraryService {
                 ...section,
                 sectionNumber:
                   section.sectionNumber +
-                  existingContingency.sections[0].sectionNumber * 1000,
+                  Math.floor(
+                    existingContingency.sections[0].sectionNumber / 1000
+                  ) *
+                    1000,
                 itineraryId: itinerary.id,
               })
             ),
@@ -1284,7 +1284,7 @@ export class ItineraryService {
         for (const sectionDto of data.sections) {
           if (sectionDto.blocks && sectionDto.blocks.length > 0) {
             const createdSection = updatedContingency.sections.find(
-              (s) => s.sectionNumber === sectionDto.sectionNumber
+              (s) => s.sectionNumber % 1000 === sectionDto.sectionNumber
             )
 
             if (!createdSection) continue
