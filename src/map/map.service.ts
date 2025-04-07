@@ -1,26 +1,32 @@
-import { Injectable } from '@nestjs/common'
-import { CreateMapDto } from './dto/create-map.dto'
-import { UpdateMapDto } from './dto/update-map.dto'
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
+import axios from 'axios'
 
 @Injectable()
 export class MapService {
-  create(createMapDto: CreateMapDto) {
-    return 'This action adds a new map'
-  }
+  private readonly googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY
 
-  findAll() {
-    return `This action returns all map`
-  }
+  async getPlaceDetails(placeId: string) {
+    if (!placeId) {
+      throw new HttpException('Place ID is required', HttpStatus.BAD_REQUEST)
+    }
 
-  findOne(id: number) {
-    return `This action returns a #${id} map`
-  }
+    const url = `https://maps.googleapis.com/maps/api/place/details/json`
 
-  update(id: number, updateMapDto: UpdateMapDto) {
-    return `This action updates a #${id} map`
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} map`
+    try {
+      const response = await axios.get(url, {
+        params: {
+          placeid: placeId,
+          fields:
+            'name,photos,international_phone_number,vicinity,rating,user_ratings_total,website',
+          key: this.googleMapsApiKey,
+        },
+      })
+      return response.data
+    } catch (_) {
+      throw new HttpException(
+        'Failed to fetch data',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      )
+    }
   }
 }

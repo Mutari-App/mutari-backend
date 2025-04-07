@@ -5,7 +5,7 @@ export const COOKIE_CONFIG = {
     name: 'refreshToken',
     options: {
       path: '/',
-      httpOnly: true,
+      httpOnly: false,
       sameSite: 'none' as const,
       secure: true,
       maxAge: ms(
@@ -17,7 +17,7 @@ export const COOKIE_CONFIG = {
     name: 'accessToken',
     options: {
       path: '/',
-      httpOnly: true,
+      httpOnly: false,
       sameSite: 'none' as const,
       secure: true,
       maxAge: ms(
