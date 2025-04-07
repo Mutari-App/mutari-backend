@@ -133,5 +133,8 @@
       ".entity.ts$",
       ".guard.ts$"
     ]
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
