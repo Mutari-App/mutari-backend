@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { ItineraryService } from './itinerary.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
-import { BLOCK_TYPE, Tag, User } from '@prisma/client'
+import { BLOCK_TYPE, Tag, TRANSPORT_MODE, User } from '@prisma/client'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { PAGINATION_LIMIT } from 'src/common/constants/itinerary.constant'
 import {
@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common'
 import { EmailService } from 'src/email/email.service'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
+import { UpdateContingencyPlanDto } from './dto/update-contingency-plan.dto'
 
 describe('ItineraryService', () => {
   let service: ItineraryService
@@ -44,7 +45,14 @@ describe('ItineraryService', () => {
     },
     contingencyPlan: {
       create: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
     },
+    route: {
+      create: jest.fn(),
+    },
+    _checkItineraryExists: jest.fn(),
+    _checkContingencyCount: jest.fn(),
   }
 
   const mockUser: User = {
@@ -737,7 +745,10 @@ describe('ItineraryService', () => {
             create: [{ tag: { connect: { id: 'tag-123' } } }],
           },
           sections: {
-            deleteMany: { itineraryId: 'itinerary-123' },
+            deleteMany: {
+              itineraryId: 'itinerary-123',
+              contingencyPlanId: null,
+            },
             create: [
               {
                 sectionNumber: 1,
@@ -764,7 +775,12 @@ describe('ItineraryService', () => {
         include: {
           sections: {
             include: {
-              blocks: true,
+              blocks: {
+                include: {
+                  routeFromPrevious: true,
+                  routeToNext: true,
+                },
+              },
             },
           },
           tags: {
@@ -873,7 +889,10 @@ describe('ItineraryService', () => {
             create: undefined,
           },
           sections: {
-            deleteMany: { itineraryId: 'itinerary-123' },
+            deleteMany: {
+              itineraryId: 'itinerary-123',
+              contingencyPlanId: null,
+            },
             create: [
               {
                 sectionNumber: 1,
@@ -888,7 +907,12 @@ describe('ItineraryService', () => {
         include: {
           sections: {
             include: {
-              blocks: true,
+              blocks: {
+                include: {
+                  routeFromPrevious: true,
+                  routeToNext: true,
+                },
+              },
             },
           },
           tags: {
@@ -1005,7 +1029,10 @@ describe('ItineraryService', () => {
             create: undefined,
           },
           sections: {
-            deleteMany: { itineraryId: 'itinerary-123' },
+            deleteMany: {
+              itineraryId: 'itinerary-123',
+              contingencyPlanId: null,
+            },
             create: [
               {
                 sectionNumber: 1,
@@ -1032,7 +1059,12 @@ describe('ItineraryService', () => {
         include: {
           sections: {
             include: {
-              blocks: true,
+              blocks: {
+                include: {
+                  routeFromPrevious: true,
+                  routeToNext: true,
+                },
+              },
             },
           },
           tags: {
@@ -1444,6 +1476,9 @@ describe('ItineraryService', () => {
         where: { id: '123' },
         include: {
           sections: {
+            where: {
+              contingencyPlanId: null,
+            },
             include: {
               blocks: {
                 include: {
@@ -1482,6 +1517,9 @@ describe('ItineraryService', () => {
         where: { id: '123' },
         include: {
           sections: {
+            where: {
+              contingencyPlanId: null,
+            },
             include: {
               blocks: {
                 include: {
@@ -2579,195 +2617,256 @@ describe('ItineraryService', () => {
     })
   })
 
-  describe('createContingencyPlan', () => {
-    it('should create a contingency plan with sections and blocks', async () => {
-      // Arrange
-      const createContingencyPlanDto: CreateContingencyPlanDto = {
-        itineraryId: 'itinerary-123',
-        title: 'Contingency Plan Title',
-        description: 'Contingency Plan Description',
-        sections: [
-          {
-            sectionNumber: 1,
-            title: 'Section 1',
-            blocks: [
-              {
-                blockType: 'LOCATION',
-                title: 'Block 1',
-                description: 'Block 1 Description',
-                startTime: new Date('2025-03-10T14:00:00Z'),
-                endTime: new Date('2025-03-10T15:00:00Z'),
-                location: 'Location 1',
-                price: 100,
-                photoUrl: 'photo1.jpg',
-                position: 0,
+  describe('findContingencyPlans', () => {
+    it('should return all contingency plans for the given itinerary', async () => {
+      const itineraryId = 'itinerary-123'
+      const mockContingencyPlans = [
+        {
+          id: 'contingency-plan-123',
+          title: 'Contingency Plan 1',
+          sections: [],
+        },
+        {
+          id: 'contingency-plan-456',
+          title: 'Contingency Plan 2',
+          sections: [],
+        },
+      ]
+
+      mockPrismaService.contingencyPlan.findMany.mockResolvedValue(
+        mockContingencyPlans
+      )
+
+      const result = await service.findContingencyPlans(itineraryId, mockUser)
+      expect(result).toEqual(mockContingencyPlans)
+    })
+  })
+
+  it('should create a contingency plan with sections and blocks', async () => {
+    // Arrange
+    const createContingencyPlanDto: CreateContingencyPlanDto = {
+      title: 'Plan B', // This will be overridden by the service
+      description: 'Backup plan',
+      sections: [
+        {
+          sectionNumber: 1,
+          title: 'Section 1',
+          blocks: [
+            {
+              blockType: 'LOCATION',
+              title: 'Block 1',
+              description: 'Block 1 Description',
+              startTime: new Date('2025-03-10T14:00:00Z'),
+              endTime: new Date('2025-03-10T15:00:00Z'),
+              location: 'Location 1',
+              price: 100,
+              photoUrl: 'photo1.jpg',
+              position: 0,
+              routeToNext: {
+                sourceBlockId: 'source-block-1',
+                destinationBlockId: 'destination-block-1',
+                distance: 5000,
+                duration: 900,
+                polyline: 'abc123',
+                transportMode: TRANSPORT_MODE.DRIVE,
               },
-            ],
-          },
-        ],
-      }
+            },
+          ],
+        },
+      ],
+    }
 
-      const mockItinerary = {
-        id: 'itinerary-123',
-        userId: mockUser.id,
-      }
+    const mockItinerary = {
+      id: 'itinerary-123',
+      userId: mockUser.id,
+    }
 
-      const expectedContingencyPlan = {
-        id: 'contingency-plan-123',
-        itineraryId: 'itinerary-123',
-        title: createContingencyPlanDto.title,
+    const contingencyCount = 0
+
+    const expectedContingencyPlan = {
+      id: 'contingency-plan-123',
+      itineraryId: 'itinerary-123',
+      title: 'Plan B', // Service determines this based on contingencyCount
+      description: 'Backup plan',
+      sections: [
+        {
+          id: 'section-1',
+          sectionNumber: 1001, // Modified by the service (sectionNumber + (contingencyCount + 1) * 1000)
+          title: 'Section 1',
+          blocks: [
+            {
+              id: 'block-1',
+              position: 0,
+              blockType: 'LOCATION',
+              title: 'Block 1',
+              description: 'Block 1 Description',
+              startTime: new Date('2025-03-10T14:00:00Z'),
+              endTime: new Date('2025-03-10T15:00:00Z'),
+              location: 'Location 1',
+              price: 100,
+              photoUrl: 'photo1.jpg',
+              routeToNext: null,
+              routeFromPrevious: null,
+            },
+          ],
+        },
+      ],
+    }
+
+    // Expected result with mapped section numbers
+    const expectedResult = {
+      ...expectedContingencyPlan,
+      sections: [
+        {
+          ...expectedContingencyPlan.sections[0],
+          sectionNumber: 1, // Mapped back to original (sectionNumber % 1000)
+        },
+      ],
+    }
+
+    mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+    mockPrismaService.contingencyPlan.count.mockResolvedValue(contingencyCount)
+    mockPrismaService.contingencyPlan.create.mockResolvedValue(
+      expectedContingencyPlan
+    )
+    mockPrismaService.route.create.mockResolvedValue({
+      id: 'route-1',
+      sourceBlockId: 'block-1',
+      destinationBlockId: 'block-2',
+      distance: 5000,
+      duration: 900,
+      polyline: 'abc123',
+      transportMode: TRANSPORT_MODE.DRIVE,
+    })
+    mockPrismaService.$transaction.mockImplementation(async (callback) => {
+      const result = await callback(mockPrismaService)
+      return result
+    })
+
+    // Act
+    const result = await service.createContingencyPlan(
+      mockItinerary.id,
+      createContingencyPlanDto,
+      mockUser
+    )
+
+    expect(mockPrismaService.$transaction).toHaveBeenCalled()
+    expect(mockPrismaService.contingencyPlan.create).toHaveBeenCalledWith({
+      data: {
+        itineraryId: mockItinerary.id,
+        title: 'Plan B', // Determined by CONTINGENCY_TITLE[contingencyCount]
         description: createContingencyPlanDto.description,
-        sections: [
-          {
-            id: 'section-1',
-            sectionNumber: 1,
-            title: 'Section 1',
-            blocks: [
-              {
-                id: 'block-1',
-                position: 0,
-                blockType: 'LOCATION',
-                title: 'Block 1',
-                description: 'Block 1 Description',
-                startTime: new Date('2025-03-10T14:00:00Z'),
-                endTime: new Date('2025-03-10T15:00:00Z'),
-                location: 'Location 1',
-                price: 100,
-                photoUrl: 'photo1.jpg',
+        sections: {
+          create: [
+            {
+              sectionNumber: 1001, // 1 + (0 + 1) * 1000
+              title: 'Section 1',
+              itinerary: {
+                connect: { id: mockItinerary.id },
               },
-            ],
+              blocks: {
+                create: [
+                  {
+                    position: 0,
+                    blockType: 'LOCATION',
+                    title: 'Block 1',
+                    description: 'Block 1 Description',
+                    startTime: new Date('2025-03-10T14:00:00Z'),
+                    endTime: new Date('2025-03-10T15:00:00Z'),
+                    location: 'Location 1',
+                    price: 100,
+                    photoUrl: 'photo1.jpg',
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+      include: {
+        sections: {
+          include: {
+            blocks: {
+              include: {
+                routeToNext: true,
+                routeFromPrevious: true,
+              },
+            },
           },
-        ],
-      }
+        },
+      },
+    })
 
-      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
-      mockPrismaService.contingencyPlan.create.mockResolvedValue(
-        expectedContingencyPlan
-      )
-      mockPrismaService.$transaction.mockImplementation(async (callback) =>
-        callback(mockPrismaService)
-      )
+    expect(result).toEqual(expectedResult)
+  })
 
-      // Act
-      const result = await service.createContingencyPlan(
+  it('should throw NotFoundException if itinerary does not exist', async () => {
+    const itineraryId = 'non-existent-itinerary'
+
+    // Arrange
+    const createContingencyPlanDto: CreateContingencyPlanDto = {
+      title: 'Contingency Plan Title',
+      description: 'Contingency Plan Description',
+      sections: [],
+    }
+
+    mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+    // Act & Assert
+    await expect(
+      service.createContingencyPlan(
+        itineraryId,
         createContingencyPlanDto,
         mockUser
       )
-
-      // Assert
-      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
-        where: { id: createContingencyPlanDto.itineraryId },
-        include: {
-          access: {
-            where: {
-              userId: mockUser.id,
-            },
+    ).rejects.toThrow(NotFoundException)
+    expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+      where: { id: itineraryId },
+      include: {
+        access: {
+          where: {
+            userId: mockUser.id,
           },
         },
-      })
-      expect(mockPrismaService.$transaction).toHaveBeenCalled()
-      expect(mockPrismaService.contingencyPlan.create).toHaveBeenCalledWith({
-        data: {
-          itineraryId: mockItinerary.id,
-          title: createContingencyPlanDto.title,
-          description: createContingencyPlanDto.description,
-          sections: {
-            create: [
-              {
-                sectionNumber: 1,
-                title: 'Section 1',
-                itinerary: {
-                  connect: { id: mockItinerary.id },
-                },
-                blocks: {
-                  create: [
-                    {
-                      position: 0,
-                      blockType: 'LOCATION',
-                      title: 'Block 1',
-                      description: 'Block 1 Description',
-                      startTime: new Date('2025-03-10T14:00:00Z'),
-                      endTime: new Date('2025-03-10T15:00:00Z'),
-                      location: 'Location 1',
-                      price: 100,
-                      photoUrl: 'photo1.jpg',
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        },
-        include: {
-          sections: {
-            include: {
-              blocks: true,
-            },
-          },
-        },
-      })
-      expect(result).toEqual(expectedContingencyPlan)
+      },
     })
+    expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+  })
 
-    it('should throw NotFoundException if itinerary does not exist', async () => {
-      // Arrange
-      const createContingencyPlanDto: CreateContingencyPlanDto = {
-        itineraryId: 'non-existent-itinerary',
-        title: 'Contingency Plan Title',
-        description: 'Contingency Plan Description',
-        sections: [],
-      }
+  it('should throw ForbiddenException if user does not own the itinerary', async () => {
+    const itineraryId = 'non-existent-itinerary'
+    // Arrange
+    const createContingencyPlanDto: CreateContingencyPlanDto = {
+      title: 'Contingency Plan Title',
+      description: 'Contingency Plan Description',
+      sections: [],
+    }
 
-      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+    const mockItinerary = {
+      id: 'itinerary-123',
+      userId: 'another-user-id',
+      access: [],
+    }
 
-      // Act & Assert
-      await expect(
-        service.createContingencyPlan(createContingencyPlanDto, mockUser)
-      ).rejects.toThrow(NotFoundException)
-      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
-        where: { id: createContingencyPlanDto.itineraryId },
-        include: {
-          access: {
-            where: {
-              userId: mockUser.id,
-            },
+    mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+    // Act & Assert
+    await expect(
+      service.createContingencyPlan(
+        itineraryId,
+        createContingencyPlanDto,
+        mockUser
+      )
+    ).rejects.toThrow(ForbiddenException)
+    expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+      where: { id: itineraryId },
+      include: {
+        access: {
+          where: {
+            userId: mockUser.id,
           },
         },
-      })
-      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+      },
     })
-
-    it('should throw ForbiddenException if user does not own the itinerary', async () => {
-      // Arrange
-      const createContingencyPlanDto: CreateContingencyPlanDto = {
-        itineraryId: 'itinerary-123',
-        title: 'Contingency Plan Title',
-        description: 'Contingency Plan Description',
-        sections: [],
-      }
-
-      const mockItinerary = {
-        id: 'itinerary-123',
-        userId: 'another-user-id',
-        access: [],
-      }
-
-      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
-      // Act & Assert
-      await expect(
-        service.createContingencyPlan(createContingencyPlanDto, mockUser)
-      ).rejects.toThrow(ForbiddenException)
-      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
-        where: { id: createContingencyPlanDto.itineraryId },
-        include: {
-          access: {
-            where: {
-              userId: mockUser.id,
-            },
-          },
-        },
-      })
-      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
-    })
+    expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
   })
 })
