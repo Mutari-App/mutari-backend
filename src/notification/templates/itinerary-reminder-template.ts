@@ -1,7 +1,21 @@
+import { REMINDER_OPTION } from '@prisma/client'
+const formatReminderOption = (reminderOption: REMINDER_OPTION): string => {
+  switch (reminderOption) {
+    case REMINDER_OPTION.ONE_DAY_BEFORE:
+      return '1 hari'
+    case REMINDER_OPTION.ONE_HOUR_BEFORE:
+      return '1 jam'
+    case REMINDER_OPTION.TEN_MINUTES_BEFORE:
+      return '10 menit'
+    default:
+      return 'tidak diketahui'
+  }
+}
+
 export const itineraryReminderTemplate = (
   firstName: string,
   tripName: string,
-  timeLeft: string
+  reminderOption: REMINDER_OPTION
 ): string => {
   return `<!DOCTYPE html>
     <html>
@@ -71,7 +85,7 @@ export const itineraryReminderTemplate = (
                             <img src="https://res.cloudinary.com/mutari/image/upload/logo-with-name.png" alt="Mutari Logo">
                     </div>
                     <h3>Halo, ${firstName}!</h3>
-                    <p>Perjalanan anda <b>${tripName}</b> akan mulai dalam waktu ${timeLeft}.</p>
+                    <p>Perjalanan anda <b>${tripName}</b> akan mulai dalam waktu ${formatReminderOption(reminderOption)}.</p>
     
                     <div class="support">
                             <p>Butuh bantuan? Hubungi kami di <a href="mailto:support@mutari.id">support@mutari.id</a></p>
