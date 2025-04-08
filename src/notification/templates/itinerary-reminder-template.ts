@@ -1,4 +1,10 @@
 import { REMINDER_OPTION } from '@prisma/client'
+
+/**
+ * Converts a REMINDER_OPTION enum value to its Indonesian text equivalent
+ * @param reminderOption The reminder option enum value
+ * @returns The Indonesian text representation of the reminder time
+ */
 const formatReminderOption = (reminderOption: REMINDER_OPTION): string => {
   switch (reminderOption) {
     case REMINDER_OPTION.ONE_DAY_BEFORE:
