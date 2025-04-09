@@ -10,6 +10,7 @@ export class GenerateFeedbackDto {
       sectionNumber: number
       title: string
       blocks: {
+        id: string
         blockType: string
         title?: string
         description?: string
