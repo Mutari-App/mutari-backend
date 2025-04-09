@@ -1,29 +1,44 @@
 enum DURATION_TYPE {
-  HOUR
-  DAY
+    HOUR
+    DAY
 }
 
 enum TICKET_STATUS {
-  PENDING
-  CONFIRMED
-  CANCELED
+    PENDING
+    CONFIRMED
+    CANCELED
 }
 
 enum PAYMENT_STATUS {
-  UNPAID
-  PAID
-  REFUNDED
+    UNPAID
+    PAID
+    REFUNDED
 }
 
 enum TITLE {
-  MR
-  MRS
-  MS
+    MR
+    MRS
+    MS
 }
 
 enum BLOCK_TYPE {
-  LOCATION
-  NOTE
+    LOCATION
+    NOTE
+}
+
+enum REMINDER_OPTION {
+    NONE
+    TEN_MINUTES_BEFORE
+    ONE_HOUR_BEFORE
+    ONE_DAY_BEFORE
+}
+
+enum TRANSPORT_MODE {
+    DRIVE
+    WALK
+    BICYCLE
+    TRANSIT
+    TWO_WHEELER
 }
 
 enum REMINDER_OPTION {

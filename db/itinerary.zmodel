@@ -4,67 +4,79 @@ import 'tour'
 import 'enum'
 
 model Itinerary extends Base {
-  userId       String
-  title        String
-  description  String?
-  coverImage   String?
-  startDate    DateTime  @db.Timestamptz()
-  endDate      DateTime  @db.Timestamptz()
-  isPublished  Boolean   @default(false)
-  isCompleted  Boolean   @default(false)
-  
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sections     Section[]
-  tags         ItineraryTag[]
-  access       ItineraryAccess[]
-  pendingInvites PendingItineraryInvite[]
-  likes        ItineraryLike[]
-  tours        Tour[]
-  contingencyPlans ContingencyPlan[]
-  reminder    ItineraryReminder?
+    userId           String
+    title            String
+    description      String?
+    coverImage       String?
+    startDate        DateTime                 @db.Timestamptz()
+    endDate          DateTime                 @db.Timestamptz()
+    isPublished      Boolean                  @default(false)
+    isCompleted      Boolean                  @default(false)
+
+    user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    sections         Section[]
+    tags             ItineraryTag[]
+    access           ItineraryAccess[]
+    pendingInvites   PendingItineraryInvite[]
+    likes            ItineraryLike[]
+    tours            Tour[]
+    contingencyPlans ContingencyPlan[]
+    reminder         ItineraryReminder?
 }
 
 model ContingencyPlan extends Base {
-  itineraryId String
-  title       String
-  description String?
-  isSelected  Boolean   @default(false)
-  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  sections    Section[]
-  
-  @@unique([itineraryId, title])
+    itineraryId String
+    title       String
+    description String?
+    isSelected  Boolean   @default(false)
+    itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+    sections    Section[]
+
+    @@unique([itineraryId, title])
 }
 
 model Section extends Base {
-  itineraryId       String
-  sectionNumber     Int
-  title             String    @default("Hari ke-1")
-  contingencyPlanId String?
-  
-  itinerary     Itinerary       @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  plan          ContingencyPlan? @relation(fields: [contingencyPlanId], references: [id], onDelete: SetNull)
-  blocks        Block[]
+    itineraryId       String
+    sectionNumber     Int
+    title             String           @default("Hari ke-1")
+    contingencyPlanId String?
 
-  @@unique([itineraryId, sectionNumber])
+    itinerary         Itinerary        @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+    plan              ContingencyPlan? @relation(fields: [contingencyPlanId], references: [id], onDelete: SetNull)
+    blocks            Block[]
+
+    @@unique([itineraryId, sectionNumber])
 }
 
 model Block extends Base {
-  sectionId    String
-  position     Int
-  blockType    BLOCK_TYPE
-  title        String?
-  description  String?
-  startTime    DateTime?    @db.Timestamptz()
-  endTime      DateTime?    @db.Timestamptz()
-  location     String?
-  price        Int?         @default(0)
-  photoUrl     String?
-  
-  section           Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  routeToNext       Route?  @relation("SourceBlock")
-  routeFromPrevious Route?  @relation("DestinationBlock")
+    sectionId         String
+    position          Int
+    blockType         BLOCK_TYPE
+    title             String?
+    description       String?
+    startTime         DateTime?  @db.Timestamptz()
+    endTime           DateTime?  @db.Timestamptz()
+    location          String?
+    price             Int?       @default(0)
+    photoUrl          String?
 
-  @@unique([sectionId, position])
+    section           Section    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+    routeToNext       Route?     @relation("SourceBlock")
+    routeFromPrevious Route?     @relation("DestinationBlock")
+
+    @@unique([sectionId, position])
+}
+
+model Route extends Base {
+    sourceBlockId      String          @unique
+    destinationBlockId String          @unique
+    distance           Int      // Distance in meters
+    duration           Int      // Duration in seconds
+    polyline           String?
+    transportMode      TRANSPORT_MODE? @default(DRIVE)
+
+    sourceBlock        Block           @relation("SourceBlock", fields: [sourceBlockId], references: [id], onDelete: Cascade)
+    destinationBlock   Block           @relation("DestinationBlock", fields: [destinationBlockId], references: [id], onDelete: Cascade)
 }
 
 model Route extends Base {
@@ -80,50 +92,61 @@ model Route extends Base {
 }
 
 model Tag extends Base {
-  name         String    @unique
-  description  String?
-  iconUrl      String?
-  
-  itineraryTags ItineraryTag[]
+    name          String         @unique
+    description   String?
+    iconUrl       String?
+
+    itineraryTags ItineraryTag[]
 }
 
 model ItineraryTag extends Id, CreatedAt {
-  itineraryId  String
-  tagId        String
-  
-  itinerary    Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  tag          Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+    itineraryId String
+    tagId       String
 
-  @@unique([itineraryId, tagId])
+    itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+    tag         Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+    @@unique([itineraryId, tagId])
 }
 
 model ItineraryAccess extends Id, CreatedAt {
-  itineraryId  String
-  userId       String
-  
-  itinerary    Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    itineraryId String
+    userId      String
 
-  @@unique([itineraryId, userId])
+    itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+    user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([itineraryId, userId])
 }
 
 model PendingItineraryInvite extends Base {
-  itineraryId  String
-  email        String    @unique
-  
-  itinerary    Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+    itineraryId String
+    email       String    @unique
 
-  @@unique([itineraryId, email])
+    itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+
+    @@unique([itineraryId, email])
 }
 
 model ItineraryLike extends Id, CreatedAt {
-  itineraryId  String
-  userId       String
-  
-  itinerary    Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    itineraryId String
+    userId      String
 
-  @@unique([itineraryId, userId])
+    itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+    user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([itineraryId, userId])
+}
+
+model ItineraryReminder extends Base {
+    itineraryId    String          @unique
+    email          String
+    recipientName  String?
+    tripName       String?
+    reminderOption REMINDER_OPTION
+    startDate      DateTime        @db.Timestamptz() @default(now())
+
+    itinerary      Itinerary       @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
 }
 
 model ItineraryReminder extends Base {
