@@ -68,6 +68,7 @@ describe('GeminiService', () => {
             blocks: [
               {
                 blockType: 'LOCATION',
+                id: '341e6d18-7658-44e4-91c6-0e3dc4cde13d',
                 title: 'Tokyo Tower',
                 startTime: '10:00',
                 endTime: '12:00',
@@ -75,6 +76,7 @@ describe('GeminiService', () => {
               },
               {
                 blockType: 'NOTE',
+                id: '12345678-7658-44e4-91c6-0e3dc4cde13d',
                 description: 'Remember to bring your camera!',
               },
             ],
