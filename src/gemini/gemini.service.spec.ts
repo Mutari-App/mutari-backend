@@ -68,13 +68,15 @@ describe('GeminiService', () => {
             blocks: [
               {
                 blockType: 'LOCATION',
+                id: '341e6d18-7658-44e4-91c6-0e3dc4cde13d',
                 title: 'Tokyo Tower',
-                startTime: '10:00',
-                endTime: '12:00',
+                startTime: '2025-05-01T10:00:00Z',
+                endTime: '2025-05-01T12:00:00Z',
                 price: 500,
               },
               {
                 blockType: 'NOTE',
+                id: '12345678-7658-44e4-91c6-0e3dc4cde13d',
                 description: 'Remember to bring your camera!',
               },
             ],
@@ -87,8 +89,8 @@ describe('GeminiService', () => {
       const mockJson = JSON.stringify([
         {
           target: {
-            sectionIndex: 0,
-            blockIndex: 0,
+            sectionIndex: 1,
+            blockId: '12345678-7658-44e4-91c6-0e3dc4cde13d',
             blockType: 'LOCATION',
             field: 'price',
           },
@@ -98,7 +100,7 @@ describe('GeminiService', () => {
       ])
 
       const mockResponse = {
-        text: () => mockJson,
+        text: () => Promise.resolve(mockJson),
       }
 
       mockGenerateContent.mockResolvedValueOnce({
@@ -111,8 +113,8 @@ describe('GeminiService', () => {
         feedback: [
           {
             target: {
-              sectionIndex: 0,
-              blockIndex: 0,
+              sectionIndex: 1,
+              blockId: '12345678-7658-44e4-91c6-0e3dc4cde13d',
               blockType: 'LOCATION',
               field: 'price',
             },
@@ -129,8 +131,8 @@ describe('GeminiService', () => {
         [
           {
             "target": {
-              "sectionIndex": 0,
-              "blockIndex": 1,
+              "sectionIndex": 1,
+              "blockId": "12345678-7658-44e4-91c6-0e3dc4cde13d",
               "blockType": "NOTE",
               "field": "description"
             },
@@ -141,7 +143,7 @@ describe('GeminiService', () => {
       `
 
       const mockResponse = {
-        text: () => wrappedJson,
+        text: () => Promise.resolve(wrappedJson),
       }
 
       mockGenerateContent.mockResolvedValueOnce({
@@ -150,6 +152,7 @@ describe('GeminiService', () => {
 
       const result = await service.generateFeedback(dto)
 
+      expect(result.feedback).toHaveLength(1)
       expect(result.feedback[0].target.blockType).toBe('NOTE')
       expect(result.feedback[0].suggestion).toContain('Bisa ditambahkan')
     })

@@ -151,9 +151,11 @@ describe('ItineraryController', () => {
     it('should throw NotFoundException if itinerary is not found', async () => {
       mockItineraryService.findOne.mockResolvedValue(null)
 
-      await expect(controller.findOne('INVALID_ID', mockUser)).rejects.toThrow(
-        new NotFoundException('Itinerary with ID INVALID_ID not found')
-      )
+      const result = await controller.findOne('INVALID_ID', mockUser)
+
+      expect(result).toEqual({
+        statusCode: HttpStatus.NOT_FOUND,
+      })
     })
 
     it('should throw ForbiddenException if user is not authorized', async () => {

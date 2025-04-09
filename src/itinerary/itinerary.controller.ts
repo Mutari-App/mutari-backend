@@ -134,8 +134,13 @@ export class ItineraryController {
   async findOne(@Param('id') id: string, @GetUser() user: User) {
     const itinerary = await this.itineraryService.findOne(id, user)
     if (!itinerary) {
-      throw new NotFoundException(`Itinerary with ID ${id} not found`)
+      // throw new NotFoundException(`Itinerary with ID ${id} not found`)
+      return {
+        statusCode: HttpStatus.NOT_FOUND,
+      }
     }
+
+    console.log(itinerary)
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.OK,

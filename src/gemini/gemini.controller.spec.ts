@@ -64,6 +64,7 @@ describe('GeminiController', () => {
             blocks: [
               {
                 blockType: 'activity',
+                id: '341e6d18-7658-44e4-91c6-0e3dc4cde13d',
                 title: 'Visit Sensoji Temple',
                 description: 'Explore Asakusa and its surroundings',
                 startTime: '09:00',
