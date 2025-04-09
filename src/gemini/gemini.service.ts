@@ -123,7 +123,6 @@ export class GeminiService {
         const jsonString = feedbackText.slice(jsonStart, jsonEnd + 1)
         feedbackArray = JSON.parse(jsonString)
       }
-      console.log('Feedback:', feedbackArray)
 
       return { feedback: feedbackArray }
     } catch (error) {
