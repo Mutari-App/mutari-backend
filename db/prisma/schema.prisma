@@ -9,50 +9,35 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 enum DURATION_TYPE {
-  HOUR
-  DAY
+    HOUR
+    DAY
 }
 
 enum TICKET_STATUS {
-  PENDING
-  CONFIRMED
-  CANCELED
+    PENDING
+    CONFIRMED
+    CANCELED
 }
 
 enum PAYMENT_STATUS {
-  UNPAID
-  PAID
-  REFUNDED
+    UNPAID
+    PAID
+    REFUNDED
 }
 
 enum TITLE {
-  MR
-  MRS
-  MS
+    MR
+    MRS
+    MS
 }
 
 enum BLOCK_TYPE {
-  LOCATION
-  NOTE
-}
-
-enum REMINDER_OPTION {
-  NONE
-  TEN_MINUTES_BEFORE
-  ONE_HOUR_BEFORE
-  ONE_DAY_BEFORE
-}
-
-enum TRANSPORT_MODE {
-  DRIVE
-  WALK
-  BICYCLE
-  TRANSIT
-  TWO_WHEELER
+    LOCATION
+    NOTE
 }
 
 enum REMINDER_OPTION {
@@ -225,7 +210,7 @@ model Section {
     plan              ContingencyPlan? @relation(fields: [contingencyPlanId], references: [id], onDelete: SetNull)
     blocks            Block[]
 
-  @@unique([itineraryId, sectionNumber])
+    @@unique([itineraryId, sectionNumber])
 }
 
 model Block {
@@ -246,21 +231,7 @@ model Block {
     routeToNext       Route?     @relation("SourceBlock")
     routeFromPrevious Route?     @relation("DestinationBlock")
 
-  @@unique([sectionId, position])
-}
-
-model Route {
-  updatedAt          DateTime        @updatedAt() @db.Timestamptz()
-  createdAt          DateTime        @default(now()) @db.Timestamptz()
-  id                 String          @id() @unique() @default(uuid())
-  sourceBlockId      String          @unique()
-  destinationBlockId String          @unique()
-  distance           Int
-  duration           Int
-  polyline           String?
-  transportMode      TRANSPORT_MODE? @default(DRIVE)
-  sourceBlock        Block           @relation("SourceBlock", fields: [sourceBlockId], references: [id], onDelete: Cascade)
-  destinationBlock   Block           @relation("DestinationBlock", fields: [destinationBlockId], references: [id], onDelete: Cascade)
+    @@unique([sectionId, position])
 }
 
 model Route {
@@ -295,7 +266,7 @@ model ItineraryTag {
     itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
     tag         Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
-  @@unique([itineraryId, tagId])
+    @@unique([itineraryId, tagId])
 }
 
 model ItineraryAccess {
@@ -306,7 +277,7 @@ model ItineraryAccess {
     itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
     user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([itineraryId, userId])
+    @@unique([itineraryId, userId])
 }
 
 model PendingItineraryInvite {
@@ -317,7 +288,7 @@ model PendingItineraryInvite {
     email       String    @unique()
     itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
 
-  @@unique([itineraryId, email])
+    @@unique([itineraryId, email])
 }
 
 model ItineraryLike {

@@ -79,18 +79,6 @@ model Route extends Base {
     destinationBlock   Block           @relation("DestinationBlock", fields: [destinationBlockId], references: [id], onDelete: Cascade)
 }
 
-model Route extends Base {
-  sourceBlockId      String   @unique
-  destinationBlockId String   @unique
-  distance           Int      // Distance in meters
-  duration           Int      // Duration in seconds
-  polyline           String?
-  transportMode      TRANSPORT_MODE? @default(DRIVE)
-  
-  sourceBlock        Block    @relation("SourceBlock", fields: [sourceBlockId], references: [id], onDelete: Cascade)
-  destinationBlock   Block    @relation("DestinationBlock", fields: [destinationBlockId], references: [id], onDelete: Cascade)
-}
-
 model Tag extends Base {
     name          String         @unique
     description   String?
@@ -147,15 +135,4 @@ model ItineraryReminder extends Base {
     startDate      DateTime        @db.Timestamptz() @default(now())
 
     itinerary      Itinerary       @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-}
-
-model ItineraryReminder extends Base {
-  itineraryId  String @unique
-  email        String
-  recipientName String?
-  tripName String?
-  reminderOption REMINDER_OPTION
-  startDate DateTime  @db.Timestamptz() @default(now())
-  
-  itinerary    Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
 }
