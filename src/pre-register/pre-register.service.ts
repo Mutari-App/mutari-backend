@@ -314,6 +314,7 @@ export class PreRegisterService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
+        id: true,
         email: true,
         referralCode: true,
         _count: {
@@ -327,6 +328,7 @@ export class PreRegisterService {
       { statusCode: HttpStatus.OK, message: 'Success get Referral Code' },
       {
         user: {
+          id: user.id,
           email: user.email,
           referralCode: user.referralCode,
           usedCount: user._count.referrals, // Jumlah orang yang menggunakan referral code ini

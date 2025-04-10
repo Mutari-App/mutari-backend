@@ -25,6 +25,12 @@ export class GeminiService {
   ): Promise<{ prompt: string }> {
     const { title, description, sections } = itineraryData
 
+    const formatter = new Intl.DateTimeFormat('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Jakarta',
+    })
+
     const sectionSummaries = sections
       .map((section, sectionIndex) => {
         if (!section.blocks || section.blocks.length === 0) {
@@ -32,11 +38,19 @@ export class GeminiService {
         }
 
         const activities = section.blocks
-          .map((block, blockIndex) => {
+          .map((block) => {
+            const id = block.id
             if (block.blockType === 'LOCATION') {
-              return `Hari ${sectionIndex + 1}, Block ${blockIndex}: LOCATION - "${block.title}" (${block.startTime || '-'} sampai ${block.endTime || '-'}) Rp${block.price || 0}`
+              const start = block.startTime
+                ? formatter.format(new Date(block.startTime))
+                : '-'
+              const end = block.endTime
+                ? formatter.format(new Date(block.endTime))
+                : '-'
+
+              return `Hari ${sectionIndex + 1}, Block ID ${id}: LOCATION - "${block.title}" (${start} sampai ${end}) Rp${block.price || 0} - "${block.description}"`
             } else if (block.blockType === 'NOTE') {
-              return `Hari ${sectionIndex + 1}, Block ${blockIndex}: NOTE - "${block.description}"`
+              return `Hari ${sectionIndex + 1}, Block ID ${id}: NOTE - "${block.description}"`
             }
             return ''
           })
@@ -64,9 +78,9 @@ export class GeminiService {
         {
           "target": {
             "sectionIndex": number,
-            "blockIndex": number,
+            "blockId": string,
             "blockType": "LOCATION" atau "NOTE",
-            "field": "startTime" | "endTime" | "price" | "description" | "title" (opsional)
+            "field": "time" | "price" | "description" | "title" (opsional)
           },
           "suggestion": "saran perbaikan maksimal 1-2 kalimat"
         }
@@ -76,7 +90,7 @@ export class GeminiService {
         {
           "target": {
             "sectionIndex": 1,
-            "blockIndex": 1,
+            "blockId": BLK-123,
             "blockType": "LOCATION",
             "field": "price"
           },
