@@ -49,6 +49,11 @@ describe('ItineraryController', () => {
     inviteToItinerary: jest.fn(),
     acceptItineraryInvitation: jest.fn(),
     removeUserFromItinerary: jest.fn(),
+    findContingencyPlans: jest.fn(),
+    findContingencyPlan: jest.fn(),
+    createContingencyPlan: jest.fn(),
+    selectContingencyPlan: jest.fn(),
+    updateContingencyPlan: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -1589,6 +1594,402 @@ describe('ItineraryController', () => {
       await expect(
         controller.removeUserFromItinerary(itineraryId, userId, mockUser)
       ).rejects.toThrow(mockError)
+    })
+  })
+
+  describe('findContingencies', () => {
+    it('should return contingency plans for an itinerary', async () => {
+      const itineraryId = 'itinerary-123'
+      const mockContingencies = [
+        {
+          id: 'contingency-1',
+          title: 'Plan B',
+          description: 'Alternative plan if weather is bad',
+        },
+        {
+          id: 'contingency-2',
+          title: 'Plan C',
+          description: 'Alternative plan if flights are cancelled',
+        },
+      ]
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Contingencies fetched successfully.',
+        contingencies: mockContingencies,
+      }
+
+      mockItineraryService.findContingencyPlans = jest
+        .fn()
+        .mockResolvedValue(mockContingencies)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findContingencies(itineraryId, mockUser)
+
+      expect(mockItineraryService.findContingencyPlans).toHaveBeenCalledWith(
+        itineraryId,
+        mockUser
+      )
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Contingencies fetched successfully.',
+        },
+        { contingencies: mockContingencies }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should throw NotFoundException if itinerary not found', async () => {
+      const itineraryId = 'non-existent-id'
+      const mockError = new NotFoundException(
+        `Itinerary with ID ${itineraryId} not found`
+      )
+
+      mockItineraryService.findContingencyPlans = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.findContingencies(itineraryId, mockUser)
+      ).rejects.toThrow(NotFoundException)
+      expect(mockItineraryService.findContingencyPlans).toHaveBeenCalledWith(
+        itineraryId,
+        mockUser
+      )
+    })
+
+    it('should throw ForbiddenException if user is not authorized', async () => {
+      const itineraryId = 'itinerary-123'
+      const mockError = new ForbiddenException(
+        'Not authorized to access this itinerary'
+      )
+
+      mockItineraryService.findContingencyPlans = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.findContingencies(itineraryId, mockUser)
+      ).rejects.toThrow(ForbiddenException)
+    })
+  })
+
+  describe('findContingencyById', () => {
+    it('should return a specific contingency plan', async () => {
+      const itineraryId = 'itinerary-123'
+      const contingencyId = 'contingency-1'
+      const mockContingency = {
+        id: contingencyId,
+        title: 'Plan B',
+        description: 'Alternative plan if weather is bad',
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Contingency fetched successfully.',
+        contingency: mockContingency,
+      }
+
+      mockItineraryService.findContingencyPlan = jest
+        .fn()
+        .mockResolvedValue(mockContingency)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findContingencyById(
+        itineraryId,
+        contingencyId,
+        mockUser
+      )
+
+      expect(mockItineraryService.findContingencyPlan).toHaveBeenCalledWith(
+        itineraryId,
+        contingencyId,
+        mockUser
+      )
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Contingency fetched successfully.',
+        },
+        { contingency: mockContingency }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should throw NotFoundException if contingency plan not found', async () => {
+      const itineraryId = 'itinerary-123'
+      const contingencyId = 'non-existent-id'
+      const mockError = new NotFoundException(
+        `Contingency with ID ${contingencyId} not found in itinerary ${itineraryId}`
+      )
+
+      mockItineraryService.findContingencyPlan = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.findContingencyById(itineraryId, contingencyId, mockUser)
+      ).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  describe('createContingency', () => {
+    it('should create a contingency plan and return a formatted response', async () => {
+      const itineraryId = 'itinerary-123'
+      const createContingencyPlanDto: CreateItineraryDto = {
+        title: 'Bad Weather Plan',
+        description: 'What to do if it rains',
+        startDate: undefined,
+        endDate: undefined,
+        sections: [],
+      }
+
+      const mockCreatedContingency = {
+        id: 'contingency-new',
+        itineraryId,
+        title: createContingencyPlanDto.title,
+        description: createContingencyPlanDto.description,
+        isSelected: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.CREATED,
+        message: 'Contingency created successfully.',
+        contingency: mockCreatedContingency,
+      }
+
+      mockItineraryService.createContingencyPlan = jest
+        .fn()
+        .mockResolvedValue(mockCreatedContingency)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.createContingency(
+        itineraryId,
+        mockUser,
+        createContingencyPlanDto
+      )
+
+      expect(mockItineraryService.createContingencyPlan).toHaveBeenCalledWith(
+        itineraryId,
+        createContingencyPlanDto,
+        mockUser
+      )
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.CREATED,
+          message: 'Contingency created successfully.',
+        },
+        { contingency: mockCreatedContingency }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should throw NotFoundException if itinerary not found', async () => {
+      const itineraryId = 'non-existent-id'
+      const createContingencyPlanDto: CreateItineraryDto = {
+        title: 'Bad Weather Plan',
+        description: 'What to do if it rains',
+        startDate: undefined,
+        endDate: undefined,
+        sections: [],
+      }
+
+      const mockError = new NotFoundException(
+        `Itinerary with ID ${itineraryId} not found`
+      )
+
+      mockItineraryService.createContingencyPlan = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.createContingency(
+          itineraryId,
+          mockUser,
+          createContingencyPlanDto
+        )
+      ).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  describe('selectContingency', () => {
+    it('should select a contingency plan and return a formatted response', async () => {
+      const itineraryId = 'itinerary-123'
+      const contingencyId = 'contingency-1'
+
+      const mockSelectedContingency = {
+        id: contingencyId,
+        itineraryId,
+        title: 'Plan B',
+        description: 'Alternative plan if weather is bad',
+        isSelected: true,
+        updatedAt: new Date(),
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Contingency selected successfully.',
+        contingency: mockSelectedContingency,
+      }
+
+      mockItineraryService.selectContingencyPlan = jest
+        .fn()
+        .mockResolvedValue(mockSelectedContingency)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.selectContingency(
+        itineraryId,
+        contingencyId,
+        mockUser
+      )
+
+      expect(mockItineraryService.selectContingencyPlan).toHaveBeenCalledWith(
+        itineraryId,
+        contingencyId,
+        mockUser
+      )
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Contingency selected successfully.',
+        },
+        { contingency: mockSelectedContingency }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should throw NotFoundException if contingency not found', async () => {
+      const itineraryId = 'itinerary-123'
+      const contingencyId = 'non-existent-id'
+
+      const mockError = new NotFoundException(
+        `Contingency with ID ${contingencyId} not found in itinerary ${itineraryId}`
+      )
+
+      mockItineraryService.selectContingencyPlan = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.selectContingency(itineraryId, contingencyId, mockUser)
+      ).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  describe('updateContingency', () => {
+    it('should update a contingency plan and return a formatted response', async () => {
+      const itineraryId = 'itinerary-123'
+      const contingencyId = 'contingency-1'
+      const updateContingencyPlanDto: CreateItineraryDto = {
+        title: 'Updated Plan B',
+        description: 'Updated alternative plan for bad weather',
+        startDate: undefined,
+        endDate: undefined,
+        sections: [],
+      }
+
+      const mockUpdatedContingency = {
+        id: contingencyId,
+        itineraryId,
+        title: updateContingencyPlanDto.title,
+        description: updateContingencyPlanDto.description,
+        isSelected: false,
+        updatedAt: new Date(),
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Contingency updated successfully.',
+        contingency: mockUpdatedContingency,
+      }
+
+      mockItineraryService.updateContingencyPlan = jest
+        .fn()
+        .mockResolvedValue(mockUpdatedContingency)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.updateContingency(
+        itineraryId,
+        contingencyId,
+        mockUser,
+        updateContingencyPlanDto
+      )
+
+      expect(mockItineraryService.updateContingencyPlan).toHaveBeenCalledWith(
+        itineraryId,
+        contingencyId,
+        updateContingencyPlanDto,
+        mockUser
+      )
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Contingency updated successfully.',
+        },
+        { contingency: mockUpdatedContingency }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should throw NotFoundException if contingency not found', async () => {
+      const itineraryId = 'itinerary-123'
+      const contingencyId = 'non-existent-id'
+      const updateContingencyPlanDto: CreateItineraryDto = {
+        title: 'Updated Plan',
+        description: 'Updated description',
+        startDate: undefined,
+        endDate: undefined,
+        sections: [],
+      }
+
+      const mockError = new NotFoundException(
+        `Contingency with ID ${contingencyId} not found in itinerary ${itineraryId}`
+      )
+
+      mockItineraryService.updateContingencyPlan = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.updateContingency(
+          itineraryId,
+          contingencyId,
+          mockUser,
+          updateContingencyPlanDto
+        )
+      ).rejects.toThrow(NotFoundException)
+    })
+
+    it('should throw ForbiddenException if user is not authorized', async () => {
+      const itineraryId = 'itinerary-123'
+      const contingencyId = 'contingency-1'
+      const updateContingencyPlanDto: CreateItineraryDto = {
+        title: 'Updated Plan',
+        description: 'Updated description',
+        startDate: undefined,
+        endDate: undefined,
+        sections: [],
+      }
+
+      const mockError = new ForbiddenException(
+        'Not authorized to update contingency plans for this itinerary'
+      )
+
+      mockItineraryService.updateContingencyPlan = jest
+        .fn()
+        .mockRejectedValue(mockError)
+
+      await expect(
+        controller.updateContingency(
+          itineraryId,
+          contingencyId,
+          mockUser,
+          updateContingencyPlanDto
+        )
+      ).rejects.toThrow(ForbiddenException)
     })
   })
 })

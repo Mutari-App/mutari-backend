@@ -1,3 +1,5 @@
+import { BLOCK_TYPE } from '@prisma/client'
+
 export class GenerateFeedbackDto {
   itineraryData: {
     title: string
@@ -11,7 +13,7 @@ export class GenerateFeedbackDto {
       title: string
       blocks: {
         id: string
-        blockType: string
+        blockType: BLOCK_TYPE
         title?: string
         description?: string
         startTime?: string

@@ -12,6 +12,7 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common'
+import { CronJob } from 'cron'
 
 describe('NotificationService', () => {
   let service: NotificationService
@@ -554,6 +555,36 @@ describe('NotificationService', () => {
       expect(() => {
         service.cancelScheduledEmail(emailSchedule)
       }).toThrow(NotFoundException)
+    })
+  })
+
+  describe('_formatReminderOption', () => {
+    it('should return "1 hari" for ONE_DAY_BEFORE option', () => {
+      const result = service._formatReminderOption(
+        REMINDER_OPTION.ONE_DAY_BEFORE
+      )
+      expect(result).toEqual('1 hari')
+    })
+
+    it('should return "1 jam" for ONE_HOUR_BEFORE option', () => {
+      const result = service._formatReminderOption(
+        REMINDER_OPTION.ONE_HOUR_BEFORE
+      )
+      expect(result).toEqual('1 jam')
+    })
+
+    it('should return "10 menit" for TEN_MINUTES_BEFORE option', () => {
+      const result = service._formatReminderOption(
+        REMINDER_OPTION.TEN_MINUTES_BEFORE
+      )
+      expect(result).toEqual('10 menit')
+    })
+
+    it('should return "tidak diketahui" for unknown option', () => {
+      const result = service._formatReminderOption(
+        'UNKNOWN_OPTION' as REMINDER_OPTION
+      )
+      expect(result).toEqual('tidak diketahui')
     })
   })
 })

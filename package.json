@@ -131,7 +131,10 @@
       ".module.ts$",
       ".dto.ts$",
       ".entity.ts$",
-      ".guard.ts$"
+      ".guard.ts$",
+      "instrument.ts",
+      ".constant.ts$",
+      ".template.ts$"
     ]
   },
   "engines": {
