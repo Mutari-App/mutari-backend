@@ -52,7 +52,6 @@ export class GeminiService {
             } else if (block.blockType === 'NOTE') {
               return `Hari ${sectionIndex + 1}, Block ID ${id}: NOTE - "${block.description}"`
             }
-            return ''
           })
           .filter(Boolean)
           .join('\n')
