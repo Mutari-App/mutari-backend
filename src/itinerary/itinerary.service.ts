@@ -450,6 +450,9 @@ export class ItineraryService {
         orderBy: { startDate: 'asc' },
         include: {
           sections: {
+            where: {
+              contingencyPlanId: null,
+            },
             include: {
               blocks: {
                 where: { blockType: 'LOCATION' },
