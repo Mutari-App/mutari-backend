@@ -606,6 +606,280 @@ describe('ItineraryService', () => {
       })
       expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
     })
+
+    it('should not create route when routeToNext is undefined or null', async () => {
+      // Arrange
+      const createItineraryDto: CreateItineraryDto = {
+        title: 'Trip without Routes',
+        description: 'Testing blocks without routeToNext',
+        startDate: new Date('2025-03-10'),
+        endDate: new Date('2025-03-15'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'First Location',
+                position: 0,
+                // No routeToNext property
+              },
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Second Location',
+                position: 1,
+              },
+            ],
+          },
+        ],
+      }
+
+      const expectedItinerary = {
+        id: 'itinerary-no-routes',
+        userId: mockUser.id,
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                id: 'block-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'First Location',
+              },
+              {
+                id: 'block-2',
+                position: 1,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Second Location',
+              },
+            ],
+          },
+        ],
+        tags: [],
+      }
+
+      mockPrismaService.itinerary.create.mockResolvedValue(expectedItinerary)
+
+      // Act
+      const result = await service.createItinerary(createItineraryDto, mockUser)
+
+      // Assert
+      expect(result).toEqual(expectedItinerary)
+      expect(mockPrismaService.route.create).not.toHaveBeenCalled()
+    })
+
+    it('should create routes across multiple sections', async () => {
+      // Arrange
+      const createItineraryDto: CreateItineraryDto = {
+        title: 'Multi-Section Trip',
+        description: 'Testing routes across sections',
+        startDate: new Date('2025-03-10'),
+        endDate: new Date('2025-03-15'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 1',
+                position: 0,
+                routeToNext: {
+                  distance: 1000,
+                  duration: 300,
+                  polyline: 'polyline_1',
+                  transportMode: TRANSPORT_MODE.WALK,
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 2',
+                position: 1,
+              },
+            ],
+          },
+          {
+            sectionNumber: 2,
+            title: 'Day 2',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 3',
+                position: 0,
+                routeToNext: {
+                  distance: 2000,
+                  duration: 600,
+                  polyline: 'polyline_2',
+                  transportMode: TRANSPORT_MODE.TRANSIT,
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 4',
+                position: 1,
+              },
+            ],
+          },
+        ],
+      }
+
+      const expectedItinerary = {
+        id: 'itinerary-multi-section',
+        userId: mockUser.id,
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                id: 'block-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 1',
+              },
+              {
+                id: 'block-2',
+                position: 1,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 2',
+              },
+            ],
+          },
+          {
+            id: 'section-2',
+            sectionNumber: 2,
+            title: 'Day 2',
+            blocks: [
+              {
+                id: 'block-3',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 3',
+              },
+              {
+                id: 'block-4',
+                position: 1,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 4',
+              },
+            ],
+          },
+        ],
+        tags: [],
+      }
+
+      mockPrismaService.itinerary.create.mockResolvedValue(expectedItinerary)
+
+      // Act
+      const result = await service.createItinerary(createItineraryDto, mockUser)
+
+      // Assert
+      expect(result).toEqual(expectedItinerary)
+      expect(mockPrismaService.route.create).toHaveBeenCalledTimes(2)
+      expect(mockPrismaService.route.create).toHaveBeenCalledWith({
+        data: {
+          sourceBlockId: 'block-1',
+          destinationBlockId: 'block-2',
+          distance: 1000,
+          duration: 300,
+          polyline: 'polyline_1',
+          transportMode: TRANSPORT_MODE.WALK,
+        },
+      })
+      expect(mockPrismaService.route.create).toHaveBeenCalledWith({
+        data: {
+          sourceBlockId: 'block-3',
+          destinationBlockId: 'block-4',
+          distance: 2000,
+          duration: 600,
+          polyline: 'polyline_2',
+          transportMode: TRANSPORT_MODE.TRANSIT,
+        },
+      })
+    })
+
+    it('should handle non-consecutive block positions when creating routes', async () => {
+      // Arrange
+      const createItineraryDto: CreateItineraryDto = {
+        title: 'Trip with Position Gaps',
+        description: 'Testing blocks with position gaps',
+        startDate: new Date('2025-03-10'),
+        endDate: new Date('2025-03-15'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'First Location',
+                position: 0,
+                routeToNext: {
+                  distance: 5000,
+                  duration: 900,
+                  polyline: 'polyline_data',
+                  transportMode: TRANSPORT_MODE.DRIVE,
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Second Location',
+                position: 2, // Position gap (skipping position 1)
+              },
+            ],
+          },
+        ],
+      }
+
+      // Simulate blocks being created with non-consecutive positions
+      const itineraryWithGaps = {
+        id: 'itinerary-position-gaps',
+        userId: mockUser.id,
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                id: 'block-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'First Location',
+              },
+              {
+                id: 'block-2',
+                position: 2, // Position gap
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Second Location',
+              },
+            ],
+          },
+        ],
+        tags: [],
+      }
+
+      mockPrismaService.itinerary.create.mockResolvedValue(itineraryWithGaps)
+
+      // Act
+      const result = await service.createItinerary(createItineraryDto, mockUser)
+
+      // Assert
+      expect(result).toEqual(itineraryWithGaps)
+      // No route should be created because nextBlock will be undefined (position 1 is skipped)
+      expect(mockPrismaService.route.create).not.toHaveBeenCalled()
+    })
   })
 
   describe('updateItinerary', () => {
