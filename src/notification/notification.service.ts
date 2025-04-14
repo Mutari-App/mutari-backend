@@ -2,14 +2,13 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  OnModuleInit,
   BadRequestException,
 } from '@nestjs/common'
 import { EmailService } from '../email/email.service'
 import { UpdateItineraryReminderDto } from './dto/update-itinerary-reminder.dto'
 import { SchedulerRegistry } from '@nestjs/schedule'
 import { CronJob } from 'cron'
-import { itineraryReminderTemplate } from './templates/itinerary-reminder-template'
+import { itineraryReminderTemplate } from './templates/itinerary-reminder.template'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { ItineraryReminder, REMINDER_OPTION } from '@prisma/client'
 import { CreateItineraryReminderDto } from './dto/create-itinerary-reminder.dto'
@@ -44,6 +43,19 @@ export class NotificationService {
     }
   }
 
+  _formatReminderOption(reminderOption: REMINDER_OPTION): string {
+    switch (reminderOption) {
+      case REMINDER_OPTION.ONE_DAY_BEFORE:
+        return '1 hari'
+      case REMINDER_OPTION.ONE_HOUR_BEFORE:
+        return '1 jam'
+      case REMINDER_OPTION.TEN_MINUTES_BEFORE:
+        return '10 menit'
+      default:
+        return 'tidak diketahui'
+    }
+  }
+
   scheduleEmail(data: EmailScheduleDto) {
     const scheduledDate = this._calculateScheduleDate(
       data.startDate,
@@ -58,7 +70,7 @@ export class NotificationService {
         itineraryReminderTemplate(
           data.recipientName,
           data.tripName,
-          data.reminderOption
+          this._formatReminderOption(data.reminderOption)
         )
       )
     })
