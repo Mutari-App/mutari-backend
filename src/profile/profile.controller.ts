@@ -12,6 +12,15 @@ export class ProfileController {
   @HttpCode(HttpStatus.OK)
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    return null
+    const profile = await this.profileService.findOne(id)
+    return this.responseUtil.response(
+      {
+        message: 'Profile retrieved successfully',
+        statusCode: HttpStatus.OK,
+      },
+      {
+        profile,
+      }
+    )
   }
 }
