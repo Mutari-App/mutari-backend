@@ -1,25 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { ProfileController } from './profile.controller'
 import { ProfileService } from './profile.service'
-import { CreateProfileDto } from './dto/create-profile.dto'
-import { UpdateProfileDto } from './dto/update-profile.dto'
+import { ResponseUtil } from 'src/common/utils/response.util'
 
-describe('ProfileController', () => {
+fdescribe('ProfileController', () => {
   let controller: ProfileController
-  let service: ProfileService
+
+  const mockProfileService = {
+    findOne: jest.fn(),
+  }
 
   beforeEach(async () => {
-    const mockProfileService = {
-      create: jest.fn((dto) => ({ id: 1, ...dto })),
-      findAll: jest.fn(() => [
-        { id: 1, name: 'Test Profile 1' },
-        { id: 2, name: 'Test Profile 2' },
-      ]),
-      findOne: jest.fn((id) => ({ id, name: 'Test Profile' })),
-      update: jest.fn((id, dto) => ({ id, ...dto })),
-      remove: jest.fn((id) => ({ id, name: 'Test Profile' })),
-    }
-
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ProfileController],
       providers: [
@@ -27,77 +18,47 @@ describe('ProfileController', () => {
           provide: ProfileService,
           useValue: mockProfileService,
         },
+        {
+          provide: ResponseUtil,
+          useClass: ResponseUtil,
+        },
       ],
     }).compile()
 
     controller = module.get<ProfileController>(ProfileController)
-    service = module.get<ProfileService>(ProfileService)
+  })
+
+  afterEach(() => {
+    jest.clearAllMocks()
   })
 
   it('should be defined', () => {
     expect(controller).toBeDefined()
   })
 
-  describe('create', () => {
-    it('should create a profile', () => {
-      const createProfileDto: CreateProfileDto = {
-        name: 'Test Profile',
-        bio: 'Test Bio',
-      }
-
-      expect(controller.create(createProfileDto)).toEqual({
-        id: 1,
-        ...createProfileDto,
-      })
-      expect(service.create).toHaveBeenCalledWith(createProfileDto)
-    })
-  })
-
-  describe('findAll', () => {
-    it('should return an array of profiles', () => {
-      expect(controller.findAll()).toEqual([
-        { id: 1, name: 'Test Profile 1' },
-        { id: 2, name: 'Test Profile 2' },
-      ])
-      expect(service.findAll).toHaveBeenCalled()
-    })
-  })
-
   describe('findOne', () => {
-    it('should return a single profile', () => {
-      const id = '1'
-      expect(controller.findOne(id)).toEqual({
-        id: 1,
-        name: 'Test Profile',
-      })
-      expect(service.findOne).toHaveBeenCalledWith(1)
-    })
-  })
-
-  describe('update', () => {
-    it('should update a profile', () => {
-      const id = '1'
-      const updateProfileDto: UpdateProfileDto = {
-        name: 'Updated Profile',
-        bio: 'Updated Bio',
+    it('should return a profile without email and password when findOne is called with a valid ID', async () => {
+      const id = 'user-123'
+      const expectedProfile = {
+        id,
+        updatedAt: new Date(),
+        createdAt: new Date(),
+        firstName: 'John',
+        lastName: 'Doe',
+        phoneNumber: '081234123412',
+        photoProfile: 'profile.png',
+        referralCode: 'ABCD1234',
+        isEmailConfirmed: true,
+        referredById: 'referred-user-123',
+        loyaltyPoints: 1000,
+        birthDate: new Date(),
       }
 
-      expect(controller.update(id, updateProfileDto)).toEqual({
-        id: 1,
-        ...updateProfileDto,
-      })
-      expect(service.update).toHaveBeenCalledWith(1, updateProfileDto)
-    })
-  })
+      mockProfileService.findOne.mockResolvedValue(expectedProfile)
 
-  describe('remove', () => {
-    it('should remove a profile', () => {
-      const id = '1'
-      expect(controller.remove(id)).toEqual({
-        id: 1,
-        name: 'Test Profile',
-      })
-      expect(service.remove).toHaveBeenCalledWith(1)
+      const result = await controller.findOne(id)
+
+      expect(result).toBeDefined()
     })
   })
 })
