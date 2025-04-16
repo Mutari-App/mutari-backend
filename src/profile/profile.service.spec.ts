@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { ProfileService } from './profile.service'
 import { PrismaService } from 'src/prisma/prisma.service'
+import { NotFoundException } from '@nestjs/common'
 
 describe('ProfileService', () => {
   let service: ProfileService
@@ -61,6 +62,20 @@ describe('ProfileService', () => {
       })
       expect(result).not.toHaveProperty('email')
       expect(result).not.toHaveProperty('password')
+    })
+
+    it('should throw NotFoundException if user is not found', async () => {
+      // Arrange
+      const id = 'nonexistent-id'
+      mockPrismaService.user.findUnique.mockResolvedValue(null)
+
+      // Act & Assert
+      await expect(service.findOne(id)).rejects.toThrow(
+        new NotFoundException(`User with id ${id} not found`)
+      )
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { id },
+      })
     })
   })
 })
