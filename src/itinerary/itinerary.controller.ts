@@ -5,7 +5,6 @@ import {
   Post,
   Body,
   HttpStatus,
-  NotFoundException,
   Param,
   Patch,
   Delete,
@@ -384,6 +383,41 @@ export class ItineraryController {
       {
         contingency,
       }
+    )
+  }
+
+  @Get('search')
+  async searchItineraries(
+    @Query('q') query: string = '',
+    @Query('page') page: number = 1,
+    @Query('tags') tags?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string
+  ) {
+    let filters = []
+
+    if (tags) {
+      const tagIds = tags.split(',')
+      filters.push(
+        `tags.tag.id IN [${tagIds.map((id) => `"${id}"`).join(', ')}]`
+      )
+    }
+
+    if (startDate) {
+      filters.push(`startDate >= ${new Date(startDate).toISOString()}`)
+    }
+
+    if (endDate) {
+      filters.push(`endDate <= ${new Date(endDate).toISOString()}`)
+    }
+
+    const filtersString = filters.length > 0 ? filters.join(' AND ') : undefined
+
+    return this.itineraryService.searchItineraries(
+      query,
+      page,
+      undefined,
+      filtersString
     )
   }
 }
