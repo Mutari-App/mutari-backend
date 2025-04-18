@@ -1335,4 +1335,31 @@ export class ItineraryService {
       return { ...updatedContingency, sections: mappedSections }
     })
   }
+
+  async publishItinerary(itineraryId: string, userId: string) {
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: itineraryId },
+    })
+
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
+    }
+
+    if (itinerary.userId !== userId) {
+      throw new ForbiddenException('Not authorized to publish this itinerary')
+    }
+
+    if (itinerary.isPublished) {
+      throw new BadRequestException('Itinerary is already published')
+    }
+
+    const updatedItinerary = await this.prisma.itinerary.update({
+      where: { id: itineraryId },
+      data: {
+        isPublished: true,
+      },
+    })
+
+    return { updatedItinerary }
+  }
 }
