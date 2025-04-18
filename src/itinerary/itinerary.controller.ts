@@ -140,7 +140,6 @@ export class ItineraryController {
       }
     }
 
-    console.log(itinerary)
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.OK,
@@ -384,6 +383,22 @@ export class ItineraryController {
       {
         contingency,
       }
+    )
+  }
+
+  @Patch(':itineraryId/publish')
+  async publishItinerary(@Param('id') id: string, @GetUser() user: User) {
+    const publishedItinerary = await this.itineraryService.publishItinerary(
+      id,
+      user.id
+    )
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary published successfully',
+      },
+      publishedItinerary
     )
   }
 }
