@@ -13,10 +13,12 @@ import {
 import { EmailService } from 'src/email/email.service'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
 import { UpdateContingencyPlanDto } from './dto/update-contingency-plan.dto'
+import { MeilisearchService } from 'src/meilisearch/meilisearch.service'
 
 describe('ItineraryService', () => {
   let service: ItineraryService
   let prismaService: PrismaService
+  let meilisearchService: MeilisearchService
 
   const mockPrismaService = {
     $transaction: jest
@@ -56,6 +58,13 @@ describe('ItineraryService', () => {
     },
     _checkItineraryExists: jest.fn(),
     _checkContingencyCount: jest.fn(),
+  }
+
+  const mockMeilisearchService = {
+    syncItineraries: jest.fn(),
+    addOrUpdateItinerary: jest.fn(),
+    deleteItinerary: jest.fn(),
+    searchItineraries: jest.fn(),
   }
 
   const mockUser: User = {
@@ -106,11 +115,16 @@ describe('ItineraryService', () => {
             sendEmail: jest.fn(), // Mock any methods used in the service
           },
         },
+        {
+          provide: MeilisearchService,
+          useValue: mockMeilisearchService,
+        },
       ],
     }).compile()
 
     service = module.get<ItineraryService>(ItineraryService)
     prismaService = module.get<PrismaService>(PrismaService)
+    meilisearchService = module.get<MeilisearchService>(MeilisearchService)
 
     mockPrismaService.$transaction.mockReset()
     mockPrismaService.$transaction.mockImplementation((arg) => {
@@ -3788,6 +3802,148 @@ describe('ItineraryService', () => {
           mockUser
         )
       ).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  describe('searchItineraries', () => {
+    it('should search itineraries with default parameters', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [
+          { id: 'itinerary-1', title: 'Trip to Japan' },
+          { id: 'itinerary-2', title: 'Beach Vacation' },
+        ],
+        estimatedTotalHits: 2,
+      }
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with default parameters
+      const result = await service.searchItineraries()
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        '',
+        {
+          limit: 20,
+          offset: 0,
+          filter: undefined,
+          sort: ['startDate:asc'],
+        }
+      )
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: mockSearchResults.hits,
+        metadata: {
+          total: 2,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should search itineraries with custom pagination', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [{ id: 'itinerary-3', title: 'Mountain Trek' }],
+        estimatedTotalHits: 5,
+      }
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with custom pagination
+      const result = await service.searchItineraries('mountain', 2, 4)
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        'mountain',
+        {
+          limit: 4,
+          offset: 4, // (page 2 - 1) * limit 4
+          filter: undefined,
+          sort: ['startDate:asc'],
+        }
+      )
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: mockSearchResults.hits,
+        metadata: {
+          total: 5,
+          page: 2,
+          totalPages: 2, // ceil(5/4) = 2
+        },
+      })
+    })
+
+    it('should search itineraries with filters', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [
+          { id: 'itinerary-4', title: 'Summer Beach Trip', isCompleted: false },
+        ],
+        estimatedTotalHits: 1,
+      }
+
+      const filters = { isCompleted: false, tags: ['beach'] }
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with filters
+      const result = await service.searchItineraries('beach', 1, 20, filters)
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        'beach',
+        {
+          limit: 20,
+          offset: 0,
+          filter: filters,
+          sort: ['startDate:asc'],
+        }
+      )
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: mockSearchResults.hits,
+        metadata: {
+          total: 1,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should handle search with no results', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [],
+        estimatedTotalHits: 0,
+      }
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method
+      const result = await service.searchItineraries('nonexistent')
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: [],
+        metadata: {
+          total: 0,
+          page: 1,
+          totalPages: 1, // Should be at least 1
+        },
+      })
     })
   })
 })
