@@ -15,12 +15,14 @@ import { EmailService } from 'src/email/email.service'
 import { invitationTemplate } from './templates/invitation-template'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
 import { UpdateContingencyPlanDto } from './dto/update-contingency-plan.dto'
+import { MeilisearchService } from '../meilisearch/meilisearch.service'
 
 @Injectable()
 export class ItineraryService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly emailService: EmailService
+    private readonly emailService: EmailService,
+    private readonly meilisearchService: MeilisearchService
   ) {}
   async createItinerary(data: CreateItineraryDto, user: User) {
     const startDate = new Date(data.startDate)
@@ -158,6 +160,14 @@ export class ItineraryService {
         }
       }
 
+      await this.meilisearchService.addOrUpdateItinerary({
+        ...itinerary,
+        locationCount: itinerary.sections.reduce(
+          (acc, section) => acc + section.blocks.length,
+          0
+        ),
+      })
+
       return itinerary
     })
   }
@@ -290,6 +300,15 @@ export class ItineraryService {
           }
         }
       }
+
+      await this.meilisearchService.addOrUpdateItinerary({
+        ...updatedItinerary,
+        locationCount: updatedItinerary.sections.reduce(
+          (acc, section) => acc + section.blocks.length,
+          0
+        ),
+      })
+
       return updatedItinerary
     })
   }
@@ -797,10 +816,11 @@ export class ItineraryService {
     if (!itinerary) {
       throw new NotFoundException('Itinerary not found')
     }
-
-    return this.prisma.itinerary.delete({
+    const result = await this.prisma.itinerary.delete({
       where: { id },
     })
+    await this.meilisearchService.deleteItinerary(id)
+    return result
   }
 
   async findAllTags() {
@@ -1334,5 +1354,35 @@ export class ItineraryService {
 
       return { ...updatedContingency, sections: mappedSections }
     })
+  }
+
+  async searchItineraries(
+    query: string = '',
+    page: number = 1,
+    limit: number = 20,
+    filters?: any
+  ) {
+    const offset = (page - 1) * limit
+
+    const searchOptions = {
+      limit,
+      offset,
+      filter: filters,
+      sort: ['startDate:asc'],
+    }
+
+    const result = await this.meilisearchService.searchItineraries(
+      query,
+      searchOptions
+    )
+
+    return {
+      data: result.hits,
+      metadata: {
+        total: result.estimatedTotalHits,
+        page,
+        totalPages: Math.ceil(result.estimatedTotalHits / limit) || 1,
+      },
+    }
   }
 }
