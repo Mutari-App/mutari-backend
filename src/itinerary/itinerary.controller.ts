@@ -20,6 +20,7 @@ import { ResponseUtil } from 'src/common/utils/response.util'
 import { Public } from 'src/common/decorators/public.decorator'
 import { InviteToItineraryDTO } from './dto/invite-to-itinerary.dto'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
+import { CreateItineraryViewDto } from './dto/create-view-itinerary.dto'
 
 @Controller('itineraries')
 export class ItineraryController {
@@ -130,6 +131,18 @@ export class ItineraryController {
     )
   }
 
+  @Get('views')
+  async getViewItinerary(@GetUser() user: User) {
+    const itinerary = await this.itineraryService.getViewItinerary(user)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary view added successfully',
+      },
+      itinerary
+    )
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string, @GetUser() user: User) {
     const itinerary = await this.itineraryService.findOne(id, user)
@@ -165,6 +178,24 @@ export class ItineraryController {
       {
         statusCode: HttpStatus.CREATED,
         message: 'Itinerary created successfully',
+      },
+      itinerary
+    )
+  }
+
+  @Post('views')
+  async createViewItinerary(
+    @GetUser() user: User,
+    @Body() createItineraryViewDto: CreateItineraryViewDto
+  ) {
+    const itinerary = await this.itineraryService.createViewItinerary(
+      createItineraryViewDto.itineraryId,
+      user
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary view added successfully',
       },
       itinerary
     )
