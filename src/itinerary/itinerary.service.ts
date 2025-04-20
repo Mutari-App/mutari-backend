@@ -1332,4 +1332,35 @@ export class ItineraryService {
       return { ...updatedContingency, sections: mappedSections }
     })
   }
+
+  async createViewItinerary(itineraryId: string, user: User) {
+    const userId = user.id
+
+    return this.prisma.itineraryView.upsert({
+      where: {
+        userId_itineraryId: { userId, itineraryId },
+      },
+      update: {
+        viewedAt: new Date(),
+      },
+      create: {
+        userId,
+        itineraryId,
+        viewedAt: new Date(),
+      },
+    })
+  }
+
+  async getViewItinerary(user: User) {
+    const userId = user.id
+
+    return this.prisma.itineraryView.findMany({
+      where: {
+        userId: userId,
+      },
+      orderBy: {
+        viewedAt: 'desc',
+      },
+    })
+  }
 }
