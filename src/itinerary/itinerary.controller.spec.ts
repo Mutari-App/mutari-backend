@@ -54,6 +54,8 @@ describe('ItineraryController', () => {
     createContingencyPlan: jest.fn(),
     selectContingencyPlan: jest.fn(),
     updateContingencyPlan: jest.fn(),
+    createViewItinerary: jest.fn(),
+    getViewItinerary: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -1990,6 +1992,70 @@ describe('ItineraryController', () => {
           updateContingencyPlanDto
         )
       ).rejects.toThrow(ForbiddenException)
+    })
+  })
+
+  describe('createViewItinerary', () => {
+    it('should call service and return response', async () => {
+      const user = { id: 'user123' }
+      const dto = { itineraryId: 'itinerary123' }
+      const createdView = { id: 'view1', ...dto, userId: user.id }
+
+      mockItineraryService.createViewItinerary.mockResolvedValue(createdView)
+      mockResponseUtil.response.mockReturnValue({
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary view added successfully',
+        data: createdView,
+      })
+
+      const result = await controller.createViewItinerary(user as any, dto)
+
+      expect(itineraryService.createViewItinerary).toHaveBeenCalledWith(
+        dto.itineraryId,
+        user
+      )
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.CREATED,
+          message: 'Itinerary view added successfully',
+        },
+        createdView
+      )
+      expect(result).toEqual({
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary view added successfully',
+        data: createdView,
+      })
+    })
+  })
+
+  describe('getViewItinerary', () => {
+    it('should call service and return viewed itineraries', async () => {
+      const user = { id: 'user123' }
+      const views = [{ itineraryId: 'a' }, { itineraryId: 'b' }]
+
+      mockItineraryService.getViewItinerary.mockResolvedValue(views)
+      mockResponseUtil.response.mockReturnValue({
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary view added successfully',
+        data: views,
+      })
+
+      const result = await controller.getViewItinerary(user as any)
+
+      expect(itineraryService.getViewItinerary).toHaveBeenCalledWith(user)
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.CREATED,
+          message: 'Itinerary view added successfully',
+        },
+        views
+      )
+      expect(result).toEqual({
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary view added successfully',
+        data: views,
+      })
     })
   })
 })
