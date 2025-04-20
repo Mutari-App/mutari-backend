@@ -54,6 +54,10 @@ describe('ItineraryService', () => {
       create: jest.fn(),
       delete: jest.fn(),
     },
+    itineraryView: {
+      upsert: jest.fn(),
+      findMany: jest.fn(),
+    },
     _checkItineraryExists: jest.fn(),
     _checkContingencyCount: jest.fn(),
   }
@@ -3788,6 +3792,61 @@ describe('ItineraryService', () => {
           mockUser
         )
       ).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  describe('createViewItinerary', () => {
+    it('should upsert an itinerary view', async () => {
+      const itineraryId = 'itinerary123'
+      const user = { id: 'user123' }
+
+      const expectedResult = {
+        userId: user.id,
+        itineraryId,
+        viewedAt: new Date(),
+      }
+
+      mockPrismaService.itineraryView.upsert.mockResolvedValue(expectedResult)
+
+      const result = await service.createViewItinerary(itineraryId, user as any)
+
+      expect(mockPrismaService.itineraryView.upsert).toHaveBeenCalledWith({
+        where: {
+          userId_itineraryId: { userId: user.id, itineraryId },
+        },
+        update: {
+          viewedAt: expect.any(Date),
+        },
+        create: {
+          userId: user.id,
+          itineraryId,
+          viewedAt: expect.any(Date),
+        },
+      })
+
+      expect(result).toEqual(expectedResult)
+    })
+  })
+
+  describe('getViewItinerary', () => {
+    it('should return list of itinerary views ordered by viewedAt desc', async () => {
+      const user = { id: 'user123' }
+
+      const expectedResult = [
+        { itineraryId: 'a', viewedAt: new Date() },
+        { itineraryId: 'b', viewedAt: new Date() },
+      ]
+
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(expectedResult)
+
+      const result = await service.getViewItinerary(user as any)
+
+      expect(mockPrismaService.itineraryView.findMany).toHaveBeenCalledWith({
+        where: { userId: user.id },
+        orderBy: { viewedAt: 'desc' },
+      })
+
+      expect(result).toEqual(expectedResult)
     })
   })
 })
