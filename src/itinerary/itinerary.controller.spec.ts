@@ -1992,4 +1992,174 @@ describe('ItineraryController', () => {
       ).rejects.toThrow(ForbiddenException)
     })
   })
+
+  describe('duplicateItinerary', () => {
+    it('should duplicate an itinerary and return a formatted response', async () => {
+      const itineraryId = 'itinerary-123'
+      const duplicateItineraryDto = {
+        itinerary: {
+          title: 'Duplicated Itinerary',
+          description: 'This is a duplicated itinerary',
+          startDate: new Date('2025-06-01'),
+          endDate: new Date('2025-06-10'),
+          sections: [],
+        },
+        contingencyPlans: [
+          {
+            title: 'Contingency Plan 1',
+            description: 'Backup plan for day 1',
+            sections: [],
+          },
+          {
+            title: 'Contingency Plan 2',
+            description: 'Backup plan for day 2',
+            sections: [],
+          },
+        ],
+      }
+
+      const mockDuplicatedItinerary = {
+        id: 'duplicated-itinerary-123',
+        userId: mockUser.id,
+        title: duplicateItineraryDto.itinerary.title,
+        description: duplicateItineraryDto.itinerary.description,
+        startDate: duplicateItineraryDto.itinerary.startDate,
+        endDate: duplicateItineraryDto.itinerary.endDate,
+        sections: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Contingency updated successfully.',
+        itinerary: mockDuplicatedItinerary,
+      }
+
+      mockItineraryService.createItinerary.mockResolvedValue(
+        mockDuplicatedItinerary
+      )
+      mockItineraryService.createContingencyPlan.mockResolvedValue(undefined)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.duplicateItinerary(
+        itineraryId,
+        mockUser,
+        duplicateItineraryDto
+      )
+
+      expect(mockItineraryService.createItinerary).toHaveBeenCalledWith(
+        duplicateItineraryDto.itinerary,
+        mockUser
+      )
+      expect(mockItineraryService.createContingencyPlan).toHaveBeenCalledTimes(
+        duplicateItineraryDto.contingencyPlans.length
+      )
+      duplicateItineraryDto.contingencyPlans.forEach((plan) => {
+        expect(mockItineraryService.createContingencyPlan).toHaveBeenCalledWith(
+          mockDuplicatedItinerary.id,
+          plan,
+          mockUser
+        )
+      })
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Contingency updated successfully.',
+        },
+        { itinerary: mockDuplicatedItinerary }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should throw NotFoundException if the original itinerary does not exist', async () => {
+      const itineraryId = 'non-existent-id'
+      const duplicateItineraryDto = {
+        itinerary: {
+          title: 'Duplicated Itinerary',
+          description: 'This is a duplicated itinerary',
+          startDate: new Date('2025-06-01'),
+          endDate: new Date('2025-06-10'),
+          sections: [],
+        },
+        contingencyPlans: [],
+      }
+
+      const mockError = new NotFoundException(
+        `Itinerary with ID ${itineraryId} not found`
+      )
+
+      mockItineraryService.createItinerary.mockRejectedValue(mockError)
+
+      await expect(
+        controller.duplicateItinerary(
+          itineraryId,
+          mockUser,
+          duplicateItineraryDto
+        )
+      ).rejects.toThrow(mockError)
+
+      expect(mockItineraryService.createItinerary).toHaveBeenCalledWith(
+        duplicateItineraryDto.itinerary,
+        mockUser
+      )
+    })
+
+    it('should handle errors when creating contingency plans', async () => {
+      const itineraryId = 'itinerary-123'
+      const duplicateItineraryDto = {
+        itinerary: {
+          title: 'Duplicated Itinerary',
+          description: 'This is a duplicated itinerary',
+          startDate: new Date('2025-06-01'),
+          endDate: new Date('2025-06-10'),
+          sections: [],
+        },
+        contingencyPlans: [
+          {
+            title: 'Contingency Plan 1',
+            description: 'Backup plan for day 1',
+            sections: [],
+          },
+        ],
+      }
+
+      const mockDuplicatedItinerary = {
+        id: 'duplicated-itinerary-123',
+        userId: mockUser.id,
+        title: duplicateItineraryDto.itinerary.title,
+        description: duplicateItineraryDto.itinerary.description,
+        startDate: duplicateItineraryDto.itinerary.startDate,
+        endDate: duplicateItineraryDto.itinerary.endDate,
+        sections: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      const mockError = new Error('Failed to create contingency plan')
+
+      mockItineraryService.createItinerary.mockResolvedValue(
+        mockDuplicatedItinerary
+      )
+      mockItineraryService.createContingencyPlan.mockRejectedValue(mockError)
+
+      await expect(
+        controller.duplicateItinerary(
+          itineraryId,
+          mockUser,
+          duplicateItineraryDto
+        )
+      ).rejects.toThrow(mockError)
+
+      expect(mockItineraryService.createItinerary).toHaveBeenCalledWith(
+        duplicateItineraryDto.itinerary,
+        mockUser
+      )
+      expect(mockItineraryService.createContingencyPlan).toHaveBeenCalledWith(
+        mockDuplicatedItinerary.id,
+        duplicateItineraryDto.contingencyPlans[0],
+        mockUser
+      )
+    })
+  })
 })
