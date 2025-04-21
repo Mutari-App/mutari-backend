@@ -1346,6 +1346,8 @@ export class ItineraryService {
         title: true,
         description: true,
         coverImage: true,
+        startDate: true,
+        endDate: true,
         likes: true,
         user: {
           select: {
