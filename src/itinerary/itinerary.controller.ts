@@ -20,6 +20,7 @@ import { ResponseUtil } from 'src/common/utils/response.util'
 import { Public } from 'src/common/decorators/public.decorator'
 import { InviteToItineraryDTO } from './dto/invite-to-itinerary.dto'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
+import { DuplicateItineraryDto } from './dto/duplicate-itinerary.dto'
 
 @Controller('itineraries')
 export class ItineraryController {
@@ -383,6 +384,38 @@ export class ItineraryController {
       },
       {
         contingency,
+      }
+    )
+  }
+
+  @Post(':itineraryId/duplicate')
+  async duplicateItinerary(
+    @Param('itineraryId') itineraryId: string,
+    @GetUser() user: User,
+    @Body() data: DuplicateItineraryDto
+  ) {
+    // Create new itinerary first
+    const itinerary = await this.itineraryService.createItinerary(
+      data.itinerary,
+      user
+    )
+
+    // Create contigencies
+    for (const contingencyPlan of data.contingencyPlans) {
+      await this.itineraryService.createContingencyPlan(
+        itinerary.id,
+        contingencyPlan,
+        user
+      )
+    }
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Contingency updated successfully.',
+      },
+      {
+        itinerary,
       }
     )
   }
