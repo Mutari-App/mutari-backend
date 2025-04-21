@@ -1838,6 +1838,559 @@ describe('ItineraryService', () => {
       })
       expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
     })
+
+    it('should delete existing routes when block.routeToNext exists and create new routes properly', async () => {
+      // Arrange
+      const mockExistingItinerary = {
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1,
+            contingencyPlanId: null,
+            blocks: [
+              {
+                id: 'block-1',
+                position: 0,
+                routeToNext: { id: 'route-1', sourceBlockId: 'block-1' },
+                routeFromPrevious: null,
+              },
+              {
+                id: 'block-2',
+                position: 1,
+                routeToNext: null,
+                routeFromPrevious: {
+                  id: 'route-1',
+                  destinationBlockId: 'block-2',
+                },
+              },
+            ],
+          },
+        ],
+      }
+
+      const updateDto: UpdateItineraryDto = {
+        title: 'Updated Itinerary',
+        description: 'Updated description',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-05'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Location 1',
+                position: 0,
+                routeToNext: {
+                  distance: 2000,
+                  duration: 1200,
+                  polyline: 'updated_polyline',
+                  transportMode: TRANSPORT_MODE.WALK,
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Location 2',
+                position: 1,
+              },
+            ],
+          },
+        ],
+      }
+
+      // Mocking the updated itinerary with its sections and blocks
+      const mockUpdatedItinerary = {
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        title: 'Updated Itinerary',
+        description: 'Updated description',
+        sections: [
+          {
+            id: 'new-section-1',
+            sectionNumber: 1,
+            blocks: [
+              {
+                id: 'new-block-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Location 1',
+              },
+              {
+                id: 'new-block-2',
+                position: 1,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Location 2',
+              },
+            ],
+          },
+        ],
+        tags: [],
+      }
+
+      // Mock the findUnique calls
+      mockPrismaService.itinerary.findUnique
+        .mockResolvedValueOnce({ id: 'itinerary-123', userId: mockUser.id }) // _checkItineraryExists
+        .mockResolvedValueOnce({ id: 'itinerary-123', userId: mockUser.id }) // _checkUpdateItineraryPermission
+        .mockResolvedValueOnce(mockExistingItinerary) // In the transaction
+
+      // Mock the update call
+      mockPrismaService.itinerary.update.mockResolvedValue(mockUpdatedItinerary)
+
+      // Mock the route.delete and route.create operations
+      mockPrismaService.route.delete.mockResolvedValue({})
+      mockPrismaService.route.create.mockResolvedValue({})
+
+      // Mock the transaction
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return callback(mockPrismaService)
+      })
+
+      // Act
+      await service.updateItinerary('itinerary-123', updateDto, mockUser)
+
+      // Assert
+      // Check that routes were deleted for existing blocks with routeToNext
+      expect(mockPrismaService.route.delete).toHaveBeenCalledWith({
+        where: { sourceBlockId: 'block-1' },
+      })
+
+      // Check that new routes were created
+      expect(mockPrismaService.route.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          sourceBlockId: 'new-block-1',
+          destinationBlockId: 'new-block-2',
+          distance: 2000,
+          duration: 1200,
+          polyline: 'updated_polyline',
+          transportMode: TRANSPORT_MODE.WALK,
+        }),
+      })
+    })
+
+    it('should skip processing when createdSection does not exist', async () => {
+      // Arrange
+      const mockExistingItinerary = {
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        sections: [],
+      }
+
+      const updateDto: UpdateItineraryDto = {
+        title: 'Updated Itinerary',
+        description: 'Updated description',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-05'),
+        sections: [
+          {
+            sectionNumber: 1, // This section number won't match any in the updated itinerary
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 1',
+                position: 0,
+                routeToNext: {
+                  distance: 1000,
+                  duration: 600,
+                  polyline: 'test_polyline',
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+            ],
+          },
+        ],
+      }
+
+      // Mocking the updated itinerary with different section numbers
+      const mockUpdatedItinerary = {
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        title: 'Updated Itinerary',
+        description: 'Updated description',
+        sections: [
+          {
+            id: 'section-999',
+            sectionNumber: 999, // Different section number than in the DTO
+            blocks: [],
+          },
+        ],
+        tags: [],
+      }
+
+      // Mock the necessary calls
+      mockPrismaService.itinerary.findUnique
+        .mockResolvedValueOnce({ id: 'itinerary-123', userId: mockUser.id }) // _checkItineraryExists
+        .mockResolvedValueOnce({ id: 'itinerary-123', userId: mockUser.id }) // _checkUpdateItineraryPermission
+        .mockResolvedValueOnce(mockExistingItinerary) // In the transaction
+
+      mockPrismaService.itinerary.update.mockResolvedValue(mockUpdatedItinerary)
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return callback(mockPrismaService)
+      })
+
+      // Act
+      await service.updateItinerary('itinerary-123', updateDto, mockUser)
+
+      // Assert
+      // The route.create should not be called since createdSection doesn't exist
+      expect(mockPrismaService.route.create).not.toHaveBeenCalled()
+    })
+
+    it('should skip processing when createdBlock does not exist', async () => {
+      // Arrange
+      const mockExistingItinerary = {
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        sections: [],
+      }
+
+      const updateDto: UpdateItineraryDto = {
+        title: 'Updated Itinerary',
+        description: 'Updated description',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-05'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 1',
+                position: 5, // Position that won't exist in the updated blocks
+                routeToNext: {
+                  distance: 1000,
+                  duration: 600,
+                  polyline: 'test_polyline',
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+            ],
+          },
+        ],
+      }
+
+      // Mocking the updated itinerary with sections but missing the block with position 5
+      const mockUpdatedItinerary = {
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        title: 'Updated Itinerary',
+        description: 'Updated description',
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1,
+            blocks: [
+              {
+                id: 'block-0',
+                position: 0, // Only position 0 exists, not position 5
+                blockType: BLOCK_TYPE.LOCATION,
+              },
+            ],
+          },
+        ],
+        tags: [],
+      }
+
+      // Mock the necessary calls
+      mockPrismaService.itinerary.findUnique
+        .mockResolvedValueOnce({ id: 'itinerary-123', userId: mockUser.id }) // _checkItineraryExists
+        .mockResolvedValueOnce({ id: 'itinerary-123', userId: mockUser.id }) // _checkUpdateItineraryPermission
+        .mockResolvedValueOnce(mockExistingItinerary) // In the transaction
+
+      mockPrismaService.itinerary.update.mockResolvedValue(mockUpdatedItinerary)
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return callback(mockPrismaService)
+      })
+
+      // Act
+      await service.updateItinerary('itinerary-123', updateDto, mockUser)
+
+      // Assert
+      // The route.create should not be called since createdBlock doesn't exist
+      expect(mockPrismaService.route.create).not.toHaveBeenCalled()
+    })
+
+    it('should create route when nextBlock exists', async () => {
+      // Arrange
+      const mockExistingItinerary = {
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        sections: [],
+      }
+
+      const updateDto: UpdateItineraryDto = {
+        title: 'Updated Itinerary',
+        description: 'Updated description',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-05'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 1',
+                position: 0,
+                routeToNext: {
+                  distance: 1000,
+                  duration: 600,
+                  polyline: 'test_polyline',
+                  transportMode: TRANSPORT_MODE.DRIVE,
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 2',
+                position: 1,
+              },
+            ],
+          },
+        ],
+      }
+
+      // Mocking the updated itinerary with both blocks needed for the route
+      const mockUpdatedItinerary = {
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        title: 'Updated Itinerary',
+        description: 'Updated description',
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1,
+            blocks: [
+              {
+                id: 'block-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 1',
+              },
+              {
+                id: 'block-2',
+                position: 1,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 2',
+              },
+            ],
+          },
+        ],
+        tags: [],
+      }
+
+      // Mock the necessary calls
+      mockPrismaService.itinerary.findUnique
+        .mockResolvedValueOnce({ id: 'itinerary-123', userId: mockUser.id }) // _checkItineraryExists
+        .mockResolvedValueOnce({ id: 'itinerary-123', userId: mockUser.id }) // _checkUpdateItineraryPermission
+        .mockResolvedValueOnce(mockExistingItinerary) // In the transaction
+
+      mockPrismaService.itinerary.update.mockResolvedValue(mockUpdatedItinerary)
+      mockPrismaService.route.create.mockResolvedValue({})
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return callback(mockPrismaService)
+      })
+
+      // Act
+      await service.updateItinerary('itinerary-123', updateDto, mockUser)
+
+      // Assert
+      // Check that routes were created with the correct data
+      expect(mockPrismaService.route.create).toHaveBeenCalledWith({
+        data: {
+          sourceBlockId: 'block-1',
+          destinationBlockId: 'block-2',
+          distance: 1000,
+          duration: 600,
+          polyline: 'test_polyline',
+          transportMode: TRANSPORT_MODE.DRIVE,
+        },
+      })
+    })
+
+    it('should use default TRANSPORT_MODE.DRIVE when transportMode is not provided', async () => {
+      // Arrange
+      const mockExistingItinerary = {
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        sections: [],
+      }
+
+      const updateDto: UpdateItineraryDto = {
+        title: 'Updated Itinerary',
+        description: 'Updated description',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-05'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 1',
+                position: 0,
+                routeToNext: {
+                  distance: 1000,
+                  duration: 600,
+                  polyline: 'test_polyline',
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 2',
+                position: 1,
+              },
+            ],
+          },
+        ],
+      }
+
+      // Mocking the updated itinerary with both blocks needed for the route
+      const mockUpdatedItinerary = {
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        title: 'Updated Itinerary',
+        description: 'Updated description',
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1,
+            blocks: [
+              {
+                id: 'block-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 1',
+              },
+              {
+                id: 'block-2',
+                position: 1,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 2',
+              },
+            ],
+          },
+        ],
+        tags: [],
+      }
+
+      // Mock the necessary calls
+      mockPrismaService.itinerary.findUnique
+        .mockResolvedValueOnce({ id: 'itinerary-123', userId: mockUser.id }) // _checkItineraryExists
+        .mockResolvedValueOnce({ id: 'itinerary-123', userId: mockUser.id }) // _checkUpdateItineraryPermission
+        .mockResolvedValueOnce(mockExistingItinerary) // In the transaction
+
+      mockPrismaService.itinerary.update.mockResolvedValue(mockUpdatedItinerary)
+      mockPrismaService.route.create.mockResolvedValue({})
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return callback(mockPrismaService)
+      })
+
+      // Act
+      await service.updateItinerary('itinerary-123', updateDto, mockUser)
+
+      // Assert
+      // Check that routes were created with the default transport mode
+      expect(mockPrismaService.route.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          transportMode: TRANSPORT_MODE.DRIVE, // Default transport mode should be used
+        }),
+      })
+    })
+
+    it('should skip route creation when createdBlock is undefined or null', async () => {
+      // Arrange
+      const mockExistingItinerary = {
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        sections: [],
+      }
+
+      const updateDto: UpdateItineraryDto = {
+        title: 'Updated Itinerary',
+        description: 'Updated description',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-05'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 1',
+                position: 0,
+                routeToNext: {
+                  distance: 1000,
+                  duration: 600,
+                  polyline: 'test_polyline',
+                  transportMode: TRANSPORT_MODE.WALK,
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 2',
+                position: 1,
+              },
+            ],
+          },
+        ],
+      }
+
+      // Mock an updated itinerary where blocks are missing or null in the created result
+      // This simulates a case where blocksByPosition.get(i) would return undefined or null
+      const mockUpdatedItinerary = {
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        title: 'Updated Itinerary',
+        description: 'Updated description',
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1,
+            blocks: [], // Intentionally empty to make createdBlock null
+          },
+        ],
+        tags: [],
+      }
+
+      // Mock the necessary calls
+      mockPrismaService.itinerary.findUnique
+        .mockResolvedValueOnce({ id: 'itinerary-123', userId: mockUser.id }) // _checkItineraryExists
+        .mockResolvedValueOnce({ id: 'itinerary-123', userId: mockUser.id }) // _checkUpdateItineraryPermission
+        .mockResolvedValueOnce(mockExistingItinerary) // In the transaction
+
+      mockPrismaService.itinerary.update.mockResolvedValue(mockUpdatedItinerary)
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return callback(mockPrismaService)
+      })
+
+      // Act
+      await service.updateItinerary('itinerary-123', updateDto, mockUser)
+
+      // Assert
+      // Verify that route.create was not called since createdBlock would be undefined
+      expect(mockPrismaService.route.create).not.toHaveBeenCalled()
+    })
   })
 
   describe('_checkUpdateItineraryPermission', () => {
