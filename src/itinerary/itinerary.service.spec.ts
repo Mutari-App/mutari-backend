@@ -9,6 +9,7 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  HttpException,
 } from '@nestjs/common'
 import { EmailService } from 'src/email/email.service'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
@@ -3108,6 +3109,117 @@ describe('ItineraryService', () => {
       expect(findManyCall.include.sections.include.blocks.where).toEqual({
         blockType: 'LOCATION',
       })
+    })
+
+    it('should throw HttpException with status 400 when page number is invalid', async () => {
+      // Arrange - no need for mock setup as the function should throw before reaching the DB calls
+
+      // Act & Assert
+      await expect(
+        service.findMyCompletedItineraries('user-123', -1)
+      ).rejects.toThrow(new HttpException('Invalid page number', 400))
+
+      // Verify that the database was never called
+      expect(mockPrismaService.itinerary.findMany).not.toHaveBeenCalled()
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+    })
+
+    it('should throw HttpException with status 400 when page number exceeds total pages', async () => {
+      // Arrange - setup a case where the page exceeds the total available
+      const userId = 'user-123'
+      const invalidPage = 10 // A page number that's guaranteed to be too high
+
+      // Mock zero items returned from database
+      mockPrismaService.$transaction.mockResolvedValue([[], 0])
+
+      // Act & Assert
+      await expect(
+        service.findMyCompletedItineraries(userId, invalidPage)
+      ).rejects.toThrow(
+        new HttpException('Page number exceeds total available pages', 400)
+      )
+
+      // Verify that transaction was called but properly handled the error
+      expect(mockPrismaService.$transaction).toHaveBeenCalled()
+    })
+
+    it('should properly map itinerary access users to invitedUsers array', async () => {
+      // Arrange - mock an itinerary with access records
+      const mockItinerary = {
+        id: 'itinerary-3',
+        userId: 'user-1',
+        title: 'Trip ke Singapura',
+        isCompleted: true,
+        startDate: new Date(),
+        sections: [{ blocks: [{ blockType: 'LOCATION' }] }],
+        access: [
+          {
+            user: {
+              id: 'invited-user-1',
+              firstName: 'Jane',
+              lastName: 'Doe',
+              photoProfile: 'jane.jpg',
+              email: 'jane@example.com',
+            },
+          },
+          {
+            user: {
+              id: 'invited-user-2',
+              firstName: 'Bob',
+              lastName: 'Smith',
+              photoProfile: null,
+              email: 'bob@example.com',
+            },
+          },
+        ],
+        pendingInvites: [],
+      }
+
+      // Mock findMany to return our test itinerary
+      mockPrismaService.itinerary.findMany.mockResolvedValue([mockItinerary])
+      mockPrismaService.itinerary.count.mockResolvedValue(1)
+
+      // Act
+      const result = await service.findMyCompletedItineraries('user-1', 1)
+
+      // Assert
+      // Check that the invitedUsers array is correctly populated from access.user
+      expect(result.data[0].invitedUsers).toHaveLength(2)
+      expect(result.data[0].invitedUsers[0]).toEqual({
+        id: 'invited-user-1',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        photoProfile: 'jane.jpg',
+        email: 'jane@example.com',
+      })
+      expect(result.data[0].invitedUsers[1]).toEqual({
+        id: 'invited-user-2',
+        firstName: 'Bob',
+        lastName: 'Smith',
+        photoProfile: null,
+        email: 'bob@example.com',
+      })
+
+      // Verify the mapping function is used
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            access: expect.objectContaining({
+              include: expect.objectContaining({
+                user: expect.objectContaining({
+                  select: expect.objectContaining({
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    photoProfile: true,
+                    email: true,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        })
+      )
     })
   })
 
