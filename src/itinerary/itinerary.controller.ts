@@ -5,7 +5,6 @@ import {
   Post,
   Body,
   HttpStatus,
-  NotFoundException,
   Param,
   Patch,
   Delete,
@@ -126,6 +125,20 @@ export class ItineraryController {
       },
       {
         itinerary,
+      }
+    )
+  }
+
+  @Get('/trending')
+  async findTrendingItineraries() {
+    const itineraries = await this.itineraryService.findTrendingItineraries()
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Trending itineraries fetched successfully.',
+      },
+      {
+        itineraries,
       }
     )
   }
