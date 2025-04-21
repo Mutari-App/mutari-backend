@@ -5057,5 +5057,381 @@ describe('ItineraryService', () => {
         )
       ).rejects.toThrow(BadRequestException)
     })
+    it('should handle edge cases in route creation during contingency plan update', async () => {
+      // Arrange
+      const itineraryId = 'itinerary-123'
+      const contingencyPlanId = 'contingency-plan-123'
+
+      // Create a DTO with different scenarios:
+      // 1. A section with a number that won't exist in the updated contingency (should skip)
+      // 2. A section with blocks but missing a block (should skip that block)
+      // 3. A section with complete route data that should create a route
+      const updateContingencyPlanDto: UpdateContingencyPlanDto = {
+        description: 'Updated contingency plan',
+        sections: [
+          {
+            sectionNumber: 999, // This section number won't match any in the updated result
+            title: 'Section that should be skipped',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Block that should be skipped',
+                position: 0,
+                routeToNext: {
+                  distance: 1000,
+                  duration: 600,
+                  polyline: 'test_polyline',
+                  transportMode: TRANSPORT_MODE.WALK,
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+            ],
+          },
+          {
+            sectionNumber: 1,
+            title: 'Section with blocks but missing one',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Block 1',
+                position: 0,
+                routeToNext: {
+                  distance: 1000,
+                  duration: 600,
+                  polyline: 'test_polyline',
+                  transportMode: TRANSPORT_MODE.WALK,
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Block 2',
+                position: 1,
+              },
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Block 3 (will be missing in result)',
+                position: 2,
+                routeToNext: {
+                  distance: 1500,
+                  duration: 700,
+                  polyline: 'another_polyline',
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+            ],
+          },
+          {
+            sectionNumber: 2,
+            title: 'Section with proper route creation',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Source Block',
+                position: 0,
+                routeToNext: {
+                  distance: 2000,
+                  duration: 800,
+                  polyline: 'valid_polyline',
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Destination Block',
+                position: 1,
+              },
+            ],
+          },
+        ],
+      }
+
+      // Mock the existing contingency plan with routes to be deleted
+      const mockExistingContingency = {
+        id: contingencyPlanId,
+        itineraryId: itineraryId,
+        title: 'Plan B',
+        description: 'Original description',
+        sections: [
+          {
+            id: 'section-old-1',
+            sectionNumber: 1001, // Section number encoding (1 + 1000)
+            blocks: [
+              {
+                id: 'block-old-1',
+                position: 0,
+                routeToNext: {
+                  id: 'route-old-1',
+                  sourceBlockId: 'block-old-1',
+                },
+                routeFromPrevious: null,
+              },
+            ],
+          },
+        ],
+      }
+
+      // Mock the updated contingency plan after update
+      // Note: The sections should NOT include the one with sectionNumber 999
+      // and should have createdBlock missing for position 2 in section 1
+      const mockUpdatedContingency = {
+        id: contingencyPlanId,
+        itineraryId: itineraryId,
+        title: 'Plan B',
+        description: 'Updated contingency plan',
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1001, // Section 1 + 1000
+            blocks: [
+              {
+                id: 'block-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Block 1',
+                routeToNext: null,
+                routeFromPrevious: null,
+              },
+              {
+                id: 'block-2',
+                position: 1,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Block 2',
+                routeToNext: null,
+                routeFromPrevious: null,
+              },
+              // Position 2 is intentionally missing to test !createdBlock continue
+            ],
+          },
+          {
+            id: 'section-2',
+            sectionNumber: 1002, // Section 2 + 1000
+            blocks: [
+              {
+                id: 'block-3',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Source Block',
+                routeToNext: null,
+                routeFromPrevious: null,
+              },
+              {
+                id: 'block-4',
+                position: 1,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Destination Block',
+                routeToNext: null,
+                routeFromPrevious: null,
+              },
+            ],
+          },
+        ],
+      }
+
+      // Mock necessary service methods
+      mockPrismaService.itinerary.findUnique.mockResolvedValue({
+        id: itineraryId,
+        userId: mockUser.id,
+      })
+      mockPrismaService.contingencyPlan.findUnique
+        .mockResolvedValueOnce({
+          id: contingencyPlanId,
+          itineraryId: itineraryId,
+        })
+        .mockResolvedValueOnce(mockExistingContingency)
+
+      mockPrismaService.contingencyPlan.update.mockResolvedValue(
+        mockUpdatedContingency
+      )
+      mockPrismaService.route.delete.mockResolvedValue({})
+      mockPrismaService.route.create.mockResolvedValue({
+        id: 'route-new-1',
+        sourceBlockId: 'block-3',
+        destinationBlockId: 'block-4',
+        distance: 2000,
+        duration: 800,
+        polyline: 'valid_polyline',
+        transportMode: TRANSPORT_MODE.DRIVE,
+      })
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return callback(mockPrismaService)
+      })
+
+      // Act
+      const result = await service.updateContingencyPlan(
+        itineraryId,
+        contingencyPlanId,
+        updateContingencyPlanDto,
+        mockUser
+      )
+
+      // Assert
+      // 1. Verify permissions were checked
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: itineraryId },
+      })
+      expect(mockPrismaService.contingencyPlan.findUnique).toHaveBeenCalledWith(
+        {
+          where: { id: contingencyPlanId },
+        }
+      )
+
+      // 2. Verify existing routes were deleted
+      expect(mockPrismaService.route.delete).toHaveBeenCalledWith({
+        where: { sourceBlockId: 'block-old-1' },
+      })
+
+      // 3. Verify contingency plan was updated
+      expect(mockPrismaService.contingencyPlan.update).toHaveBeenCalledWith({
+        where: { id: contingencyPlanId },
+        data: expect.objectContaining({
+          sections: expect.objectContaining({
+            deleteMany: { contingencyPlanId },
+            create: expect.any(Array),
+          }),
+        }),
+        include: expect.any(Object),
+      })
+
+      // 4. Verify route creation was called exactly once (for section 2)
+      // It should skip the non-existent section and the missing block
+      expect(mockPrismaService.route.create).toHaveBeenCalledTimes(2)
+
+      // 5. Verify the created route has correct data including default transport mode
+      expect(mockPrismaService.route.create).toHaveBeenCalledWith({
+        data: {
+          sourceBlockId: 'block-3',
+          destinationBlockId: 'block-4',
+          distance: 2000,
+          duration: 800,
+          polyline: 'valid_polyline',
+          transportMode: TRANSPORT_MODE.DRIVE, // Default was applied
+        },
+      })
+
+      // 6. Verify the returned data has correctly mapped section numbers
+      expect(result.sections).toHaveLength(2)
+      expect(result.sections[0].sectionNumber).toBe(1) // 1001 % 1000
+      expect(result.sections[1].sectionNumber).toBe(2) // 1002 % 1000
+    })
+
+    it('should throw NotFoundException when contingency plan does not exist', async () => {
+      // Arrange
+      const itineraryId = 'itinerary-123'
+      const contingencyPlanId = 'non-existent-contingency'
+      const updateContingencyPlanDto: UpdateContingencyPlanDto = {
+        description: 'Updated description',
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Section 1',
+            blocks: [],
+          },
+        ],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue({
+        id: itineraryId,
+        userId: mockUser.id,
+      })
+      mockPrismaService.contingencyPlan.findUnique.mockResolvedValue(null)
+
+      // Act & Assert
+      await expect(
+        service.updateContingencyPlan(
+          itineraryId,
+          contingencyPlanId,
+          updateContingencyPlanDto,
+          mockUser
+        )
+      ).rejects.toThrow(
+        new NotFoundException(
+          `Contingency plan with ID ${contingencyPlanId} not found`
+        )
+      )
+    })
+
+    it('should throw ForbiddenException when contingency plan belongs to different itinerary', async () => {
+      // Arrange
+      const itineraryId = 'itinerary-123'
+      const contingencyPlanId = 'contingency-plan-123'
+      const differentItineraryId = 'different-itinerary'
+      const updateContingencyPlanDto: UpdateContingencyPlanDto = {
+        description: 'Updated description',
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Section 1',
+            blocks: [],
+          },
+        ],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue({
+        id: itineraryId,
+        userId: mockUser.id,
+      })
+      mockPrismaService.contingencyPlan.findUnique.mockResolvedValue({
+        id: contingencyPlanId,
+        itineraryId: differentItineraryId,
+      })
+
+      // Act & Assert
+      await expect(
+        service.updateContingencyPlan(
+          itineraryId,
+          contingencyPlanId,
+          updateContingencyPlanDto,
+          mockUser
+        )
+      ).rejects.toThrow(
+        new ForbiddenException(
+          'You do not have permission to update this contingency plan'
+        )
+      )
+    })
+
+    it('should throw BadRequestException when sections validation fails', async () => {
+      // Arrange
+      const itineraryId = 'itinerary-123'
+      const contingencyPlanId = 'contingency-plan-123'
+      const updateContingencyPlanDto: UpdateContingencyPlanDto = {
+        description: 'Updated description',
+        sections: [], // Empty sections should fail validation
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue({
+        id: itineraryId,
+        userId: mockUser.id,
+      })
+      mockPrismaService.contingencyPlan.findUnique.mockResolvedValue({
+        id: contingencyPlanId,
+        itineraryId: itineraryId,
+      })
+
+      // Mock the validateItinerarySections method to throw an exception
+      jest
+        .spyOn(service, '_validateItinerarySections')
+        .mockImplementation(() => {
+          throw new BadRequestException('At least one section is required')
+        })
+
+      // Act & Assert
+      await expect(
+        service.updateContingencyPlan(
+          itineraryId,
+          contingencyPlanId,
+          updateContingencyPlanDto,
+          mockUser
+        )
+      ).rejects.toThrow(
+        new BadRequestException('At least one section is required')
+      )
+    })
   })
 })
