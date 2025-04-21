@@ -2065,7 +2065,7 @@ describe('ItineraryController', () => {
       expect(mockResponseUtil.response).toHaveBeenCalledWith(
         {
           statusCode: HttpStatus.OK,
-          message: 'Contingency updated successfully.',
+          message: 'Itinerary duplicated succesfully',
         },
         { itinerary: mockDuplicatedItinerary }
       )

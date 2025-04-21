@@ -412,7 +412,7 @@ export class ItineraryController {
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.OK,
-        message: 'Contingency updated successfully.',
+        message: 'Itinerary duplicated succesfully',
       },
       {
         itinerary,
