@@ -160,13 +160,9 @@ export class ItineraryService {
         }
       }
 
-      await this.meilisearchService.addOrUpdateItinerary({
-        ...itinerary,
-        locationCount: itinerary.sections.reduce(
-          (acc, section) => acc + section.blocks.length,
-          0
-        ),
-      })
+      if (itinerary.isPublished) {
+        await this.meilisearchService.addOrUpdateItinerary(itinerary)
+      }
 
       return itinerary
     })
@@ -301,13 +297,12 @@ export class ItineraryService {
         }
       }
 
-      await this.meilisearchService.addOrUpdateItinerary({
-        ...updatedItinerary,
-        locationCount: updatedItinerary.sections.reduce(
-          (acc, section) => acc + section.blocks.length,
-          0
-        ),
-      })
+      if (updatedItinerary.isPublished) {
+        await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+      } else {
+        // If unpublished, remove from search index
+        await this.meilisearchService.deleteItinerary(id)
+      }
 
       return updatedItinerary
     })
@@ -1360,7 +1355,9 @@ export class ItineraryService {
     query: string = '',
     page: number = 1,
     limit: number = 20,
-    filters?: any
+    filters?: any,
+    sortBy: string = 'startDate',
+    order: 'asc' | 'desc' = 'asc'
   ) {
     const offset = (page - 1) * limit
 
@@ -1368,7 +1365,7 @@ export class ItineraryService {
       limit,
       offset,
       filter: filters,
-      sort: ['startDate:asc'],
+      sort: [`${sortBy}:${order}`],
     }
 
     const result = await this.meilisearchService.searchItineraries(
@@ -1377,7 +1374,18 @@ export class ItineraryService {
     )
 
     return {
-      data: result.hits,
+      data: result.hits.map((hit) => ({
+        id: hit.id,
+        title: hit.title,
+        description: hit.description,
+        coverImage: hit.coverImage,
+        startDate: hit.startDate,
+        endDate: hit.endDate,
+        user: hit.user,
+        tags: hit.tags,
+        daysCount: hit.daysCount,
+        likes: hit.likes,
+      })),
       metadata: {
         total: result.estimatedTotalHits,
         page,
