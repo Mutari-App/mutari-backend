@@ -403,6 +403,14 @@ describe('ItineraryService', () => {
               tag: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
         },
       })
       expect(result).toEqual(expectedItinerary)
@@ -487,6 +495,14 @@ describe('ItineraryService', () => {
           tags: {
             include: {
               tag: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
             },
           },
         },
@@ -1079,6 +1095,14 @@ describe('ItineraryService', () => {
               tag: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
         },
       })
       expect(result).toEqual(updatedItinerary)
@@ -1209,6 +1233,14 @@ describe('ItineraryService', () => {
           tags: {
             include: {
               tag: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
             },
           },
         },
@@ -1361,6 +1393,14 @@ describe('ItineraryService', () => {
           tags: {
             include: {
               tag: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
             },
           },
         },
