@@ -42,6 +42,57 @@ export class ItineraryController {
     )
   }
 
+  @Public()
+  @Get('search')
+  async searchItineraries(
+    @Query('q') query: string = '',
+    @Query('page') page: number = 1,
+    @Query('tags') tags?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('minDaysCount') minDaysCount?: string,
+    @Query('maxDaysCount') maxDaysCount?: string,
+    @Query('sortBy')
+    sortBy: 'startDate' | 'endDate' | 'likes' | 'daysCount' = 'startDate',
+    @Query('order') order: 'asc' | 'desc' = 'asc'
+  ) {
+    let filters = []
+
+    if (tags) {
+      const tagIds = tags.split(',')
+      filters.push(
+        `tags.tag.id IN [${tagIds.map((id) => `"${id}"`).join(', ')}]`
+      )
+    }
+
+    if (startDate) {
+      filters.push(`startDate >= "${new Date(startDate).toISOString()}"`)
+    }
+
+    if (endDate) {
+      filters.push(`endDate <= "${new Date(endDate).toISOString()}"`)
+    }
+
+    if (minDaysCount) {
+      filters.push(`daysCount >= ${parseInt(minDaysCount)}`)
+    }
+
+    if (maxDaysCount) {
+      filters.push(`daysCount <= ${parseInt(maxDaysCount)}`)
+    }
+
+    const filtersString = filters.length > 0 ? filters.join(' AND ') : undefined
+
+    return this.itineraryService.searchItineraries(
+      query,
+      page,
+      undefined,
+      filtersString,
+      sortBy,
+      order
+    )
+  }
+
   @Get('me')
   async findMyItineraries(
     @GetUser() user: User,
@@ -383,57 +434,6 @@ export class ItineraryController {
       {
         contingency,
       }
-    )
-  }
-
-  @Public()
-  @Get('search')
-  async searchItineraries(
-    @Query('q') query: string = '',
-    @Query('page') page: number = 1,
-    @Query('tags') tags?: string,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('minDaysCount') minDaysCount?: string,
-    @Query('maxDaysCount') maxDaysCount?: string,
-    @Query('sortBy')
-    sortBy: 'startDate' | 'endDate' | 'likes' | 'daysCount' = 'startDate',
-    @Query('order') order: 'asc' | 'desc' = 'asc'
-  ) {
-    let filters = []
-
-    if (tags) {
-      const tagIds = tags.split(',')
-      filters.push(
-        `tags.tag.id IN [${tagIds.map((id) => `"${id}"`).join(', ')}]`
-      )
-    }
-
-    if (startDate) {
-      filters.push(`startDate >= "${new Date(startDate).toISOString()}"`)
-    }
-
-    if (endDate) {
-      filters.push(`endDate <= "${new Date(endDate).toISOString()}"`)
-    }
-
-    if (minDaysCount) {
-      filters.push(`daysCount >= ${parseInt(minDaysCount)}`)
-    }
-
-    if (maxDaysCount) {
-      filters.push(`daysCount <= ${parseInt(maxDaysCount)}`)
-    }
-
-    const filtersString = filters.length > 0 ? filters.join(' AND ') : undefined
-
-    return this.itineraryService.searchItineraries(
-      query,
-      page,
-      undefined,
-      filtersString,
-      sortBy,
-      order
     )
   }
 }
