@@ -113,6 +113,14 @@ export class ItineraryService {
               tag: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
         },
       })
 
@@ -246,6 +254,14 @@ export class ItineraryService {
           tags: {
             include: {
               tag: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
             },
           },
         },
