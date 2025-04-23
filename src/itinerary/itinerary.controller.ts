@@ -386,13 +386,19 @@ export class ItineraryController {
     )
   }
 
+  @Public()
   @Get('search')
   async searchItineraries(
     @Query('q') query: string = '',
     @Query('page') page: number = 1,
     @Query('tags') tags?: string,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
+    @Query('endDate') endDate?: string,
+    @Query('minDaysCount') minDaysCount?: string,
+    @Query('maxDaysCount') maxDaysCount?: string,
+    @Query('sortBy')
+    sortBy: 'startDate' | 'endDate' | 'likes' | 'daysCount' = 'startDate',
+    @Query('order') order: 'asc' | 'desc' = 'asc'
   ) {
     let filters = []
 
@@ -404,11 +410,19 @@ export class ItineraryController {
     }
 
     if (startDate) {
-      filters.push(`startDate >= ${new Date(startDate).toISOString()}`)
+      filters.push(`startDate >= "${new Date(startDate).toISOString()}"`)
     }
 
     if (endDate) {
-      filters.push(`endDate <= ${new Date(endDate).toISOString()}`)
+      filters.push(`endDate <= "${new Date(endDate).toISOString()}"`)
+    }
+
+    if (minDaysCount) {
+      filters.push(`daysCount >= ${parseInt(minDaysCount)}`)
+    }
+
+    if (maxDaysCount) {
+      filters.push(`daysCount <= ${parseInt(maxDaysCount)}`)
     }
 
     const filtersString = filters.length > 0 ? filters.join(' AND ') : undefined
@@ -417,7 +431,9 @@ export class ItineraryController {
       query,
       page,
       undefined,
-      filtersString
+      filtersString,
+      sortBy,
+      order
     )
   }
 }
