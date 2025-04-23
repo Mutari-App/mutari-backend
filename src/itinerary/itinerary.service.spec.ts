@@ -3810,8 +3810,30 @@ describe('ItineraryService', () => {
       // Setup mock response from MeilisearchService
       const mockSearchResults = {
         hits: [
-          { id: 'itinerary-1', title: 'Trip to Japan' },
-          { id: 'itinerary-2', title: 'Beach Vacation' },
+          {
+            id: 'itinerary-1',
+            title: 'Trip to Japan',
+            description: 'Exploring Tokyo and Kyoto',
+            coverImage: 'japan.jpg',
+            startDate: '2025-05-10T00:00:00.000Z',
+            endDate: '2025-05-20T00:00:00.000Z',
+            user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag1', name: 'Asia' } }],
+            daysCount: 10,
+            likes: 15,
+          },
+          {
+            id: 'itinerary-2',
+            title: 'Beach Vacation',
+            description: 'Relaxing by the sea',
+            coverImage: 'beach.jpg',
+            startDate: '2025-06-01T00:00:00.000Z',
+            endDate: '2025-06-05T00:00:00.000Z',
+            user: { id: 'user2', firstName: 'Jane', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag2', name: 'Beach' } }],
+            daysCount: 5,
+            likes: 8,
+          },
         ],
         estimatedTotalHits: 2,
       }
@@ -3834,9 +3856,34 @@ describe('ItineraryService', () => {
         }
       )
 
-      // Verify the returned result
+      // Verify the returned result format matches our interface
       expect(result).toEqual({
-        data: mockSearchResults.hits,
+        data: [
+          {
+            id: 'itinerary-1',
+            title: 'Trip to Japan',
+            description: 'Exploring Tokyo and Kyoto',
+            coverImage: 'japan.jpg',
+            startDate: '2025-05-10T00:00:00.000Z',
+            endDate: '2025-05-20T00:00:00.000Z',
+            user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag1', name: 'Asia' } }],
+            daysCount: 10,
+            likes: 15,
+          },
+          {
+            id: 'itinerary-2',
+            title: 'Beach Vacation',
+            description: 'Relaxing by the sea',
+            coverImage: 'beach.jpg',
+            startDate: '2025-06-01T00:00:00.000Z',
+            endDate: '2025-06-05T00:00:00.000Z',
+            user: { id: 'user2', firstName: 'Jane', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag2', name: 'Beach' } }],
+            daysCount: 5,
+            likes: 8,
+          },
+        ],
         metadata: {
           total: 2,
           page: 1,
@@ -3848,7 +3895,19 @@ describe('ItineraryService', () => {
     it('should search itineraries with custom pagination', async () => {
       // Setup mock response from MeilisearchService
       const mockSearchResults = {
-        hits: [{ id: 'itinerary-3', title: 'Mountain Trek' }],
+        hits: [
+          {
+            id: 'itinerary-3',
+            title: 'Mountain Trek',
+            description: 'Hiking in the Alps',
+            startDate: '2025-07-15T00:00:00.000Z',
+            endDate: '2025-07-22T00:00:00.000Z',
+            user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag3', name: 'Mountain' } }],
+            daysCount: 7,
+            likes: 12,
+          },
+        ],
         estimatedTotalHits: 5,
       }
 
@@ -3885,19 +3944,35 @@ describe('ItineraryService', () => {
       // Setup mock response from MeilisearchService
       const mockSearchResults = {
         hits: [
-          { id: 'itinerary-4', title: 'Summer Beach Trip', isCompleted: false },
+          {
+            id: 'itinerary-4',
+            title: 'Summer Beach Trip',
+            description: 'Fun in the sun',
+            coverImage: undefined,
+            startDate: '2025-08-01T00:00:00.000Z',
+            endDate: '2025-08-07T00:00:00.000Z',
+            user: { id: 'user3', firstName: 'Alice', lastName: 'Smith' },
+            tags: [{ tag: { id: 'tag2', name: 'Beach' } }],
+            daysCount: 7,
+            likes: 25,
+          },
         ],
         estimatedTotalHits: 1,
       }
 
-      const filters = { isCompleted: false, tags: ['beach'] }
+      const filterString = 'tags.tag.id IN ["tag2"] AND daysCount >= 7'
 
       mockMeilisearchService.searchItineraries.mockResolvedValue(
         mockSearchResults
       )
 
-      // Call the method with filters
-      const result = await service.searchItineraries('beach', 1, 20, filters)
+      // Call the method with filter string
+      const result = await service.searchItineraries(
+        'beach',
+        1,
+        20,
+        filterString
+      )
 
       // Verify the method was called with expected parameters
       expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
@@ -3905,8 +3980,131 @@ describe('ItineraryService', () => {
         {
           limit: 20,
           offset: 0,
-          filter: filters,
+          filter: filterString,
           sort: ['startDate:asc'],
+        }
+      )
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: mockSearchResults.hits,
+        metadata: {
+          total: 1,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should search with custom sort parameters', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [
+          {
+            id: 'itinerary-5',
+            title: 'Popular City Trip',
+            likes: 50,
+            daysCount: 4,
+            startDate: '2025-09-10T00:00:00.000Z',
+            endDate: '2025-09-14T00:00:00.000Z',
+            user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag4', name: 'City' } }],
+          },
+          {
+            id: 'itinerary-6',
+            title: 'Popular Mountain Retreat',
+            likes: 45,
+            daysCount: 5,
+            startDate: '2025-10-01T00:00:00.000Z',
+            endDate: '2025-10-06T00:00:00.000Z',
+            user: { id: 'user2', firstName: 'Jane', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag3', name: 'Mountain' } }],
+          },
+        ],
+        estimatedTotalHits: 2,
+      }
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with custom sort and order
+      const result = await service.searchItineraries(
+        'popular',
+        1,
+        20,
+        undefined,
+        'likes',
+        'desc'
+      )
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        'popular',
+        {
+          limit: 20,
+          offset: 0,
+          filter: undefined,
+          sort: ['likes:desc'],
+        }
+      )
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: mockSearchResults.hits,
+        metadata: {
+          total: 2,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should handle search with complex filters and sorting', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [
+          {
+            id: 'itinerary-7',
+            title: 'Long European Adventure',
+            daysCount: 21,
+            startDate: '2026-06-01T00:00:00.000Z',
+            endDate: '2026-06-21T00:00:00.000Z',
+            user: { id: 'user4', firstName: 'Bob', lastName: 'Johnson' },
+            tags: [
+              { tag: { id: 'tag5', name: 'Europe' } },
+              { tag: { id: 'tag6', name: 'Adventure' } },
+            ],
+            likes: 35,
+          },
+        ],
+        estimatedTotalHits: 1,
+      }
+
+      const filterString = 'tags.tag.id IN ["tag5", "tag6"] AND daysCount > 14'
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with filter string and custom sort
+      const result = await service.searchItineraries(
+        'europe adventure',
+        1,
+        20,
+        filterString,
+        'daysCount',
+        'desc'
+      )
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        'europe adventure',
+        {
+          limit: 20,
+          offset: 0,
+          filter: filterString,
+          sort: ['daysCount:desc'],
         }
       )
 
