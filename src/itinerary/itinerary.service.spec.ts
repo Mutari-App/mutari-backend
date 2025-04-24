@@ -3855,8 +3855,6 @@ describe('ItineraryService', () => {
             title: 'Trip to Japan',
             description: 'Exploring Tokyo and Kyoto',
             coverImage: 'japan.jpg',
-            startDate: '2025-05-10T00:00:00.000Z',
-            endDate: '2025-05-20T00:00:00.000Z',
             user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
             tags: [{ tag: { id: 'tag1', name: 'Asia' } }],
             daysCount: 10,
@@ -3867,8 +3865,6 @@ describe('ItineraryService', () => {
             title: 'Beach Vacation',
             description: 'Relaxing by the sea',
             coverImage: 'beach.jpg',
-            startDate: '2025-06-01T00:00:00.000Z',
-            endDate: '2025-06-05T00:00:00.000Z',
             user: { id: 'user2', firstName: 'Jane', lastName: 'Doe' },
             tags: [{ tag: { id: 'tag2', name: 'Beach' } }],
             daysCount: 5,
@@ -3892,7 +3888,7 @@ describe('ItineraryService', () => {
           limit: 20,
           offset: 0,
           filter: undefined,
-          sort: ['startDate:asc'],
+          sort: ['createdAt:asc'],
         }
       )
 
@@ -3904,8 +3900,6 @@ describe('ItineraryService', () => {
             title: 'Trip to Japan',
             description: 'Exploring Tokyo and Kyoto',
             coverImage: 'japan.jpg',
-            startDate: '2025-05-10T00:00:00.000Z',
-            endDate: '2025-05-20T00:00:00.000Z',
             user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
             tags: [{ tag: { id: 'tag1', name: 'Asia' } }],
             daysCount: 10,
@@ -3916,8 +3910,6 @@ describe('ItineraryService', () => {
             title: 'Beach Vacation',
             description: 'Relaxing by the sea',
             coverImage: 'beach.jpg',
-            startDate: '2025-06-01T00:00:00.000Z',
-            endDate: '2025-06-05T00:00:00.000Z',
             user: { id: 'user2', firstName: 'Jane', lastName: 'Doe' },
             tags: [{ tag: { id: 'tag2', name: 'Beach' } }],
             daysCount: 5,
@@ -3940,8 +3932,6 @@ describe('ItineraryService', () => {
             id: 'itinerary-3',
             title: 'Mountain Trek',
             description: 'Hiking in the Alps',
-            startDate: '2025-07-15T00:00:00.000Z',
-            endDate: '2025-07-22T00:00:00.000Z',
             user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
             tags: [{ tag: { id: 'tag3', name: 'Mountain' } }],
             daysCount: 7,
@@ -3965,7 +3955,7 @@ describe('ItineraryService', () => {
           limit: 4,
           offset: 4, // (page 2 - 1) * limit 4
           filter: undefined,
-          sort: ['startDate:asc'],
+          sort: ['createdAt:asc'],
         }
       )
 
@@ -3989,8 +3979,6 @@ describe('ItineraryService', () => {
             title: 'Summer Beach Trip',
             description: 'Fun in the sun',
             coverImage: undefined,
-            startDate: '2025-08-01T00:00:00.000Z',
-            endDate: '2025-08-07T00:00:00.000Z',
             user: { id: 'user3', firstName: 'Alice', lastName: 'Smith' },
             tags: [{ tag: { id: 'tag2', name: 'Beach' } }],
             daysCount: 7,
@@ -4021,7 +4009,7 @@ describe('ItineraryService', () => {
           limit: 20,
           offset: 0,
           filter: filterString,
-          sort: ['startDate:asc'],
+          sort: ['createdAt:asc'],
         }
       )
 
@@ -4045,8 +4033,6 @@ describe('ItineraryService', () => {
             title: 'Popular City Trip',
             likes: 50,
             daysCount: 4,
-            startDate: '2025-09-10T00:00:00.000Z',
-            endDate: '2025-09-14T00:00:00.000Z',
             user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
             tags: [{ tag: { id: 'tag4', name: 'City' } }],
           },
@@ -4055,8 +4041,6 @@ describe('ItineraryService', () => {
             title: 'Popular Mountain Retreat',
             likes: 45,
             daysCount: 5,
-            startDate: '2025-10-01T00:00:00.000Z',
-            endDate: '2025-10-06T00:00:00.000Z',
             user: { id: 'user2', firstName: 'Jane', lastName: 'Doe' },
             tags: [{ tag: { id: 'tag3', name: 'Mountain' } }],
           },
@@ -4108,8 +4092,6 @@ describe('ItineraryService', () => {
             id: 'itinerary-7',
             title: 'Long European Adventure',
             daysCount: 21,
-            startDate: '2026-06-01T00:00:00.000Z',
-            endDate: '2026-06-21T00:00:00.000Z',
             user: { id: 'user4', firstName: 'Bob', lastName: 'Johnson' },
             tags: [
               { tag: { id: 'tag5', name: 'Europe' } },
