@@ -1372,7 +1372,7 @@ export class ItineraryService {
     page: number = 1,
     limit: number = 20,
     filters?: any,
-    sortBy: string = 'startDate',
+    sortBy: string = 'createdAt',
     order: 'asc' | 'desc' = 'asc'
   ) {
     const offset = (page - 1) * limit
@@ -1392,11 +1392,10 @@ export class ItineraryService {
     return {
       data: result.hits.map((hit) => ({
         id: hit.id,
+        createdAt: hit.createdAt,
         title: hit.title,
         description: hit.description,
         coverImage: hit.coverImage,
-        startDate: hit.startDate,
-        endDate: hit.endDate,
         user: hit.user,
         tags: hit.tags,
         daysCount: hit.daysCount,
