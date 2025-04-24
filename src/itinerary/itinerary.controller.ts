@@ -414,7 +414,7 @@ export class ItineraryController {
 
     return this.responseUtil.response(
       {
-        statusCode: HttpStatus.OK,
+        statusCode: HttpStatus.CREATED,
         message: 'Itinerary duplicated succesfully',
       },
       {

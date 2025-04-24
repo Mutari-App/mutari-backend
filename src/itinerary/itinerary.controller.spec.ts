@@ -2179,7 +2179,7 @@ describe('ItineraryController', () => {
       })
       expect(mockResponseUtil.response).toHaveBeenCalledWith(
         {
-          statusCode: HttpStatus.OK,
+          statusCode: HttpStatus.CREATED,
           message: 'Itinerary duplicated succesfully',
         },
         { duplicatedItinerary }
