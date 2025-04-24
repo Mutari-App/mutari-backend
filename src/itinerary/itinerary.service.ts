@@ -294,6 +294,46 @@ export class ItineraryService {
     })
   }
 
+  async duplicateItinerary(id: string, user: User) {
+    await this._checkDuplicateItineraryPermission(id, user)
+
+    // phase 1: duplicate the itinerary
+    const originalItinerary = await this.findOne(id, user)
+    const itineraryData: CreateItineraryDto = {
+      title: originalItinerary.title,
+      description: originalItinerary.description,
+      coverImage: originalItinerary.coverImage,
+      startDate: originalItinerary.startDate,
+      endDate: originalItinerary.endDate,
+      sections: originalItinerary.sections.map((section) => ({
+        sectionNumber: section.sectionNumber,
+        title: section.title || `Hari ke-${section.sectionNumber}`,
+        blocks:
+          section.blocks && section.blocks.length > 0
+            ? section.blocks.map((block, index) => ({
+                position: index,
+                blockType: block.blockType,
+                title: block.title,
+                description: block.description,
+                startTime: block.startTime ? new Date(block.startTime) : null,
+                endTime: block.endTime ? new Date(block.endTime) : null,
+                location: block.location,
+                price: block.price || 0,
+                photoUrl: block.photoUrl,
+                routeToNext: block.routeToNext,
+                routeFromPrevious: block.routeFromPrevious,
+              }))
+            : [],
+      })),
+      tags:
+        originalItinerary.tags && originalItinerary.tags.length > 0
+          ? originalItinerary.tags.map((tags) => tags.tag.id)
+          : [],
+    }
+    const newItinerary = await this.createItinerary(itineraryData, user)
+    return newItinerary
+  }
+
   async _checkItineraryExists(id: string, user: User) {
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id },
@@ -330,6 +370,26 @@ export class ItineraryService {
       throw new ForbiddenException(
         'You do not have permission to update this itinerary'
       )
+    }
+
+    return itinerary
+  }
+
+  async _checkDuplicateItineraryPermission(id: string, user: User) {
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id },
+    })
+
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${id} not found`)
+    }
+
+    if (itinerary.userId !== user.id) {
+      if (!itinerary.isPublished) {
+        throw new ForbiddenException(
+          'You do not have permission to duplicate this itinerary'
+        )
+      }
     }
 
     return itinerary
