@@ -11,8 +11,6 @@ const mockItineraries = [
     title: 'Paris Trip',
     description: 'A weekend in Paris',
     coverImage: 'paris.jpg',
-    startDate: new Date('2025-05-01'),
-    endDate: new Date('2025-05-03'),
     createdAt: new Date('2025-04-10'),
     isPublished: true,
     likes: [{ id: 'like1' }, { id: 'like2' }],
@@ -81,8 +79,6 @@ const mockFormattedItinerary = {
   title: 'Paris Trip',
   description: 'A weekend in Paris',
   coverImage: 'paris.jpg',
-  startDate: '2025-05-01T00:00:00.000Z',
-  endDate: '2025-05-03T00:00:00.000Z',
   createdAt: '2025-04-10T00:00:00.000Z',
   isPublished: true,
   likes: 2,
@@ -235,19 +231,11 @@ describe('MeilisearchService', () => {
         ],
         filterableAttributes: [
           'tags.tag.id',
-          'startDate',
-          'endDate',
           'isPublished',
           'daysCount',
           'likes',
         ],
-        sortableAttributes: [
-          'startDate',
-          'endDate',
-          'createdAt',
-          'likes',
-          'daysCount',
-        ],
+        sortableAttributes: ['createdAt', 'likes', 'daysCount'],
         rankingRules: [
           'words',
           'typo',
@@ -283,8 +271,6 @@ describe('MeilisearchService', () => {
         title: 'Paris Trip',
         description: 'A weekend in Paris',
         coverImage: 'paris.jpg',
-        startDate: '2025-05-01T00:00:00.000Z',
-        endDate: '2025-05-03T00:00:00.000Z',
         createdAt: '2025-04-10T00:00:00.000Z',
         isPublished: true,
         likes: 2,
@@ -321,8 +307,6 @@ describe('MeilisearchService', () => {
       const partialItinerary = {
         id: 'partial1',
         title: 'Partial Trip',
-        startDate: new Date('2025-06-01'),
-        endDate: new Date('2025-06-02'),
         isPublished: true,
         user: {
           id: 'user1',
@@ -339,8 +323,6 @@ describe('MeilisearchService', () => {
         title: 'Partial Trip',
         description: null,
         coverImage: null,
-        startDate: '2025-06-01T00:00:00.000Z',
-        endDate: '2025-06-02T00:00:00.000Z',
         createdAt: expect.any(String),
         isPublished: true,
         likes: 0,
@@ -416,7 +398,7 @@ describe('MeilisearchService', () => {
       const query = 'Paris'
       const options = {
         filter: 'tags.tag.id = "tag1"',
-        sort: ['startDate:asc'],
+        sort: ['createdAt:asc'],
       }
 
       const result = await service.searchItineraries(query, options)
