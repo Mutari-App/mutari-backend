@@ -8,8 +8,6 @@ export interface IndexedItinerary {
   title: string
   description: string | null
   coverImage: string | null
-  startDate: string
-  endDate: string
   createdAt: string
   isPublished: boolean
   likes: number
@@ -81,19 +79,11 @@ export class MeilisearchService implements OnModuleInit {
       ],
       filterableAttributes: [
         'tags.tag.id',
-        'startDate',
-        'endDate',
         'isPublished',
         'daysCount',
         'likes',
       ],
-      sortableAttributes: [
-        'startDate',
-        'endDate',
-        'createdAt',
-        'likes',
-        'daysCount',
-      ],
+      sortableAttributes: ['createdAt', 'likes', 'daysCount'],
       rankingRules: [
         'words',
         'typo',
@@ -168,14 +158,6 @@ export class MeilisearchService implements OnModuleInit {
       title: itinerary.title,
       description: itinerary.description ?? null,
       coverImage: itinerary.coverImage ?? null,
-      startDate:
-        itinerary.startDate instanceof Date
-          ? itinerary.startDate.toISOString()
-          : itinerary.startDate,
-      endDate:
-        itinerary.endDate instanceof Date
-          ? itinerary.endDate.toISOString()
-          : itinerary.endDate,
       createdAt:
         itinerary.createdAt instanceof Date
           ? itinerary.createdAt.toISOString()
