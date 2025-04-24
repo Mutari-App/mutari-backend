@@ -294,6 +294,12 @@ export class ItineraryService {
     })
   }
 
+  /**
+   * Checks whether itinerary with given id exists
+   * @param id Id for Itinerary
+   * @param user User for permission check
+   * @returns A simple Itinerary object
+   */
   async _checkItineraryExists(id: string, user: User) {
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id },
@@ -307,31 +313,41 @@ export class ItineraryService {
     if (!itinerary) {
       throw new NotFoundException(`Itinerary with ID ${id} not found`)
     }
-
-    if (itinerary.userId !== user.id && itinerary.access.length === 0) {
-      throw new ForbiddenException(
-        'You do not have permission to update or view this itinerary'
-      )
-    }
-
     return itinerary
   }
 
-  async _checkUpdateItineraryPermission(id: string, user: User) {
-    const itinerary = await this.prisma.itinerary.findUnique({
-      where: { id },
-    })
+  /**
+   * Checks whether user has READ access to a given itinerary or not
+   * @param id Id for Itinerary
+   * @param user User for permission check
+   * @returns A simple Itinerary object
+   */
+  async _checkReadItineraryPermission(id: string, user: User) {
+    const itinerary = await this._checkItineraryExists(id, user)
 
-    if (!itinerary) {
-      throw new NotFoundException(`Itinerary with ID ${id} not found`)
+    if (itinerary.userId !== user.id) {
+      if (!itinerary.isPublished && itinerary.access.length === 0)
+        throw new ForbiddenException(
+          'You do not have permission to view this itinerary'
+        )
     }
+    return itinerary
+  }
+
+  /**
+   * Checks whether user has UPDATE access to a given itinerary or not
+   * @param id Id for Itinerary
+   * @param user User for permission check
+   * @returns A simple Itinerary object
+   */
+  async _checkUpdateItineraryPermission(id: string, user: User) {
+    const itinerary = await this._checkItineraryExists(id, user)
 
     if (itinerary.userId !== user.id) {
       throw new ForbiddenException(
         'You do not have permission to update this itinerary'
       )
     }
-
     return itinerary
   }
 
