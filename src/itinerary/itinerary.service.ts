@@ -334,6 +334,51 @@ export class ItineraryService {
     return newItinerary
   }
 
+  async duplicateContingency(
+    itineraryId: string,
+    contingencyPlanId: string,
+    user: User
+  ) {
+    await this._checkDuplicateItineraryPermission(itineraryId, user)
+
+    // phase 2: duplicate contingency
+    const contingecyPlan = await this.findContingencyPlan(
+      itineraryId,
+      contingencyPlanId,
+      user
+    )
+    const contingencyData: CreateContingencyPlanDto = {
+      title: contingecyPlan.title,
+      description: contingecyPlan.description,
+      sections: contingecyPlan.sections.map((section) => ({
+        sectionNumber: section.sectionNumber,
+        title: section.title || `Hari ke-${section.sectionNumber}`,
+        blocks:
+          section.blocks && section.blocks.length > 0
+            ? section.blocks.map((block, index) => ({
+                position: index,
+                blockType: block.blockType,
+                title: block.title,
+                description: block.description,
+                startTime: block.startTime ? new Date(block.startTime) : null,
+                endTime: block.endTime ? new Date(block.endTime) : null,
+                location: block.location,
+                price: block.price || 0,
+                photoUrl: block.photoUrl,
+                routeToNext: block.routeToNext,
+                routeFromPrevious: block.routeFromPrevious,
+              }))
+            : [],
+      })),
+    }
+    const newContingencyPlan = await this.createContingencyPlan(
+      itineraryId,
+      contingencyData,
+      user
+    )
+    return newContingencyPlan
+  }
+
   async _checkItineraryExists(id: string, user: User) {
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id },
