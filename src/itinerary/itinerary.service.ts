@@ -163,7 +163,6 @@ export class ItineraryService {
   }
 
   async updateItinerary(id: string, data: UpdateItineraryDto, user: User) {
-    await this._checkItineraryExists(id, user)
     await this._checkUpdateItineraryPermission(id, user)
     this._validateItineraryDates(data)
     this._validateItinerarySections(data)
@@ -778,7 +777,7 @@ export class ItineraryService {
   }
 
   async findOne(id: string, user: User) {
-    await this._checkItineraryExists(id, user)
+    await this._checkReadItineraryPermission(id, user)
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id: id },
       include: {
@@ -968,7 +967,7 @@ export class ItineraryService {
   }
 
   async findContingencyPlans(itineraryId: string, user: User) {
-    const itinerary = await this._checkUpdateItineraryPermission(
+    const itinerary = await this._checkReadItineraryPermission(
       itineraryId,
       user
     )
@@ -986,7 +985,7 @@ export class ItineraryService {
     contingencyPlanId: string,
     user: User
   ) {
-    const itinerary = await this._checkUpdateItineraryPermission(
+    const itinerary = await this._checkReadItineraryPermission(
       itineraryId,
       user
     )
@@ -1048,7 +1047,10 @@ export class ItineraryService {
     data: CreateContingencyPlanDto,
     user: User
   ) {
-    const itinerary = await this._checkItineraryExists(itineraryId, user)
+    const itinerary = await this._checkUpdateItineraryPermission(
+      itineraryId,
+      user
+    )
     const contingencyCount = await this._checkContingencyCount(itinerary.id)
     const CONTINGENCY_TITLE = ['B', 'C']
     return this.prisma.$transaction(async (prisma) => {
