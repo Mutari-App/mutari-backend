@@ -2049,12 +2049,14 @@ describe('ItineraryController', () => {
 
       const resultPublish = await controller.publishItinerary(
         mockItinerary.id,
-        mockUser
+        mockUser,
+        false
       )
 
       expect(mockItineraryService.publishItinerary).toHaveBeenCalledWith(
         mockItinerary.id,
-        mockUser.id
+        mockUser,
+        false
       )
       expect(mockResponseUtil.response).toHaveBeenCalledWith(
         {
@@ -2094,7 +2096,7 @@ describe('ItineraryController', () => {
       })
 
       await expect(
-        controller.publishItinerary(mockItinerary.id, mockFakeUser)
+        controller.publishItinerary(mockItinerary.id, mockFakeUser, false)
       ).rejects.toThrow(ForbiddenException)
     })
 
@@ -2104,7 +2106,7 @@ describe('ItineraryController', () => {
       })
 
       await expect(
-        controller.publishItinerary(mockItinerary.id, mockUser)
+        controller.publishItinerary(mockItinerary.id, mockUser, false)
       ).rejects.toThrow(BadRequestException)
     })
   })
