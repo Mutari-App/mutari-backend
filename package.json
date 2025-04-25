@@ -26,7 +26,8 @@
     "migrate:dev": "prisma migrate dev",
     "generate:migrate:dev": "zenstack generate && pnpm run migrate:dev",
     "start:migrate:prod": "prisma migrate deploy && pnpm run start:prod",
-    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org mutari --project mutari-backend ./dist && sentry-cli sourcemaps upload --org mutari --project mutari-backend ./dist"
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org mutari --project mutari-backend ./dist && sentry-cli sourcemaps upload --org mutari --project mutari-backend ./dist",
+    "infisical:dev": "infisical run -- pnpm run start:dev"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
