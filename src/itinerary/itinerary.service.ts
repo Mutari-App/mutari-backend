@@ -327,9 +327,11 @@ export class ItineraryService {
     }
 
     if (itinerary.userId !== user.id) {
-      throw new ForbiddenException(
-        'You do not have permission to update this itinerary'
-      )
+      if (!itinerary.isPublished){
+        throw new ForbiddenException(
+          'You do not have permission to update this itinerary'
+        )
+      }
     }
 
     return itinerary
@@ -1336,30 +1338,16 @@ export class ItineraryService {
     })
   }
 
-  async publishItinerary(itineraryId: string, userId: string) {
-    const itinerary = await this.prisma.itinerary.findUnique({
-      where: { id: itineraryId },
-    })
-
-    if (!itinerary) {
-      throw new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
-    }
-
-    if (itinerary.userId !== userId) {
-      throw new ForbiddenException('Not authorized to publish this itinerary')
-    }
-
-    if (itinerary.isPublished) {
-      throw new BadRequestException('Itinerary is already published')
-    }
+  async publishItinerary(itineraryId: string, user: User, isPublished: boolean) {
+    await this._checkUpdateItineraryPermission(itineraryId, user)
 
     const updatedItinerary = await this.prisma.itinerary.update({
       where: { id: itineraryId },
       data: {
-        isPublished: true,
+        isPublished,
       },
     })
-
+  
     return { updatedItinerary }
   }
 }
