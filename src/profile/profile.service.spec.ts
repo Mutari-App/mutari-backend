@@ -11,6 +11,12 @@ describe('ProfileService', () => {
     user: {
       findUnique: jest.fn(),
     },
+    itinerary: {
+      findMany: jest.fn(),
+    },
+    itineraryLike: {
+      findMany: jest.fn(),
+    },
   }
 
   beforeEach(async () => {
@@ -34,7 +40,7 @@ describe('ProfileService', () => {
   })
 
   describe('findOne', () => {
-    it('should return a profile by id', async () => {
+    it('should return a user profile by id', async () => {
       // Arrange
       const id = '123'
       const mockUser = {
@@ -50,25 +56,11 @@ describe('ProfileService', () => {
         loyaltyPoints: 50,
         itineraries: [
           {
-            id: 'itinerary1',
-            title: 'Weekend Trip',
-            description: 'Short getaway',
-            coverImage: 'trip.jpg',
-            startDate: new Date('2023-05-01'),
-            endDate: new Date('2023-05-03'),
             _count: {
               likes: 5,
             },
-            sections: [
-              {
-                _count: {
-                  blocks: 2,
-                },
-              },
-            ],
           },
         ],
-        itineraryLikes: [],
       }
       mockPrismaService.user.findUnique.mockResolvedValue(mockUser)
 
@@ -76,11 +68,17 @@ describe('ProfileService', () => {
       const result = await service.findOne(id)
 
       // Assert
-      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id },
-        })
-      )
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { id },
+        select: expect.objectContaining({
+          id: true,
+          photoProfile: true,
+          firstName: true,
+          lastName: true,
+          referralCode: true,
+          loyaltyPoints: true,
+        }),
+      })
       expect(result).toEqual({
         id,
         photoProfile: 'avatar.jpg',
@@ -91,19 +89,6 @@ describe('ProfileService', () => {
         totalReferrals: 2,
         totalItineraries: 1,
         totalLikes: 5,
-        itineraries: [
-          {
-            id: 'itinerary1',
-            title: 'Weekend Trip',
-            description: 'Short getaway',
-            coverImage: 'trip.jpg',
-            startDate: expect.any(Date),
-            endDate: expect.any(Date),
-            totalLikes: 5,
-            totalDestinations: 2,
-          },
-        ],
-        itineraryLikes: [],
       })
     })
 
@@ -123,7 +108,7 @@ describe('ProfileService', () => {
       )
     })
 
-    it('should transform user data correctly with itineraries and likes', async () => {
+    it('should calculate totalLikes from itineraries correctly', async () => {
       // Arrange
       const id = '123'
       const mockUser = {
@@ -139,48 +124,13 @@ describe('ProfileService', () => {
         loyaltyPoints: 100,
         itineraries: [
           {
-            id: 'itinerary1',
-            title: 'Trip to Bali',
-            description: 'Beach vacation',
-            coverImage: 'bali.jpg',
-            startDate: new Date('2023-01-01'),
-            endDate: new Date('2023-01-07'),
             _count: {
               likes: 10,
             },
-            sections: [
-              {
-                _count: {
-                  blocks: 3,
-                },
-              },
-              {
-                _count: {
-                  blocks: 2,
-                },
-              },
-            ],
           },
-        ],
-        itineraryLikes: [
           {
-            itinerary: {
-              id: 'itinerary2',
-              title: 'Tokyo Adventure',
-              description: 'City exploration',
-              coverImage: 'tokyo.jpg',
-              startDate: new Date('2023-02-01'),
-              endDate: new Date('2023-02-10'),
-              _count: {
-                likes: 15,
-              },
-              sections: [
-                {
-                  _count: {
-                    blocks: 4,
-                  },
-                },
-              ],
+            _count: {
+              likes: 15,
             },
           },
         ],
@@ -191,47 +141,21 @@ describe('ProfileService', () => {
       const result = await service.findOne(id)
 
       // Assert
-      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
-        where: { id },
-        select: expect.any(Object),
+      expect(result.totalLikes).toBe(25)
+      expect(result).toEqual({
+        id,
+        photoProfile: 'profile.jpg',
+        firstName: 'John',
+        lastName: 'Doe',
+        referralCode: 'REF123',
+        loyaltyPoints: 100,
+        totalReferrals: 5,
+        totalItineraries: 2,
+        totalLikes: 25,
       })
-
-      expect(result).toEqual(
-        expect.objectContaining({
-          id,
-          photoProfile: 'profile.jpg',
-          firstName: 'John',
-          lastName: 'Doe',
-          referralCode: 'REF123',
-          loyaltyPoints: 100,
-          totalReferrals: 5,
-          totalItineraries: 2,
-          totalLikes: 10,
-          itineraries: [
-            expect.objectContaining({
-              id: 'itinerary1',
-              title: 'Trip to Bali',
-              totalLikes: 10,
-              totalDestinations: 5,
-            }),
-          ],
-          itineraryLikes: [
-            expect.objectContaining({
-              id: 'itinerary2',
-              title: 'Tokyo Adventure',
-              totalLikes: 15,
-              totalDestinations: 4,
-            }),
-          ],
-        })
-      )
-
-      // Verify no sections in the result
-      expect(result.itineraries[0]).not.toHaveProperty('sections')
-      expect(result.itineraryLikes[0]).not.toHaveProperty('sections')
     })
 
-    it('should handle user with no itineraries or likes', async () => {
+    it('should handle user with no itineraries', async () => {
       // Arrange
       const id = '123'
       const mockUser = {
@@ -246,7 +170,6 @@ describe('ProfileService', () => {
         },
         loyaltyPoints: 0,
         itineraries: [],
-        itineraryLikes: [],
       }
       mockPrismaService.user.findUnique.mockResolvedValue(mockUser)
 
@@ -254,16 +177,246 @@ describe('ProfileService', () => {
       const result = await service.findOne(id)
 
       // Assert
-      expect(result).toEqual(
-        expect.objectContaining({
-          id,
-          totalReferrals: 0,
-          totalItineraries: 0,
-          totalLikes: 0,
-          itineraries: [],
-          itineraryLikes: [],
-        })
+      expect(result).toEqual({
+        id,
+        photoProfile: 'profile.jpg',
+        firstName: 'John',
+        lastName: 'Doe',
+        referralCode: 'REF123',
+        loyaltyPoints: 0,
+        totalReferrals: 0,
+        totalItineraries: 0,
+        totalLikes: 0,
+      })
+    })
+  })
+  describe('getListItineraries', () => {
+    it('should return a list of itineraries for a user', async () => {
+      // Arrange
+      const userId = 'user123'
+      const mockItineraries = [
+        {
+          id: 'itinerary1',
+          title: 'Paris Trip',
+          description: 'City of Lights',
+          coverImage: 'paris.jpg',
+          startDate: new Date('2023-06-01'),
+          endDate: new Date('2023-06-07'),
+          _count: { likes: 12 },
+          sections: [{ _count: { blocks: 3 } }, { _count: { blocks: 2 } }],
+        },
+        {
+          id: 'itinerary2',
+          title: 'Rome Weekend',
+          description: 'Italian getaway',
+          coverImage: 'rome.jpg',
+          startDate: new Date('2023-07-15'),
+          endDate: new Date('2023-07-17'),
+          _count: { likes: 8 },
+          sections: [{ _count: { blocks: 4 } }],
+        },
+      ]
+
+      mockPrismaService.itinerary.findMany.mockResolvedValue(mockItineraries)
+
+      // Act
+      const result = await service.getListItineraries(userId)
+
+      // Assert
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
+        where: { userId },
+        select: expect.any(Object),
+        orderBy: { updatedAt: 'desc' },
+      })
+
+      expect(result).toHaveLength(2)
+      expect(result[0]).toEqual({
+        id: 'itinerary1',
+        title: 'Paris Trip',
+        description: 'City of Lights',
+        coverImage: 'paris.jpg',
+        startDate: expect.any(Date),
+        endDate: expect.any(Date),
+        totalLikes: 12,
+        totalDestinations: 5,
+      })
+      expect(result[1]).toEqual({
+        id: 'itinerary2',
+        title: 'Rome Weekend',
+        description: 'Italian getaway',
+        coverImage: 'rome.jpg',
+        startDate: expect.any(Date),
+        endDate: expect.any(Date),
+        totalLikes: 8,
+        totalDestinations: 4,
+      })
+
+      // Verify no sections in the result
+      expect(result[0]).not.toHaveProperty('sections')
+      expect(result[1]).not.toHaveProperty('_count')
+    })
+
+    it('should handle user with no itineraries', async () => {
+      // Arrange
+      const userId = 'user123'
+      mockPrismaService.itinerary.findMany.mockResolvedValue([])
+
+      // Act
+      const result = await service.getListItineraries(userId)
+
+      // Assert
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
+        where: { userId },
+        select: expect.any(Object),
+        orderBy: { updatedAt: 'desc' },
+      })
+      expect(result).toEqual([])
+    })
+
+    it('should correctly calculate totalDestinations when sections is empty', async () => {
+      // Arrange
+      const userId = 'user123'
+      const mockItineraries = [
+        {
+          id: 'itinerary1',
+          title: 'Empty Trip',
+          description: 'No destinations yet',
+          coverImage: 'empty.jpg',
+          startDate: new Date('2023-06-01'),
+          endDate: new Date('2023-06-07'),
+          _count: { likes: 3 },
+          sections: [], // Empty sections
+        },
+      ]
+
+      mockPrismaService.itinerary.findMany.mockResolvedValue(mockItineraries)
+
+      // Act
+      const result = await service.getListItineraries(userId)
+
+      // Assert
+      expect(result[0].totalDestinations).toBe(0)
+      expect(result[0].totalLikes).toBe(3)
+    })
+  })
+
+  describe('getListItineraryLikes', () => {
+    it('should return a list of liked itineraries for a user', async () => {
+      // Arrange
+      const userId = 'user123'
+      const mockItineraryLikes = [
+        {
+          itinerary: {
+            id: 'itinerary1',
+            title: 'Mountain Retreat',
+            description: 'Peaceful getaway',
+            coverImage: 'mountain.jpg',
+            startDate: new Date('2023-08-10'),
+            endDate: new Date('2023-08-15'),
+            _count: { likes: 20 },
+            sections: [{ _count: { blocks: 2 } }, { _count: { blocks: 3 } }],
+          },
+        },
+        {
+          itinerary: {
+            id: 'itinerary2',
+            title: 'Beach Vacation',
+            description: 'Sun and sand',
+            coverImage: 'beach.jpg',
+            startDate: new Date('2023-09-01'),
+            endDate: new Date('2023-09-10'),
+            _count: { likes: 15 },
+            sections: [{ _count: { blocks: 4 } }],
+          },
+        },
+      ]
+
+      mockPrismaService.itineraryLike.findMany.mockResolvedValue(
+        mockItineraryLikes
       )
+
+      // Act
+      const result = await service.getListItineraryLikes(userId)
+
+      // Assert
+      expect(mockPrismaService.itineraryLike.findMany).toHaveBeenCalledWith({
+        where: { userId },
+        select: expect.any(Object),
+        orderBy: { createdAt: 'desc' },
+      })
+
+      expect(result).toHaveLength(2)
+      expect(result[0]).toEqual({
+        id: 'itinerary1',
+        title: 'Mountain Retreat',
+        description: 'Peaceful getaway',
+        coverImage: 'mountain.jpg',
+        startDate: expect.any(Date),
+        endDate: expect.any(Date),
+        totalLikes: 20,
+        totalDestinations: 5,
+      })
+      expect(result[1]).toEqual({
+        id: 'itinerary2',
+        title: 'Beach Vacation',
+        description: 'Sun and sand',
+        coverImage: 'beach.jpg',
+        startDate: expect.any(Date),
+        endDate: expect.any(Date),
+        totalLikes: 15,
+        totalDestinations: 4,
+      })
+
+      // Verify no sections in the result
+      expect(result[0]).not.toHaveProperty('sections')
+      expect(result[1]).not.toHaveProperty('_count')
+    })
+
+    it('should handle user with no liked itineraries', async () => {
+      // Arrange
+      const userId = 'user123'
+      mockPrismaService.itineraryLike.findMany.mockResolvedValue([])
+
+      // Act
+      const result = await service.getListItineraryLikes(userId)
+
+      // Assert
+      expect(mockPrismaService.itineraryLike.findMany).toHaveBeenCalledWith({
+        where: { userId },
+        select: expect.any(Object),
+        orderBy: { createdAt: 'desc' },
+      })
+      expect(result).toEqual([])
+    })
+
+    it('should correctly calculate totalDestinations when sections is empty', async () => {
+      // Arrange
+      const userId = 'user123'
+      const mockItineraryLikes = [
+        {
+          itinerary: {
+            id: 'itinerary1',
+            title: 'Empty Trip',
+            description: 'No destinations yet',
+            coverImage: 'empty.jpg',
+            startDate: new Date('2023-06-01'),
+            endDate: new Date('2023-06-07'),
+            _count: { likes: 2 },
+            sections: [], // Empty sections
+          },
+        },
+      ]
+
+      mockPrismaService.itineraryLike.findMany.mockResolvedValue(
+        mockItineraryLikes
+      )
+
+      // Act
+      const result = await service.getListItineraryLikes(userId)
+
+      // Assert
+      expect(result[0].totalDestinations).toBe(0)
+      expect(result[0].totalLikes).toBe(2)
     })
   })
 })
