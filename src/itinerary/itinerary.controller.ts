@@ -180,6 +180,20 @@ export class ItineraryController {
     )
   }
 
+  @Get('views')
+  async getViewItinerary(@GetUser() user: User) {
+    const itinerary = await this.itineraryService.getViewItinerary(user)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary views fetched successfully',
+      },
+      {
+        itinerary,
+      }
+    )
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string, @GetUser() user: User) {
     const itinerary = await this.itineraryService.findOne(id, user)
@@ -190,7 +204,6 @@ export class ItineraryController {
       }
     }
 
-    console.log(itinerary)
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.OK,
@@ -217,6 +230,26 @@ export class ItineraryController {
         message: 'Itinerary created successfully',
       },
       itinerary
+    )
+  }
+
+  @Post('views/:itineraryId')
+  async createViewItinerary(
+    @GetUser() user: User,
+    @Param('itineraryId') itineraryId: string
+  ) {
+    const itinerary = await this.itineraryService.createViewItinerary(
+      itineraryId,
+      user
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary view added successfully',
+      },
+      {
+        itinerary,
+      }
     )
   }
 

@@ -177,7 +177,6 @@ export class ItineraryService {
   }
 
   async updateItinerary(id: string, data: UpdateItineraryDto, user: User) {
-    await this._checkItineraryExists(id, user)
     await this._checkUpdateItineraryPermission(id, user)
     this._validateItineraryDates(data)
     this._validateItinerarySections(data)
@@ -324,6 +323,12 @@ export class ItineraryService {
     })
   }
 
+  /**
+   * Checks whether itinerary with given id exists
+   * @param id Id for Itinerary
+   * @param user User for permission check
+   * @returns A simple Itinerary object
+   */
   async _checkItineraryExists(id: string, user: User) {
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id },
@@ -337,31 +342,41 @@ export class ItineraryService {
     if (!itinerary) {
       throw new NotFoundException(`Itinerary with ID ${id} not found`)
     }
-
-    if (itinerary.userId !== user.id && itinerary.access.length === 0) {
-      throw new ForbiddenException(
-        'You do not have permission to update or view this itinerary'
-      )
-    }
-
     return itinerary
   }
 
-  async _checkUpdateItineraryPermission(id: string, user: User) {
-    const itinerary = await this.prisma.itinerary.findUnique({
-      where: { id },
-    })
+  /**
+   * Checks whether user has READ access to a given itinerary or not
+   * @param id Id for Itinerary
+   * @param user User for permission check
+   * @returns A simple Itinerary object
+   */
+  async _checkReadItineraryPermission(id: string, user: User) {
+    const itinerary = await this._checkItineraryExists(id, user)
 
-    if (!itinerary) {
-      throw new NotFoundException(`Itinerary with ID ${id} not found`)
+    if (itinerary.userId !== user.id) {
+      if (!itinerary.isPublished && itinerary.access.length === 0)
+        throw new ForbiddenException(
+          'You do not have permission to view this itinerary'
+        )
     }
+    return itinerary
+  }
+
+  /**
+   * Checks whether user has UPDATE access to a given itinerary or not
+   * @param id Id for Itinerary
+   * @param user User for permission check
+   * @returns A simple Itinerary object
+   */
+  async _checkUpdateItineraryPermission(id: string, user: User) {
+    const itinerary = await this._checkItineraryExists(id, user)
 
     if (itinerary.userId !== user.id) {
       throw new ForbiddenException(
         'You do not have permission to update this itinerary'
       )
     }
-
     return itinerary
   }
 
@@ -792,7 +807,7 @@ export class ItineraryService {
   }
 
   async findOne(id: string, user: User) {
-    await this._checkItineraryExists(id, user)
+    await this._checkReadItineraryPermission(id, user)
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id: id },
       include: {
@@ -983,7 +998,7 @@ export class ItineraryService {
   }
 
   async findContingencyPlans(itineraryId: string, user: User) {
-    const itinerary = await this._checkUpdateItineraryPermission(
+    const itinerary = await this._checkReadItineraryPermission(
       itineraryId,
       user
     )
@@ -1001,7 +1016,7 @@ export class ItineraryService {
     contingencyPlanId: string,
     user: User
   ) {
-    const itinerary = await this._checkUpdateItineraryPermission(
+    const itinerary = await this._checkReadItineraryPermission(
       itineraryId,
       user
     )
@@ -1063,7 +1078,10 @@ export class ItineraryService {
     data: CreateContingencyPlanDto,
     user: User
   ) {
-    const itinerary = await this._checkItineraryExists(itineraryId, user)
+    const itinerary = await this._checkUpdateItineraryPermission(
+      itineraryId,
+      user
+    )
     const contingencyCount = await this._checkContingencyCount(itinerary.id)
     const CONTINGENCY_TITLE = ['B', 'C']
     return this.prisma.$transaction(async (prisma) => {
@@ -1407,5 +1425,58 @@ export class ItineraryService {
         totalPages: Math.ceil(result.estimatedTotalHits / limit) || 1,
       },
     }
+  }
+
+  async createViewItinerary(itineraryId: string, user: User) {
+    const userId = user.id
+
+    const userViews = await this.prisma.itineraryView.findMany({
+      where: { userId },
+      orderBy: { viewedAt: 'desc' },
+    })
+
+    const itineraryExists = userViews.some(
+      (view) => view.itineraryId === itineraryId
+    )
+
+    if (itineraryExists) {
+      return this.prisma.itineraryView.update({
+        where: {
+          userId_itineraryId: { userId, itineraryId },
+        },
+        data: {
+          viewedAt: new Date(),
+        },
+      })
+    }
+
+    if (userViews.length >= 10) {
+      await this.prisma.itineraryView.delete({
+        where: {
+          id: userViews[userViews.length - 1].id,
+        },
+      })
+    }
+
+    return this.prisma.itineraryView.create({
+      data: {
+        userId,
+        itineraryId,
+        viewedAt: new Date(),
+      },
+    })
+  }
+
+  async getViewItinerary(user: User) {
+    const userId = user.id
+
+    return this.prisma.itineraryView.findMany({
+      where: {
+        userId: userId,
+      },
+      orderBy: {
+        viewedAt: 'desc',
+      },
+    })
   }
 }

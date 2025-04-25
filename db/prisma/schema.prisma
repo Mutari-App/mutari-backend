@@ -79,6 +79,7 @@ model User {
   itineraryAccess  ItineraryAccess[]
   itineraryLikes   ItineraryLike[]
   tourTickets      TourTicket[]
+  itineraryViews   ItineraryView[]
 }
 
 model Ticket {
@@ -182,6 +183,7 @@ model Itinerary {
   tours            Tour[]
   contingencyPlans ContingencyPlan[]
   reminder         ItineraryReminder?
+  views            ItineraryView[]
 }
 
 model ContingencyPlan {
@@ -313,4 +315,18 @@ model ItineraryReminder {
   reminderOption REMINDER_OPTION
   startDate      DateTime        @default(now()) @db.Timestamptz()
   itinerary      Itinerary       @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+}
+
+model ItineraryView {
+  updatedAt   DateTime  @updatedAt() @db.Timestamptz()
+  createdAt   DateTime  @default(now()) @db.Timestamptz()
+  id          String    @id() @unique() @default(uuid())
+  userId      String
+  itineraryId String
+  viewedAt    DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itineraryId])
+  @@index([userId, viewedAt])
 }

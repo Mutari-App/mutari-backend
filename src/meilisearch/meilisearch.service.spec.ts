@@ -337,6 +337,25 @@ describe('MeilisearchService', () => {
         sections: [],
       })
     })
+
+    it('should handle null or undefined itinerary and return null', () => {
+      // Test with undefined
+      const formattedUndefined = service.formatItineraryForIndex(undefined)
+      expect(formattedUndefined).toBeNull()
+      expect(Logger.prototype.error).toHaveBeenCalledWith(
+        'Cannot format undefined itinerary for index'
+      )
+
+      // Reset the mock to check for null case
+      jest.clearAllMocks()
+
+      // Test with null
+      const formattedNull = service.formatItineraryForIndex(null)
+      expect(formattedNull).toBeNull()
+      expect(Logger.prototype.error).toHaveBeenCalledWith(
+        'Cannot format undefined itinerary for index'
+      )
+    })
   })
 
   describe('syncItineraries', () => {
