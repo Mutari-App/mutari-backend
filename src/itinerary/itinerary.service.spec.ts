@@ -13,10 +13,12 @@ import {
 import { EmailService } from 'src/email/email.service'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
 import { UpdateContingencyPlanDto } from './dto/update-contingency-plan.dto'
+import { MeilisearchService } from 'src/meilisearch/meilisearch.service'
 
 describe('ItineraryService', () => {
   let service: ItineraryService
   let prismaService: PrismaService
+  let meilisearchService: MeilisearchService
 
   const mockPrismaService = {
     $transaction: jest
@@ -63,6 +65,13 @@ describe('ItineraryService', () => {
     },
     _checkItineraryExists: jest.fn(),
     _checkContingencyCount: jest.fn(),
+  }
+
+  const mockMeilisearchService = {
+    syncItineraries: jest.fn(),
+    addOrUpdateItinerary: jest.fn(),
+    deleteItinerary: jest.fn(),
+    searchItineraries: jest.fn(),
   }
 
   const mockUser: User = {
@@ -113,11 +122,16 @@ describe('ItineraryService', () => {
             sendEmail: jest.fn(), // Mock any methods used in the service
           },
         },
+        {
+          provide: MeilisearchService,
+          useValue: mockMeilisearchService,
+        },
       ],
     }).compile()
 
     service = module.get<ItineraryService>(ItineraryService)
     prismaService = module.get<PrismaService>(PrismaService)
+    meilisearchService = module.get<MeilisearchService>(MeilisearchService)
 
     mockPrismaService.$transaction.mockReset()
     mockPrismaService.$transaction.mockImplementation((arg) => {
@@ -396,6 +410,14 @@ describe('ItineraryService', () => {
               tag: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
         },
       })
       expect(result).toEqual(expectedItinerary)
@@ -480,6 +502,14 @@ describe('ItineraryService', () => {
           tags: {
             include: {
               tag: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
             },
           },
         },
@@ -1072,6 +1102,14 @@ describe('ItineraryService', () => {
               tag: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
         },
       })
       expect(result).toEqual(updatedItinerary)
@@ -1202,6 +1240,14 @@ describe('ItineraryService', () => {
           tags: {
             include: {
               tag: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
             },
           },
         },
@@ -1354,6 +1400,14 @@ describe('ItineraryService', () => {
           tags: {
             include: {
               tag: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
             },
           },
         },
@@ -3848,6 +3902,350 @@ describe('ItineraryService', () => {
     })
   })
 
+  describe('searchItineraries', () => {
+    it('should search itineraries with default parameters', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [
+          {
+            id: 'itinerary-1',
+            title: 'Trip to Japan',
+            description: 'Exploring Tokyo and Kyoto',
+            coverImage: 'japan.jpg',
+            user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag1', name: 'Asia' } }],
+            daysCount: 10,
+            likes: 15,
+          },
+          {
+            id: 'itinerary-2',
+            title: 'Beach Vacation',
+            description: 'Relaxing by the sea',
+            coverImage: 'beach.jpg',
+            user: { id: 'user2', firstName: 'Jane', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag2', name: 'Beach' } }],
+            daysCount: 5,
+            likes: 8,
+          },
+        ],
+        estimatedTotalHits: 2,
+      }
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with default parameters
+      const result = await service.searchItineraries()
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        '',
+        {
+          limit: 20,
+          offset: 0,
+          filter: undefined,
+          sort: ['createdAt:asc'],
+        }
+      )
+
+      // Verify the returned result format matches our interface
+      expect(result).toEqual({
+        data: [
+          {
+            id: 'itinerary-1',
+            title: 'Trip to Japan',
+            description: 'Exploring Tokyo and Kyoto',
+            coverImage: 'japan.jpg',
+            user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag1', name: 'Asia' } }],
+            daysCount: 10,
+            likes: 15,
+          },
+          {
+            id: 'itinerary-2',
+            title: 'Beach Vacation',
+            description: 'Relaxing by the sea',
+            coverImage: 'beach.jpg',
+            user: { id: 'user2', firstName: 'Jane', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag2', name: 'Beach' } }],
+            daysCount: 5,
+            likes: 8,
+          },
+        ],
+        metadata: {
+          total: 2,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should search itineraries with custom pagination', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [
+          {
+            id: 'itinerary-3',
+            title: 'Mountain Trek',
+            description: 'Hiking in the Alps',
+            user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag3', name: 'Mountain' } }],
+            daysCount: 7,
+            likes: 12,
+          },
+        ],
+        estimatedTotalHits: 5,
+      }
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with custom pagination
+      const result = await service.searchItineraries('mountain', 2, 4)
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        'mountain',
+        {
+          limit: 4,
+          offset: 4, // (page 2 - 1) * limit 4
+          filter: undefined,
+          sort: ['createdAt:asc'],
+        }
+      )
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: mockSearchResults.hits,
+        metadata: {
+          total: 5,
+          page: 2,
+          totalPages: 2, // ceil(5/4) = 2
+        },
+      })
+    })
+
+    it('should search itineraries with filters', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [
+          {
+            id: 'itinerary-4',
+            title: 'Summer Beach Trip',
+            description: 'Fun in the sun',
+            coverImage: undefined,
+            user: { id: 'user3', firstName: 'Alice', lastName: 'Smith' },
+            tags: [{ tag: { id: 'tag2', name: 'Beach' } }],
+            daysCount: 7,
+            likes: 25,
+          },
+        ],
+        estimatedTotalHits: 1,
+      }
+
+      const filterString = 'tags.tag.id IN ["tag2"] AND daysCount >= 7'
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with filter string
+      const result = await service.searchItineraries(
+        'beach',
+        1,
+        20,
+        filterString
+      )
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        'beach',
+        {
+          limit: 20,
+          offset: 0,
+          filter: filterString,
+          sort: ['createdAt:asc'],
+        }
+      )
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: mockSearchResults.hits,
+        metadata: {
+          total: 1,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should search with custom sort parameters', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [
+          {
+            id: 'itinerary-5',
+            title: 'Popular City Trip',
+            likes: 50,
+            daysCount: 4,
+            user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag4', name: 'City' } }],
+          },
+          {
+            id: 'itinerary-6',
+            title: 'Popular Mountain Retreat',
+            likes: 45,
+            daysCount: 5,
+            user: { id: 'user2', firstName: 'Jane', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag3', name: 'Mountain' } }],
+          },
+        ],
+        estimatedTotalHits: 2,
+      }
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with custom sort and order
+      const result = await service.searchItineraries(
+        'popular',
+        1,
+        20,
+        undefined,
+        'likes',
+        'desc'
+      )
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        'popular',
+        {
+          limit: 20,
+          offset: 0,
+          filter: undefined,
+          sort: ['likes:desc'],
+        }
+      )
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: mockSearchResults.hits,
+        metadata: {
+          total: 2,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should handle search with complex filters and sorting', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [
+          {
+            id: 'itinerary-7',
+            title: 'Long European Adventure',
+            daysCount: 21,
+            user: { id: 'user4', firstName: 'Bob', lastName: 'Johnson' },
+            tags: [
+              { tag: { id: 'tag5', name: 'Europe' } },
+              { tag: { id: 'tag6', name: 'Adventure' } },
+            ],
+            likes: 35,
+          },
+        ],
+        estimatedTotalHits: 1,
+      }
+
+      const filterString = 'tags.tag.id IN ["tag5", "tag6"] AND daysCount > 14'
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with filter string and custom sort
+      const result = await service.searchItineraries(
+        'europe adventure',
+        1,
+        20,
+        filterString,
+        'daysCount',
+        'desc'
+      )
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        'europe adventure',
+        {
+          limit: 20,
+          offset: 0,
+          filter: filterString,
+          sort: ['daysCount:desc'],
+        }
+      )
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: mockSearchResults.hits,
+        metadata: {
+          total: 1,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should handle search with no results', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [],
+        estimatedTotalHits: 0,
+      }
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method
+      const result = await service.searchItineraries('nonexistent')
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: [],
+        metadata: {
+          total: 0,
+          page: 1,
+          totalPages: 1, // Should be at least 1
+        },
+      })
+    })
+  })
+
+  describe('getViewItinerary', () => {
+    it('should return list of itinerary views ordered by viewedAt desc', async () => {
+      const user = { id: 'user123' }
+
+      const expectedResult = [
+        { itineraryId: 'a', viewedAt: new Date() },
+        { itineraryId: 'b', viewedAt: new Date() },
+      ]
+
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(expectedResult)
+
+      const result = await service.getViewItinerary(user as any)
+
+      expect(mockPrismaService.itineraryView.findMany).toHaveBeenCalledWith({
+        where: { userId: user.id },
+        orderBy: { viewedAt: 'desc' },
+      })
+
+      expect(result).toEqual(expectedResult)
+    })
+  })
+
   describe('createViewItinerary', () => {
     it('should update viewedAt if itinerary already viewed', async () => {
       const userViews = [{ itineraryId: 'it-1' }]
@@ -3908,28 +4306,6 @@ describe('ItineraryService', () => {
           viewedAt: expect.any(Date),
         },
       })
-    })
-  })
-
-  describe('getViewItinerary', () => {
-    it('should return list of itinerary views ordered by viewedAt desc', async () => {
-      const user = { id: 'user123' }
-
-      const expectedResult = [
-        { itineraryId: 'a', viewedAt: new Date() },
-        { itineraryId: 'b', viewedAt: new Date() },
-      ]
-
-      mockPrismaService.itineraryView.findMany.mockResolvedValue(expectedResult)
-
-      const result = await service.getViewItinerary(user as any)
-
-      expect(mockPrismaService.itineraryView.findMany).toHaveBeenCalledWith({
-        where: { userId: user.id },
-        orderBy: { viewedAt: 'desc' },
-      })
-
-      expect(result).toEqual(expectedResult)
     })
   })
 })
