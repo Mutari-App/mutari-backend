@@ -140,7 +140,6 @@ export class ItineraryController {
       }
     }
 
-    console.log(itinerary)
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.OK,

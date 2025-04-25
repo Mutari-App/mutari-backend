@@ -1688,6 +1688,11 @@ describe('ItineraryService', () => {
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: 'non-existent-id' },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
     })
 
@@ -1707,6 +1712,11 @@ describe('ItineraryService', () => {
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: 'itinerary-123' },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
     })
 
@@ -1729,6 +1739,11 @@ describe('ItineraryService', () => {
       expect(result).toEqual(mockItinerary)
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: 'itinerary-123' },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
     })
   })
@@ -2450,6 +2465,11 @@ describe('ItineraryService', () => {
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
 
       expect(mockPrismaService.itinerary.delete).toHaveBeenCalledWith({
@@ -2468,6 +2488,11 @@ describe('ItineraryService', () => {
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
 
       expect(mockPrismaService.itinerary.delete).not.toHaveBeenCalled()
@@ -3280,6 +3305,11 @@ describe('ItineraryService', () => {
       // Assert
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
 
       expect(mockPrismaService.contingencyPlan.findUnique).toHaveBeenCalledWith(
@@ -3333,6 +3363,11 @@ describe('ItineraryService', () => {
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
 
       expect(mockPrismaService.contingencyPlan.findUnique).toHaveBeenCalledWith(
@@ -3379,6 +3414,11 @@ describe('ItineraryService', () => {
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
 
       expect(mockPrismaService.contingencyPlan.findUnique).toHaveBeenCalledWith(
@@ -3472,6 +3512,11 @@ describe('ItineraryService', () => {
       // Assert
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
 
       expect(mockPrismaService.contingencyPlan.findUnique).toHaveBeenCalledWith(
@@ -3673,6 +3718,11 @@ describe('ItineraryService', () => {
       // Assert
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
 
       expect(mockPrismaService.contingencyPlan.findUnique).toHaveBeenCalledWith(
