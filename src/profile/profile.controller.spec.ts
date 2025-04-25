@@ -3,7 +3,7 @@ import { ProfileController } from './profile.controller'
 import { ProfileService } from './profile.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
 
-fdescribe('ProfileController', () => {
+describe('ProfileController', () => {
   let controller: ProfileController
 
   const mockProfileService = {
