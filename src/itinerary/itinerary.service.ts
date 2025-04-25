@@ -1353,4 +1353,57 @@ export class ItineraryService {
       return { ...updatedContingency, sections: mappedSections }
     })
   }
+
+  async createViewItinerary(itineraryId: string, user: User) {
+    const userId = user.id
+
+    const userViews = await this.prisma.itineraryView.findMany({
+      where: { userId },
+      orderBy: { viewedAt: 'desc' },
+    })
+
+    const itineraryExists = userViews.some(
+      (view) => view.itineraryId === itineraryId
+    )
+
+    if (itineraryExists) {
+      return this.prisma.itineraryView.update({
+        where: {
+          userId_itineraryId: { userId, itineraryId },
+        },
+        data: {
+          viewedAt: new Date(),
+        },
+      })
+    }
+
+    if (userViews.length >= 10) {
+      await this.prisma.itineraryView.delete({
+        where: {
+          id: userViews[userViews.length - 1].id,
+        },
+      })
+    }
+
+    return this.prisma.itineraryView.create({
+      data: {
+        userId,
+        itineraryId,
+        viewedAt: new Date(),
+      },
+    })
+  }
+
+  async getViewItinerary(user: User) {
+    const userId = user.id
+
+    return this.prisma.itineraryView.findMany({
+      where: {
+        userId: userId,
+      },
+      orderBy: {
+        viewedAt: 'desc',
+      },
+    })
+  }
 }

@@ -54,6 +54,13 @@ describe('ItineraryService', () => {
       create: jest.fn(),
       delete: jest.fn(),
     },
+    itineraryView: {
+      upsert: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      delete: jest.fn(),
+      update: jest.fn(),
+    },
     _checkItineraryExists: jest.fn(),
     _checkContingencyCount: jest.fn(),
   }
@@ -3838,6 +3845,91 @@ describe('ItineraryService', () => {
           mockUser
         )
       ).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  describe('createViewItinerary', () => {
+    it('should update viewedAt if itinerary already viewed', async () => {
+      const userViews = [{ itineraryId: 'it-1' }]
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(userViews)
+
+      await service.createViewItinerary('it-1', mockUser)
+
+      expect(mockPrismaService.itineraryView.update).toHaveBeenCalledWith({
+        where: {
+          userId_itineraryId: {
+            userId: 'user-123',
+            itineraryId: 'it-1',
+          },
+        },
+        data: { viewedAt: expect.any(Date) },
+      })
+    })
+
+    it('should delete oldest view if already 10 and add new', async () => {
+      const userViews = Array.from({ length: 10 }).map((_, i) => ({
+        id: `view-${i}`,
+        itineraryId: `it-${i}`,
+      }))
+
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(userViews)
+      mockPrismaService.itineraryView.create.mockResolvedValue({})
+
+      await service.createViewItinerary('new-itinerary', mockUser)
+
+      expect(mockPrismaService.itineraryView.delete).toHaveBeenCalledWith({
+        where: { id: 'view-9' }, // assumed last in list is oldest
+      })
+      expect(mockPrismaService.itineraryView.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'user-123',
+          itineraryId: 'new-itinerary',
+          viewedAt: expect.any(Date),
+        },
+      })
+    })
+
+    it('should just create view if less than 10 views', async () => {
+      const userViews = Array.from({ length: 5 }).map((_, i) => ({
+        id: `view-${i}`,
+        itineraryId: `it-${i}`,
+      }))
+
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(userViews)
+      mockPrismaService.itineraryView.create.mockResolvedValue({})
+
+      await service.createViewItinerary('it-100', mockUser)
+
+      expect(mockPrismaService.itineraryView.delete).not.toHaveBeenCalled()
+      expect(mockPrismaService.itineraryView.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'user-123',
+          itineraryId: 'it-100',
+          viewedAt: expect.any(Date),
+        },
+      })
+    })
+  })
+
+  describe('getViewItinerary', () => {
+    it('should return list of itinerary views ordered by viewedAt desc', async () => {
+      const user = { id: 'user123' }
+
+      const expectedResult = [
+        { itineraryId: 'a', viewedAt: new Date() },
+        { itineraryId: 'b', viewedAt: new Date() },
+      ]
+
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(expectedResult)
+
+      const result = await service.getViewItinerary(user as any)
+
+      expect(mockPrismaService.itineraryView.findMany).toHaveBeenCalledWith({
+        where: { userId: user.id },
+        orderBy: { viewedAt: 'desc' },
+      })
+
+      expect(result).toEqual(expectedResult)
     })
   })
 })
