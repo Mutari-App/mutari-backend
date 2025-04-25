@@ -5,7 +5,6 @@ import {
   Post,
   Body,
   HttpStatus,
-  NotFoundException,
   Param,
   Patch,
   Delete,
@@ -41,6 +40,57 @@ export class ItineraryController {
       {
         tags,
       }
+    )
+  }
+
+  @Public()
+  @Get('search')
+  async searchItineraries(
+    @Query('q') query: string = '',
+    @Query('page') page: number = 1,
+    @Query('tags') tags?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('minDaysCount') minDaysCount?: string,
+    @Query('maxDaysCount') maxDaysCount?: string,
+    @Query('sortBy')
+    sortBy: 'startDate' | 'endDate' | 'likes' | 'daysCount' = 'startDate',
+    @Query('order') order: 'asc' | 'desc' = 'asc'
+  ) {
+    let filters = []
+
+    if (tags) {
+      const tagIds = tags.split(',')
+      filters.push(
+        `tags.tag.id IN [${tagIds.map((id) => `"${id}"`).join(', ')}]`
+      )
+    }
+
+    if (startDate) {
+      filters.push(`startDate >= "${new Date(startDate).toISOString()}"`)
+    }
+
+    if (endDate) {
+      filters.push(`endDate <= "${new Date(endDate).toISOString()}"`)
+    }
+
+    if (minDaysCount) {
+      filters.push(`daysCount >= ${parseInt(minDaysCount)}`)
+    }
+
+    if (maxDaysCount) {
+      filters.push(`daysCount <= ${parseInt(maxDaysCount)}`)
+    }
+
+    const filtersString = filters.length > 0 ? filters.join(' AND ') : undefined
+
+    return this.itineraryService.searchItineraries(
+      query,
+      page,
+      undefined,
+      filtersString,
+      sortBy,
+      order
     )
   }
 
@@ -131,6 +181,20 @@ export class ItineraryController {
     )
   }
 
+  @Get('views')
+  async getViewItinerary(@GetUser() user: User) {
+    const itinerary = await this.itineraryService.getViewItinerary(user)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary views fetched successfully',
+      },
+      {
+        itinerary,
+      }
+    )
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string, @GetUser() user: User) {
     const itinerary = await this.itineraryService.findOne(id, user)
@@ -141,7 +205,6 @@ export class ItineraryController {
       }
     }
 
-    console.log(itinerary)
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.OK,
@@ -168,6 +231,26 @@ export class ItineraryController {
         message: 'Itinerary created successfully',
       },
       itinerary
+    )
+  }
+
+  @Post('views/:itineraryId')
+  async createViewItinerary(
+    @GetUser() user: User,
+    @Param('itineraryId') itineraryId: string
+  ) {
+    const itinerary = await this.itineraryService.createViewItinerary(
+      itineraryId,
+      user
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary view added successfully',
+      },
+      {
+        itinerary,
+      }
     )
   }
 
