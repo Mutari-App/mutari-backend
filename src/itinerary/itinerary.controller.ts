@@ -51,8 +51,8 @@ export class ItineraryController {
     @Query('minDaysCount') minDaysCount?: string,
     @Query('maxDaysCount') maxDaysCount?: string,
     @Query('sortBy')
-    sortBy: 'startDate' | 'endDate' | 'likes' | 'daysCount' = 'startDate',
-    @Query('order') order: 'asc' | 'desc' = 'asc'
+    sortBy: 'createdAt' | 'likes' | 'daysCount' = 'likes',
+    @Query('order') order: 'asc' | 'desc' = 'desc'
   ) {
     let filters = []
 

@@ -1390,8 +1390,8 @@ export class ItineraryService {
     page: number = 1,
     limit: number = 20,
     filters?: any,
-    sortBy: string = 'createdAt',
-    order: 'asc' | 'desc' = 'asc'
+    sortBy: string = 'likes',
+    order: 'asc' | 'desc' = 'desc'
   ) {
     const offset = (page - 1) * limit
 
@@ -1399,7 +1399,10 @@ export class ItineraryService {
       limit,
       offset,
       filter: filters,
-      sort: [`${sortBy}:${order}`],
+      sort:
+        sortBy === 'likes'
+          ? [`likes:desc`]
+          : [`likes:desc`, `${sortBy}:${order}`],
     }
 
     const result = await this.meilisearchService.searchItineraries(
