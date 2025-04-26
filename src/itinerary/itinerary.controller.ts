@@ -93,6 +93,23 @@ export class ItineraryController {
     )
   }
 
+  @Public()
+  @Get('suggestions')
+  async getSearchSuggestions(@Query('q') query: string = '') {
+    if (query.length < 2) {
+      return { suggestions: [] }
+    }
+
+    const results = await this.itineraryService.searchItineraries(query, 1, 10)
+
+    // Extract unique titles and format them as suggestions
+    const suggestions = [...new Set(results.data.map((item) => item.title))]
+
+    return {
+      suggestions: suggestions.slice(0, 5),
+    }
+  }
+
   @Get('me')
   async findMyItineraries(
     @GetUser() user: User,
