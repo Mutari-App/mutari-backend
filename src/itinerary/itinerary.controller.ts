@@ -48,8 +48,6 @@ export class ItineraryController {
     @Query('q') query: string = '',
     @Query('page') page: number = 1,
     @Query('tags') tags?: string,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
     @Query('minDaysCount') minDaysCount?: string,
     @Query('maxDaysCount') maxDaysCount?: string,
     @Query('sortBy')
@@ -63,14 +61,6 @@ export class ItineraryController {
       filters.push(
         `tags.tag.id IN [${tagIds.map((id) => `"${id}"`).join(', ')}]`
       )
-    }
-
-    if (startDate) {
-      filters.push(`startDate >= "${new Date(startDate).toISOString()}"`)
-    }
-
-    if (endDate) {
-      filters.push(`endDate <= "${new Date(endDate).toISOString()}"`)
     }
 
     if (minDaysCount) {
