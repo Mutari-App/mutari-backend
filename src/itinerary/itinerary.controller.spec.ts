@@ -2277,6 +2277,120 @@ describe('ItineraryController', () => {
     })
   })
 
+  describe('getSearchSuggestions', () => {
+    it('should return search suggestions based on query', async () => {
+      const mockSuggestions = [
+        { id: 'itinerary-1', title: 'Beach Vacation' },
+        { id: 'itinerary-2', title: 'Beach Resort Trip' },
+        { id: 'itinerary-3', title: 'Beach Holiday' },
+      ]
+
+      const mockResults = {
+        data: mockSuggestions,
+        metadata: {
+          total: 3,
+          page: 1,
+          totalPages: 1,
+        },
+      }
+
+      mockItineraryService.searchItineraries.mockResolvedValue(mockResults)
+
+      const result = await controller.getSearchSuggestions('beach')
+
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
+        'beach',
+        1,
+        10
+      )
+
+      expect(result).toEqual({
+        suggestions: ['Beach Vacation', 'Beach Resort Trip', 'Beach Holiday'],
+      })
+    })
+
+    it('should return empty suggestions for short queries', async () => {
+      const result = await controller.getSearchSuggestions('b')
+
+      expect(mockItineraryService.searchItineraries).not.toHaveBeenCalled()
+      expect(result).toEqual({ suggestions: [] })
+    })
+
+    it('should limit suggestions to top 5 results', async () => {
+      const mockSuggestions = [
+        { id: '1', title: 'Beach Vacation 1' },
+        { id: '2', title: 'Beach Vacation 2' },
+        { id: '3', title: 'Beach Vacation 3' },
+        { id: '4', title: 'Beach Vacation 4' },
+        { id: '5', title: 'Beach Vacation 5' },
+        { id: '6', title: 'Beach Vacation 6' },
+        { id: '7', title: 'Beach Vacation 7' },
+      ]
+
+      const mockResults = {
+        data: mockSuggestions,
+        metadata: {
+          total: 7,
+          page: 1,
+          totalPages: 1,
+        },
+      }
+
+      mockItineraryService.searchItineraries.mockResolvedValue(mockResults)
+
+      const result = await controller.getSearchSuggestions('beach')
+
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
+        'beach',
+        1,
+        10
+      )
+
+      expect(result.suggestions).toHaveLength(5)
+      expect(result.suggestions).toEqual([
+        'Beach Vacation 1',
+        'Beach Vacation 2',
+        'Beach Vacation 3',
+        'Beach Vacation 4',
+        'Beach Vacation 5',
+      ])
+    })
+
+    it('should handle duplicate titles in results', async () => {
+      const mockSuggestions = [
+        { id: '1', title: 'Beach Vacation' },
+        { id: '2', title: 'Beach Vacation' }, // Duplicate
+        { id: '3', title: 'Beach Resort' },
+        { id: '4', title: 'Beach Trip' },
+      ]
+
+      const mockResults = {
+        data: mockSuggestions,
+        metadata: {
+          total: 4,
+          page: 1,
+          totalPages: 1,
+        },
+      }
+
+      mockItineraryService.searchItineraries.mockResolvedValue(mockResults)
+
+      const result = await controller.getSearchSuggestions('beach')
+
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
+        'beach',
+        1,
+        10
+      )
+
+      expect(result.suggestions).toEqual([
+        'Beach Vacation',
+        'Beach Resort',
+        'Beach Trip',
+      ])
+    })
+  })
+
   describe('createViewItinerary', () => {
     it('should call service and return response', async () => {
       const user = { id: 'user123' }
