@@ -308,7 +308,11 @@ export class ItineraryService {
       throw new NotFoundException(`Itinerary with ID ${id} not found`)
     }
 
-    if (itinerary.userId !== user.id && itinerary.access.length === 0 && !itinerary.isPublished) {
+    if (
+      itinerary.userId !== user.id &&
+      itinerary.access.length === 0 &&
+      !itinerary.isPublished
+    ) {
       throw new ForbiddenException(
         'You do not have permission to update or view this itinerary'
       )
@@ -797,7 +801,7 @@ export class ItineraryService {
         lastName: true,
       },
     })
-  
+
     return {
       ...itinerary,
       user: userDetail,
