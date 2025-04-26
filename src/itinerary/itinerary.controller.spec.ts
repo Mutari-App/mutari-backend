@@ -2180,8 +2180,6 @@ describe('ItineraryController', () => {
         'weekend',
         1,
         undefined,
-        undefined,
-        undefined,
         '2', // minDaysCount
         '3' // maxDaysCount
       )
@@ -2237,8 +2235,6 @@ describe('ItineraryController', () => {
         'vacation',
         1,
         'tag-3',
-        startDate.toISOString(),
-        endDate.toISOString(),
         '7', // minDaysCount
         '14', // maxDaysCount
         'likes', // sortBy
