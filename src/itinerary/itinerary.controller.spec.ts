@@ -13,7 +13,6 @@ import {
   HttpStatus,
   NotFoundException,
 } from '@nestjs/common'
-import { publish } from 'rxjs'
 
 describe('ItineraryController', () => {
   let controller: ItineraryController
@@ -56,10 +55,10 @@ describe('ItineraryController', () => {
     createContingencyPlan: jest.fn(),
     selectContingencyPlan: jest.fn(),
     updateContingencyPlan: jest.fn(),
-    publishItinerary: jest.fn(),
     searchItineraries: jest.fn(),
     createViewItinerary: jest.fn(),
     getViewItinerary: jest.fn(),
+    publishItinerary: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -1999,121 +1998,6 @@ describe('ItineraryController', () => {
     })
   })
 
-  describe('publishItinerary', () => {
-    const mockItinerary = {
-      id: 'ITN-123',
-      userId: 'user-123',
-      title: 'Trip to Bali',
-      description: 'Bali with friends',
-      coverImage: 'https://example.com/image.jpg',
-      startDate: new Date(),
-      endDate: new Date(),
-      isPublished: true,
-      isCompleted: false,
-      updatedAt: new Date(),
-      createdAt: new Date(),
-      sections: [
-        {
-          id: 'section1',
-          itineraryId: 'ITN-123',
-          sectionNumber: 1,
-          updatedAt: new Date(),
-          createdAt: new Date(),
-          title: 'Section 1',
-          blocks: [
-            {
-              id: 'block1',
-              updatedAt: new Date(),
-              createdAt: new Date(),
-              title: 'Block Title',
-              description: 'Block Description',
-              sectionId: 'section1',
-              position: 1,
-              blockType: BLOCK_TYPE.LOCATION,
-              startTime: new Date(),
-              endTime: new Date(),
-              location: 'New York',
-              price: 100,
-              photoUrl: 'https://example.com/photo.jpg',
-            },
-          ],
-        },
-      ],
-    }
-
-    it('should publish an itinerary and return success response', async () => {
-      mockItineraryService.publishItinerary.mockResolvedValueOnce(mockItinerary)
-
-      mockResponseUtil.response.mockReturnValue({
-        statusCode: HttpStatus.OK,
-        message: 'Itinerary published successfully',
-        data: mockItinerary,
-      })
-
-      const resultPublish = await controller.publishItinerary(
-        mockItinerary.id,
-        mockUser,
-        false
-      )
-
-      expect(mockItineraryService.publishItinerary).toHaveBeenCalledWith(
-        mockItinerary.id,
-        mockUser,
-        false
-      )
-      expect(mockResponseUtil.response).toHaveBeenCalledWith(
-        {
-          statusCode: HttpStatus.OK,
-          message: 'Itinerary published successfully',
-        },
-        mockItinerary
-      )
-
-      expect(resultPublish).toEqual({
-        statusCode: HttpStatus.OK,
-        message: 'Itinerary published successfully',
-        data: mockItinerary,
-      })
-    })
-
-    it('should throw ForbiddenException if user is not owner', async () => {
-      const mockFakeUser: User = {
-        id: 'FAKE-ID',
-        firstName: 'John',
-        lastName: 'Doe',
-        birthDate: new Date(),
-        email: 'john@example.com',
-        phoneNumber: '123456789',
-        password: 'hashedpassword',
-        photoProfile: null,
-        referralCode: null,
-        isEmailConfirmed: false,
-        referredById: null,
-        loyaltyPoints: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-
-      mockItineraryService.publishItinerary.mockImplementation(() => {
-        throw new ForbiddenException('Not authorized')
-      })
-
-      await expect(
-        controller.publishItinerary(mockItinerary.id, mockFakeUser, false)
-      ).rejects.toThrow(ForbiddenException)
-    })
-
-    it('should throw BadRequestException if already published', async () => {
-      mockItineraryService.publishItinerary.mockImplementation(() => {
-        throw new BadRequestException('Already published')
-      })
-
-      await expect(
-        controller.publishItinerary(mockItinerary.id, mockUser, false)
-      ).rejects.toThrow(BadRequestException)
-    })
-  })
-
   describe('searchItineraries', () => {
     it('should search itineraries with default parameters', async () => {
       // Mock search results
@@ -2463,6 +2347,121 @@ describe('ItineraryController', () => {
         message: 'Itinerary views fetched successfully',
         itinerary,
       })
+    })
+  })
+
+  describe('publishItinerary', () => {
+    const mockItinerary = {
+      id: 'ITN-123',
+      userId: 'user-123',
+      title: 'Trip to Bali',
+      description: 'Bali with friends',
+      coverImage: 'https://example.com/image.jpg',
+      startDate: new Date(),
+      endDate: new Date(),
+      isPublished: true,
+      isCompleted: false,
+      updatedAt: new Date(),
+      createdAt: new Date(),
+      sections: [
+        {
+          id: 'section1',
+          itineraryId: 'ITN-123',
+          sectionNumber: 1,
+          updatedAt: new Date(),
+          createdAt: new Date(),
+          title: 'Section 1',
+          blocks: [
+            {
+              id: 'block1',
+              updatedAt: new Date(),
+              createdAt: new Date(),
+              title: 'Block Title',
+              description: 'Block Description',
+              sectionId: 'section1',
+              position: 1,
+              blockType: BLOCK_TYPE.LOCATION,
+              startTime: new Date(),
+              endTime: new Date(),
+              location: 'New York',
+              price: 100,
+              photoUrl: 'https://example.com/photo.jpg',
+            },
+          ],
+        },
+      ],
+    }
+
+    it('should publish an itinerary and return success response', async () => {
+      mockItineraryService.publishItinerary.mockResolvedValueOnce(mockItinerary)
+
+      mockResponseUtil.response.mockReturnValue({
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary published successfully',
+        data: mockItinerary,
+      })
+
+      const resultPublish = await controller.publishItinerary(
+        mockItinerary.id,
+        mockUser,
+        false
+      )
+
+      expect(mockItineraryService.publishItinerary).toHaveBeenCalledWith(
+        mockItinerary.id,
+        mockUser,
+        false
+      )
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Itinerary published successfully',
+        },
+        mockItinerary
+      )
+
+      expect(resultPublish).toEqual({
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary published successfully',
+        data: mockItinerary,
+      })
+    })
+
+    it('should throw ForbiddenException if user is not owner', async () => {
+      const mockFakeUser: User = {
+        id: 'FAKE-ID',
+        firstName: 'John',
+        lastName: 'Doe',
+        birthDate: new Date(),
+        email: 'john@example.com',
+        phoneNumber: '123456789',
+        password: 'hashedpassword',
+        photoProfile: null,
+        referralCode: null,
+        isEmailConfirmed: false,
+        referredById: null,
+        loyaltyPoints: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      mockItineraryService.publishItinerary.mockImplementation(() => {
+        throw new ForbiddenException('Not authorized')
+      })
+
+      await expect(
+        controller.publishItinerary(mockItinerary.id, mockFakeUser, false)
+      ).rejects.toThrow(ForbiddenException)
+    })
+
+    it('should throw BadRequestException if already published', async () => {
+      mockItineraryService.publishItinerary.mockImplementation(() => {
+        throw new BadRequestException('Already published')
+      })
+
+      await expect(
+        controller.publishItinerary(mockItinerary.id, mockUser, false)
+      ).rejects.toThrow(BadRequestException)
     })
   })
 })
