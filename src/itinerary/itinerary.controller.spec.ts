@@ -13,7 +13,6 @@ import {
   HttpStatus,
   NotFoundException,
 } from '@nestjs/common'
-import { publish } from 'rxjs'
 
 describe('ItineraryController', () => {
   let controller: ItineraryController

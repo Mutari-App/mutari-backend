@@ -1846,6 +1846,17 @@ describe('ItineraryService', () => {
               tag: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
+          _count: {
+            select: { likes: true },
+          },
         },
       })
     })
@@ -1866,7 +1877,16 @@ describe('ItineraryService', () => {
       const result = await service.findOne('123', mockUser)
 
       expect(result).toEqual(mockItinerary)
-      expect(prismaService.itinerary.findUnique).toHaveBeenCalledWith({
+      expect(prismaService.itinerary.findUnique).toHaveBeenNthCalledWith(1, {
+        where: { id: '123' },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
+      })
+
+      expect(prismaService.itinerary.findUnique).toHaveBeenNthCalledWith(2, {
         where: { id: '123' },
         include: {
           sections: {
@@ -1876,8 +1896,8 @@ describe('ItineraryService', () => {
             include: {
               blocks: {
                 include: {
-                  routeToNext: true,
                   routeFromPrevious: true,
+                  routeToNext: true,
                 },
               },
             },
@@ -1886,6 +1906,17 @@ describe('ItineraryService', () => {
             include: {
               tag: true,
             },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
+          _count: {
+            select: { likes: true },
           },
         },
       })

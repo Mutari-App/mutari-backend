@@ -831,8 +831,20 @@ export class ItineraryService {
             tag: true,
           },
         },
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            photoProfile: true,
+          },
+        },
+        _count: {
+          select: { likes: true },
+        },
       },
     })
+
     return itinerary
   }
 
