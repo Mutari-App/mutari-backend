@@ -4026,7 +4026,7 @@ describe('ItineraryService', () => {
           limit: 20,
           offset: 0,
           filter: undefined,
-          sort: ['createdAt:asc'],
+          sort: ['likes:desc'],
         }
       )
 
@@ -4093,7 +4093,7 @@ describe('ItineraryService', () => {
           limit: 4,
           offset: 4, // (page 2 - 1) * limit 4
           filter: undefined,
-          sort: ['createdAt:asc'],
+          sort: ['likes:desc'],
         }
       )
 
@@ -4147,7 +4147,7 @@ describe('ItineraryService', () => {
           limit: 20,
           offset: 0,
           filter: filterString,
-          sort: ['createdAt:asc'],
+          sort: ['likes:desc'],
         }
       )
 
@@ -4264,7 +4264,7 @@ describe('ItineraryService', () => {
           limit: 20,
           offset: 0,
           filter: filterString,
-          sort: ['daysCount:desc'],
+          sort: ['likes:desc', 'daysCount:desc'],
         }
       )
 
