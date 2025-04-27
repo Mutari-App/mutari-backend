@@ -1855,9 +1855,9 @@ describe('ItineraryService', () => {
               photoProfile: true,
             },
           },
-          _count:{
-            select: { likes:true }
-          }
+          _count: {
+            select: { likes: true },
+          },
         },
       })
     })
@@ -1886,7 +1886,7 @@ describe('ItineraryService', () => {
           },
         },
       })
-      
+
       expect(prismaService.itinerary.findUnique).toHaveBeenNthCalledWith(2, {
         where: { id: '123' },
         include: {
@@ -1916,11 +1916,11 @@ describe('ItineraryService', () => {
               photoProfile: true,
             },
           },
-          _count:{
-            select: { likes: true }
-          }
+          _count: {
+            select: { likes: true },
+          },
         },
-      })      
+      })
     })
 
     it('should throw NotFoundException if itinerary does not exist', async () => {
@@ -3962,13 +3962,13 @@ describe('ItineraryService', () => {
       mockPrismaService.itinerary.update = jest
         .fn()
         .mockResolvedValue(publishedItinerary)
-    
+
       const result = await service.publishItinerary(
         mockItineraryData.id,
         mockUser,
         true
       )
-    
+
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: mockItineraryData.id },
         include: {
@@ -3977,7 +3977,7 @@ describe('ItineraryService', () => {
           },
         },
       })
-    
+
       expect(mockPrismaService.itinerary.update).toHaveBeenCalledWith({
         where: { id: mockItineraryData.id },
         data: { isPublished: true },
