@@ -485,15 +485,15 @@ export class ItineraryController {
     // 2: Duplicate Contingencies
     const existingContingencies =
       await this.itineraryService.findContingencyPlans(itineraryId, user)
-    if (existingContingencies) {
-      existingContingencies.forEach(async (plan) => {
+    if (existingContingencies.length > 0) {
+      for (const plan of existingContingencies) {
         await this.itineraryService.duplicateContingency(
           duplicatedItinerary.id,
           itineraryId,
           plan.id,
           user
         )
-      })
+      }
     }
 
     return this.responseUtil.response(
