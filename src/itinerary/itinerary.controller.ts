@@ -19,7 +19,6 @@ import { ResponseUtil } from 'src/common/utils/response.util'
 import { Public } from 'src/common/decorators/public.decorator'
 import { InviteToItineraryDTO } from './dto/invite-to-itinerary.dto'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
-import { DuplicateItineraryDto } from './dto/duplicate-itinerary.dto'
 
 @Controller('itineraries')
 export class ItineraryController {
