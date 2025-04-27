@@ -7,6 +7,7 @@ import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { BLOCK_TYPE, Tag, User } from '@prisma/client'
 
 import {
+  BadRequestException,
   ForbiddenException,
   HttpException,
   HttpStatus,
@@ -54,6 +55,10 @@ describe('ItineraryController', () => {
     createContingencyPlan: jest.fn(),
     selectContingencyPlan: jest.fn(),
     updateContingencyPlan: jest.fn(),
+    searchItineraries: jest.fn(),
+    createViewItinerary: jest.fn(),
+    getViewItinerary: jest.fn(),
+    publishItinerary: jest.fn(),
     findTrendingItineraries: jest.fn(),
   }
 
@@ -1991,6 +1996,530 @@ describe('ItineraryController', () => {
           updateContingencyPlanDto
         )
       ).rejects.toThrow(ForbiddenException)
+    })
+  })
+
+  describe('searchItineraries', () => {
+    it('should search itineraries with default parameters', async () => {
+      // Mock search results
+      const mockSearchResults = {
+        data: [
+          { id: 'itinerary-1', title: 'Trip to Japan' },
+          { id: 'itinerary-2', title: 'Beach Vacation' },
+        ],
+        metadata: {
+          total: 2,
+          page: 1,
+          totalPages: 1,
+        },
+      }
+
+      mockItineraryService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call controller method with no parameters
+      const result = await controller.searchItineraries()
+
+      // Verify service was called with correct parameters
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
+        '', // empty query
+        1, // default page
+        20, // default limit
+        undefined, // no filters
+        'likes', // default sort
+        'desc' // default order
+      )
+
+      // Verify correct result was returned
+      expect(result).toEqual(mockSearchResults)
+    })
+
+    it('should search itineraries with query and page parameters', async () => {
+      // Mock search results
+      const mockSearchResults = {
+        data: [{ id: 'itinerary-3', title: 'Mountain Trek' }],
+        metadata: {
+          total: 1,
+          page: 2,
+          totalPages: 1,
+        },
+      }
+
+      mockItineraryService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call controller method with query and page
+      const result = await controller.searchItineraries('mountain', 2)
+
+      // Verify service was called with correct parameters
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
+        'mountain', // query
+        2, // page
+        20, // default limit
+        undefined, // no filters
+        'likes', // default sort
+        'desc' // default order
+      )
+
+      // Verify correct result was returned
+      expect(result).toEqual(mockSearchResults)
+    })
+
+    it('should search itineraries with tags filter', async () => {
+      // Mock search results
+      const mockSearchResults = {
+        data: [
+          { id: 'itinerary-4', title: 'Beach Trip', tags: ['tag-1', 'tag-2'] },
+        ],
+        metadata: {
+          total: 1,
+          page: 1,
+          totalPages: 1,
+        },
+      }
+
+      mockItineraryService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call controller method with tags
+      const result = await controller.searchItineraries(
+        'beach',
+        1,
+        undefined,
+        'tag-1,tag-2'
+      )
+
+      // Verify service was called with correct filter string
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
+        'beach',
+        1,
+        20,
+        'tags.tag.id IN ["tag-1", "tag-2"]',
+        'likes', // default sort
+        'desc' // default order
+      )
+
+      // Verify correct result was returned
+      expect(result).toEqual(mockSearchResults)
+    })
+
+    it('should search itineraries with day count range filters', async () => {
+      // Mock search results
+      const mockSearchResults = {
+        data: [
+          {
+            id: 'itinerary-7',
+            title: 'Weekend Getaway',
+            daysCount: 2,
+          },
+        ],
+        metadata: {
+          total: 1,
+          page: 1,
+          totalPages: 1,
+        },
+      }
+
+      mockItineraryService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call controller method with day count filters
+      const result = await controller.searchItineraries(
+        'weekend',
+        1,
+        undefined,
+        undefined,
+        '2', // minDaysCount
+        '3' // maxDaysCount
+      )
+
+      // Construct expected filter string
+      const expectedFilter = `daysCount >= 2 AND daysCount <= 3`
+
+      // Verify service was called with correct filters
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
+        'weekend',
+        1,
+        20,
+        expectedFilter,
+        'likes', // default sort
+        'desc' // default order
+      )
+
+      // Verify correct result was returned
+      expect(result).toEqual(mockSearchResults)
+    })
+
+    it('should search itineraries with combined filters and custom sorting', async () => {
+      // Mock search results
+      const mockSearchResults = {
+        data: [
+          {
+            id: 'itinerary-6',
+            title: 'Beach Summer Vacation',
+            tags: ['tag-3'],
+            startDate: '2025-07-01T00:00:00.000Z',
+            endDate: '2025-07-15T00:00:00.000Z',
+            daysCount: 14,
+            likes: 42,
+          },
+        ],
+        metadata: {
+          total: 1,
+          page: 1,
+          totalPages: 1,
+        },
+      }
+
+      mockItineraryService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call controller method with all filters and custom sorting
+      const result = await controller.searchItineraries(
+        'vacation',
+        1,
+        20,
+        'tag-3',
+        '7', // minDaysCount
+        '14', // maxDaysCount
+        'likes', // sortBy
+        'desc' // order
+      )
+
+      // Construct expected filter string
+      const expectedFilter = `tags.tag.id IN ["tag-3"] AND daysCount >= 7 AND daysCount <= 14`
+
+      // Verify service was called with correct parameters
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
+        'vacation',
+        1,
+        20,
+        expectedFilter,
+        'likes', // custom sort field
+        'desc' // custom order
+      )
+
+      // Verify correct result was returned
+      expect(result).toEqual(mockSearchResults)
+    })
+
+    it('should handle errors from the search service', async () => {
+      // Mock error from service
+      const mockError = new Error('Search engine unavailable')
+      mockItineraryService.searchItineraries.mockRejectedValue(mockError)
+
+      // Test that error is propagated
+      await expect(controller.searchItineraries('query')).rejects.toThrow(
+        mockError
+      )
+
+      // Verify service was called
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalled()
+    })
+  })
+
+  describe('getSearchSuggestions', () => {
+    it('should return search suggestions based on query', async () => {
+      const mockSuggestions = [
+        { id: 'itinerary-1', title: 'Beach Vacation' },
+        { id: 'itinerary-2', title: 'Beach Resort Trip' },
+        { id: 'itinerary-3', title: 'Beach Holiday' },
+      ]
+
+      const mockResults = {
+        data: mockSuggestions,
+        metadata: {
+          total: 3,
+          page: 1,
+          totalPages: 1,
+        },
+      }
+
+      mockItineraryService.searchItineraries.mockResolvedValue(mockResults)
+
+      const result = await controller.getSearchSuggestions('beach')
+
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
+        'beach',
+        1,
+        10
+      )
+
+      expect(result).toEqual({
+        suggestions: ['Beach Vacation', 'Beach Resort Trip', 'Beach Holiday'],
+      })
+    })
+
+    it('should return empty suggestions for short queries', async () => {
+      const result = await controller.getSearchSuggestions('b')
+
+      expect(mockItineraryService.searchItineraries).not.toHaveBeenCalled()
+      expect(result).toEqual({ suggestions: [] })
+    })
+
+    it('should limit suggestions to top 5 results', async () => {
+      const mockSuggestions = [
+        { id: '1', title: 'Beach Vacation 1' },
+        { id: '2', title: 'Beach Vacation 2' },
+        { id: '3', title: 'Beach Vacation 3' },
+        { id: '4', title: 'Beach Vacation 4' },
+        { id: '5', title: 'Beach Vacation 5' },
+        { id: '6', title: 'Beach Vacation 6' },
+        { id: '7', title: 'Beach Vacation 7' },
+      ]
+
+      const mockResults = {
+        data: mockSuggestions,
+        metadata: {
+          total: 7,
+          page: 1,
+          totalPages: 1,
+        },
+      }
+
+      mockItineraryService.searchItineraries.mockResolvedValue(mockResults)
+
+      const result = await controller.getSearchSuggestions('beach')
+
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
+        'beach',
+        1,
+        10
+      )
+
+      expect(result.suggestions).toHaveLength(5)
+      expect(result.suggestions).toEqual([
+        'Beach Vacation 1',
+        'Beach Vacation 2',
+        'Beach Vacation 3',
+        'Beach Vacation 4',
+        'Beach Vacation 5',
+      ])
+    })
+
+    it('should handle duplicate titles in results', async () => {
+      const mockSuggestions = [
+        { id: '1', title: 'Beach Vacation' },
+        { id: '2', title: 'Beach Vacation' }, // Duplicate
+        { id: '3', title: 'Beach Resort' },
+        { id: '4', title: 'Beach Trip' },
+      ]
+
+      const mockResults = {
+        data: mockSuggestions,
+        metadata: {
+          total: 4,
+          page: 1,
+          totalPages: 1,
+        },
+      }
+
+      mockItineraryService.searchItineraries.mockResolvedValue(mockResults)
+
+      const result = await controller.getSearchSuggestions('beach')
+
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
+        'beach',
+        1,
+        10
+      )
+
+      expect(result.suggestions).toEqual([
+        'Beach Vacation',
+        'Beach Resort',
+        'Beach Trip',
+      ])
+    })
+  })
+
+  describe('createViewItinerary', () => {
+    it('should call service and return response', async () => {
+      const user = { id: 'user123' }
+      const itineraryId = 'itinerary123'
+      const createdView = { id: 'view1', itineraryId, userId: user.id }
+
+      mockItineraryService.createViewItinerary.mockResolvedValue(createdView)
+      mockResponseUtil.response.mockReturnValue({
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary view added successfully',
+        data: createdView,
+      })
+
+      const result = await controller.createViewItinerary(
+        user as any,
+        itineraryId
+      )
+
+      expect(itineraryService.createViewItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        user
+      )
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.CREATED,
+          message: 'Itinerary view added successfully',
+        },
+        {
+          itinerary: createdView,
+        }
+      )
+      expect(result).toEqual({
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary view added successfully',
+        data: createdView,
+      })
+    })
+  })
+
+  describe('getViewItinerary', () => {
+    it('should call service and return viewed itineraries', async () => {
+      const user = { id: 'user123' }
+      const itineraries = [{ itineraryId: 'a' }, { itineraryId: 'b' }]
+
+      mockItineraryService.getViewItinerary.mockResolvedValue(itineraries)
+      mockResponseUtil.response.mockReturnValue({
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary views fetched successfully',
+        itineraries: itineraries,
+      })
+
+      const result = await controller.getViewItinerary(user as any)
+
+      expect(itineraryService.getViewItinerary).toHaveBeenCalledWith(user)
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Itinerary views fetched successfully',
+        },
+        {
+          itineraries: itineraries,
+        }
+      )
+      expect(result).toEqual({
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary views fetched successfully',
+        itineraries: itineraries,
+      })
+    })
+  })
+
+  describe('publishItinerary', () => {
+    const mockItinerary = {
+      id: 'ITN-123',
+      userId: 'user-123',
+      title: 'Trip to Bali',
+      description: 'Bali with friends',
+      coverImage: 'https://example.com/image.jpg',
+      startDate: new Date(),
+      endDate: new Date(),
+      isPublished: true,
+      isCompleted: false,
+      updatedAt: new Date(),
+      createdAt: new Date(),
+      sections: [
+        {
+          id: 'section1',
+          itineraryId: 'ITN-123',
+          sectionNumber: 1,
+          updatedAt: new Date(),
+          createdAt: new Date(),
+          title: 'Section 1',
+          blocks: [
+            {
+              id: 'block1',
+              updatedAt: new Date(),
+              createdAt: new Date(),
+              title: 'Block Title',
+              description: 'Block Description',
+              sectionId: 'section1',
+              position: 1,
+              blockType: BLOCK_TYPE.LOCATION,
+              startTime: new Date(),
+              endTime: new Date(),
+              location: 'New York',
+              price: 100,
+              photoUrl: 'https://example.com/photo.jpg',
+            },
+          ],
+        },
+      ],
+    }
+
+    it('should publish an itinerary and return success response', async () => {
+      mockItineraryService.publishItinerary.mockResolvedValueOnce(mockItinerary)
+
+      mockResponseUtil.response.mockReturnValue({
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary published successfully',
+        data: mockItinerary,
+      })
+
+      const resultPublish = await controller.publishItinerary(
+        mockItinerary.id,
+        mockUser,
+        false
+      )
+
+      expect(mockItineraryService.publishItinerary).toHaveBeenCalledWith(
+        mockItinerary.id,
+        mockUser,
+        false
+      )
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Itinerary published successfully',
+        },
+        mockItinerary
+      )
+
+      expect(resultPublish).toEqual({
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary published successfully',
+        data: mockItinerary,
+      })
+    })
+
+    it('should throw ForbiddenException if user is not owner', async () => {
+      const mockFakeUser: User = {
+        id: 'FAKE-ID',
+        firstName: 'John',
+        lastName: 'Doe',
+        birthDate: new Date(),
+        email: 'john@example.com',
+        phoneNumber: '123456789',
+        password: 'hashedpassword',
+        photoProfile: null,
+        referralCode: null,
+        isEmailConfirmed: false,
+        referredById: null,
+        loyaltyPoints: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      mockItineraryService.publishItinerary.mockImplementation(() => {
+        throw new ForbiddenException('Not authorized')
+      })
+
+      await expect(
+        controller.publishItinerary(mockItinerary.id, mockFakeUser, false)
+      ).rejects.toThrow(ForbiddenException)
+    })
+
+    it('should throw BadRequestException if already published', async () => {
+      mockItineraryService.publishItinerary.mockImplementation(() => {
+        throw new BadRequestException('Already published')
+      })
+
+      await expect(
+        controller.publishItinerary(mockItinerary.id, mockUser, false)
+      ).rejects.toThrow(BadRequestException)
     })
   })
 

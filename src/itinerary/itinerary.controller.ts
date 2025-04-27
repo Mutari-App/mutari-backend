@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common'
 import { ItineraryService } from './itinerary.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
@@ -40,6 +41,65 @@ export class ItineraryController {
         tags,
       }
     )
+  }
+
+  @Public()
+  @Get('search')
+  async searchItineraries(
+    @Query('q') query: string = '',
+    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
+    @Query('tags') tags?: string,
+    @Query('minDaysCount') minDaysCount?: string,
+    @Query('maxDaysCount') maxDaysCount?: string,
+    @Query('sortBy')
+    sortBy: 'createdAt' | 'likes' | 'daysCount' = 'likes',
+    @Query('order') order: 'asc' | 'desc' = 'desc'
+  ) {
+    let filters = []
+
+    if (tags) {
+      const tagIds = tags.split(',')
+      filters.push(
+        `tags.tag.id IN [${tagIds.map((id) => `"${id}"`).join(', ')}]`
+      )
+    }
+
+    if (minDaysCount) {
+      filters.push(`daysCount >= ${parseInt(minDaysCount)}`)
+    }
+
+    if (maxDaysCount) {
+      filters.push(`daysCount <= ${parseInt(maxDaysCount)}`)
+    }
+
+    const filtersString = filters.length > 0 ? filters.join(' AND ') : undefined
+
+    return this.itineraryService.searchItineraries(
+      query,
+      page,
+      limit,
+      filtersString,
+      sortBy,
+      order
+    )
+  }
+
+  @Public()
+  @Get('suggestions')
+  async getSearchSuggestions(@Query('q') query: string = '') {
+    if (query.length < 2) {
+      return { suggestions: [] }
+    }
+
+    const results = await this.itineraryService.searchItineraries(query, 1, 10)
+
+    // Extract unique titles and format them as suggestions
+    const suggestions = [...new Set(results.data.map((item) => item.title))]
+
+    return {
+      suggestions: suggestions.slice(0, 5),
+    }
   }
 
   @Get('me')
@@ -129,6 +189,20 @@ export class ItineraryController {
     )
   }
 
+  @Get('views')
+  async getViewItinerary(@GetUser() user: User) {
+    const itineraries = await this.itineraryService.getViewItinerary(user)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary views fetched successfully',
+      },
+      {
+        itineraries,
+      }
+    )
+  }
+
   @Get('/trending')
   async findTrendingItineraries() {
     const itineraries = await this.itineraryService.findTrendingItineraries()
@@ -153,7 +227,6 @@ export class ItineraryController {
       }
     }
 
-    console.log(itinerary)
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.OK,
@@ -180,6 +253,26 @@ export class ItineraryController {
         message: 'Itinerary created successfully',
       },
       itinerary
+    )
+  }
+
+  @Post('views/:itineraryId')
+  async createViewItinerary(
+    @GetUser() user: User,
+    @Param('itineraryId') itineraryId: string
+  ) {
+    const itinerary = await this.itineraryService.createViewItinerary(
+      itineraryId,
+      user
+    )
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary view added successfully',
+      },
+      {
+        itinerary,
+      }
     )
   }
 
@@ -397,6 +490,27 @@ export class ItineraryController {
       {
         contingency,
       }
+    )
+  }
+
+  @Patch(':itineraryId/publish')
+  async publishItinerary(
+    @Param('itineraryId') id: string,
+    @GetUser() user: User,
+    @Body('isPublished') isPublished: boolean
+  ) {
+    const publishedItinerary = await this.itineraryService.publishItinerary(
+      id,
+      user,
+      isPublished
+    )
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary published successfully',
+      },
+      publishedItinerary
     )
   }
 }

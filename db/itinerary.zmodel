@@ -22,6 +22,7 @@ model Itinerary extends Base {
     tours            Tour[]
     contingencyPlans ContingencyPlan[]
     reminder         ItineraryReminder?
+    views ItineraryView[]
 }
 
 model ContingencyPlan extends Base {
@@ -136,3 +137,16 @@ model ItineraryReminder extends Base {
 
     itinerary      Itinerary       @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
 }
+
+model ItineraryView extends Base {
+  userId      String
+  itineraryId String
+  viewedAt    DateTime @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+
+  @@index([userId, viewedAt])
+  @@unique([userId, itineraryId])
+}
+
