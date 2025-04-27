@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common'
 import { ItineraryService } from './itinerary.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
@@ -46,7 +47,8 @@ export class ItineraryController {
   @Get('search')
   async searchItineraries(
     @Query('q') query: string = '',
-    @Query('page') page: number = 1,
+    @Query('page', ParseIntPipe) page: number = 1,
+    @Query('limit', ParseIntPipe) limit: number = 20,
     @Query('tags') tags?: string,
     @Query('minDaysCount') minDaysCount?: string,
     @Query('maxDaysCount') maxDaysCount?: string,
@@ -76,7 +78,7 @@ export class ItineraryController {
     return this.itineraryService.searchItineraries(
       query,
       page,
-      undefined,
+      limit,
       filtersString,
       sortBy,
       order

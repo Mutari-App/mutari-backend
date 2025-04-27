@@ -2022,7 +2022,7 @@ describe('ItineraryController', () => {
       expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
         '', // empty query
         1, // default page
-        undefined, // default limit
+        20, // default limit
         undefined, // no filters
         'likes', // default sort
         'desc' // default order
@@ -2054,7 +2054,7 @@ describe('ItineraryController', () => {
       expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
         'mountain', // query
         2, // page
-        undefined, // default limit
+        20, // default limit
         undefined, // no filters
         'likes', // default sort
         'desc' // default order
@@ -2085,6 +2085,7 @@ describe('ItineraryController', () => {
       const result = await controller.searchItineraries(
         'beach',
         1,
+        undefined,
         'tag-1,tag-2'
       )
 
@@ -2092,7 +2093,7 @@ describe('ItineraryController', () => {
       expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
         'beach',
         1,
-        undefined,
+        20,
         'tags.tag.id IN ["tag-1", "tag-2"]',
         'likes', // default sort
         'desc' // default order
@@ -2128,6 +2129,7 @@ describe('ItineraryController', () => {
         'weekend',
         1,
         undefined,
+        undefined,
         '2', // minDaysCount
         '3' // maxDaysCount
       )
@@ -2139,7 +2141,7 @@ describe('ItineraryController', () => {
       expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
         'weekend',
         1,
-        undefined,
+        20,
         expectedFilter,
         'likes', // default sort
         'desc' // default order
@@ -2178,6 +2180,7 @@ describe('ItineraryController', () => {
       const result = await controller.searchItineraries(
         'vacation',
         1,
+        20,
         'tag-3',
         '7', // minDaysCount
         '14', // maxDaysCount
@@ -2192,7 +2195,7 @@ describe('ItineraryController', () => {
       expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
         'vacation',
         1,
-        undefined,
+        20,
         expectedFilter,
         'likes', // custom sort field
         'desc' // custom order
