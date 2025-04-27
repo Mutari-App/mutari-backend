@@ -488,6 +488,7 @@ export class ItineraryController {
     if (existingContingencies) {
       existingContingencies.forEach(async (plan) => {
         await this.itineraryService.duplicateContingency(
+          duplicatedItinerary.id,
           itineraryId,
           plan.id,
           user
