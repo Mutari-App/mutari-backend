@@ -838,6 +838,9 @@ export class ItineraryService {
             photoProfile: true,
           },
         },
+        _count: {
+          select: { likes: true },
+        },
       },
     })
 
