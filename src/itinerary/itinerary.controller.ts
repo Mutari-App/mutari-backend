@@ -182,14 +182,14 @@ export class ItineraryController {
 
   @Get('views')
   async getViewItinerary(@GetUser() user: User) {
-    const itinerary = await this.itineraryService.getViewItinerary(user)
+    const itineraries = await this.itineraryService.getViewItinerary(user)
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.OK,
         message: 'Itinerary views fetched successfully',
       },
       {
-        itinerary,
+        itineraries,
       }
     )
   }
