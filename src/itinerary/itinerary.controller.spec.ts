@@ -2319,13 +2319,13 @@ describe('ItineraryController', () => {
   describe('getViewItinerary', () => {
     it('should call service and return viewed itineraries', async () => {
       const user = { id: 'user123' }
-      const itinerary = [{ itineraryId: 'a' }, { itineraryId: 'b' }]
+      const itineraries = [{ itineraryId: 'a' }, { itineraryId: 'b' }]
 
-      mockItineraryService.getViewItinerary.mockResolvedValue(itinerary)
+      mockItineraryService.getViewItinerary.mockResolvedValue(itineraries)
       mockResponseUtil.response.mockReturnValue({
         statusCode: HttpStatus.OK,
         message: 'Itinerary views fetched successfully',
-        itinerary,
+        itineraries: itineraries,
       })
 
       const result = await controller.getViewItinerary(user as any)
@@ -2337,13 +2337,13 @@ describe('ItineraryController', () => {
           message: 'Itinerary views fetched successfully',
         },
         {
-          itinerary,
+          itineraries: itineraries,
         }
       )
       expect(result).toEqual({
         statusCode: HttpStatus.OK,
         message: 'Itinerary views fetched successfully',
-        itinerary,
+        itineraries: itineraries,
       })
     })
   })
