@@ -2024,10 +2024,10 @@ describe('ItineraryController', () => {
       expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
         '', // empty query
         1, // default page
-        undefined, // default limit
+        20, // default limit
         undefined, // no filters
-        'startDate', // default sort
-        'asc' // default order
+        'likes', // default sort
+        'desc' // default order
       )
 
       // Verify correct result was returned
@@ -2056,10 +2056,10 @@ describe('ItineraryController', () => {
       expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
         'mountain', // query
         2, // page
-        undefined, // default limit
+        20, // default limit
         undefined, // no filters
-        'startDate', // default sort
-        'asc' // default order
+        'likes', // default sort
+        'desc' // default order
       )
 
       // Verify correct result was returned
@@ -2087,6 +2087,7 @@ describe('ItineraryController', () => {
       const result = await controller.searchItineraries(
         'beach',
         1,
+        undefined,
         'tag-1,tag-2'
       )
 
@@ -2094,62 +2095,10 @@ describe('ItineraryController', () => {
       expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
         'beach',
         1,
-        undefined,
+        20,
         'tags.tag.id IN ["tag-1", "tag-2"]',
-        'startDate', // default sort
-        'asc' // default order
-      )
-
-      // Verify correct result was returned
-      expect(result).toEqual(mockSearchResults)
-    })
-
-    it('should search itineraries with date range filters', async () => {
-      // Mock search results
-      const mockSearchResults = {
-        data: [
-          {
-            id: 'itinerary-5',
-            title: 'Summer Trip',
-            startDate: '2025-06-01T00:00:00.000Z',
-            endDate: '2025-06-15T00:00:00.000Z',
-          },
-        ],
-        metadata: {
-          total: 1,
-          page: 1,
-          totalPages: 1,
-        },
-      }
-
-      mockItineraryService.searchItineraries.mockResolvedValue(
-        mockSearchResults
-      )
-
-      // Create dates for testing
-      const startDate = new Date('2025-06-01')
-      const endDate = new Date('2025-06-15')
-
-      // Call controller method with date filters
-      const result = await controller.searchItineraries(
-        'summer',
-        1,
-        undefined,
-        startDate.toISOString(),
-        endDate.toISOString()
-      )
-
-      // Construct expected filter string
-      const expectedFilter = `startDate >= "${startDate.toISOString()}" AND endDate <= "${endDate.toISOString()}"`
-
-      // Verify service was called with correct filters
-      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
-        'summer',
-        1,
-        undefined,
-        expectedFilter,
-        'startDate', // default sort
-        'asc' // default order
+        'likes', // default sort
+        'desc' // default order
       )
 
       // Verify correct result was returned
@@ -2183,7 +2132,6 @@ describe('ItineraryController', () => {
         1,
         undefined,
         undefined,
-        undefined,
         '2', // minDaysCount
         '3' // maxDaysCount
       )
@@ -2195,10 +2143,10 @@ describe('ItineraryController', () => {
       expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
         'weekend',
         1,
-        undefined,
+        20,
         expectedFilter,
-        'startDate', // default sort
-        'asc' // default order
+        'likes', // default sort
+        'desc' // default order
       )
 
       // Verify correct result was returned
@@ -2230,17 +2178,12 @@ describe('ItineraryController', () => {
         mockSearchResults
       )
 
-      // Create dates for testing
-      const startDate = new Date('2025-07-01')
-      const endDate = new Date('2025-07-15')
-
       // Call controller method with all filters and custom sorting
       const result = await controller.searchItineraries(
         'vacation',
         1,
+        20,
         'tag-3',
-        startDate.toISOString(),
-        endDate.toISOString(),
         '7', // minDaysCount
         '14', // maxDaysCount
         'likes', // sortBy
@@ -2248,13 +2191,13 @@ describe('ItineraryController', () => {
       )
 
       // Construct expected filter string
-      const expectedFilter = `tags.tag.id IN ["tag-3"] AND startDate >= "${startDate.toISOString()}" AND endDate <= "${endDate.toISOString()}" AND daysCount >= 7 AND daysCount <= 14`
+      const expectedFilter = `tags.tag.id IN ["tag-3"] AND daysCount >= 7 AND daysCount <= 14`
 
       // Verify service was called with correct parameters
       expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
         'vacation',
         1,
-        undefined,
+        20,
         expectedFilter,
         'likes', // custom sort field
         'desc' // custom order
@@ -2276,6 +2219,120 @@ describe('ItineraryController', () => {
 
       // Verify service was called
       expect(mockItineraryService.searchItineraries).toHaveBeenCalled()
+    })
+  })
+
+  describe('getSearchSuggestions', () => {
+    it('should return search suggestions based on query', async () => {
+      const mockSuggestions = [
+        { id: 'itinerary-1', title: 'Beach Vacation' },
+        { id: 'itinerary-2', title: 'Beach Resort Trip' },
+        { id: 'itinerary-3', title: 'Beach Holiday' },
+      ]
+
+      const mockResults = {
+        data: mockSuggestions,
+        metadata: {
+          total: 3,
+          page: 1,
+          totalPages: 1,
+        },
+      }
+
+      mockItineraryService.searchItineraries.mockResolvedValue(mockResults)
+
+      const result = await controller.getSearchSuggestions('beach')
+
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
+        'beach',
+        1,
+        10
+      )
+
+      expect(result).toEqual({
+        suggestions: ['Beach Vacation', 'Beach Resort Trip', 'Beach Holiday'],
+      })
+    })
+
+    it('should return empty suggestions for short queries', async () => {
+      const result = await controller.getSearchSuggestions('b')
+
+      expect(mockItineraryService.searchItineraries).not.toHaveBeenCalled()
+      expect(result).toEqual({ suggestions: [] })
+    })
+
+    it('should limit suggestions to top 5 results', async () => {
+      const mockSuggestions = [
+        { id: '1', title: 'Beach Vacation 1' },
+        { id: '2', title: 'Beach Vacation 2' },
+        { id: '3', title: 'Beach Vacation 3' },
+        { id: '4', title: 'Beach Vacation 4' },
+        { id: '5', title: 'Beach Vacation 5' },
+        { id: '6', title: 'Beach Vacation 6' },
+        { id: '7', title: 'Beach Vacation 7' },
+      ]
+
+      const mockResults = {
+        data: mockSuggestions,
+        metadata: {
+          total: 7,
+          page: 1,
+          totalPages: 1,
+        },
+      }
+
+      mockItineraryService.searchItineraries.mockResolvedValue(mockResults)
+
+      const result = await controller.getSearchSuggestions('beach')
+
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
+        'beach',
+        1,
+        10
+      )
+
+      expect(result.suggestions).toHaveLength(5)
+      expect(result.suggestions).toEqual([
+        'Beach Vacation 1',
+        'Beach Vacation 2',
+        'Beach Vacation 3',
+        'Beach Vacation 4',
+        'Beach Vacation 5',
+      ])
+    })
+
+    it('should handle duplicate titles in results', async () => {
+      const mockSuggestions = [
+        { id: '1', title: 'Beach Vacation' },
+        { id: '2', title: 'Beach Vacation' }, // Duplicate
+        { id: '3', title: 'Beach Resort' },
+        { id: '4', title: 'Beach Trip' },
+      ]
+
+      const mockResults = {
+        data: mockSuggestions,
+        metadata: {
+          total: 4,
+          page: 1,
+          totalPages: 1,
+        },
+      }
+
+      mockItineraryService.searchItineraries.mockResolvedValue(mockResults)
+
+      const result = await controller.getSearchSuggestions('beach')
+
+      expect(mockItineraryService.searchItineraries).toHaveBeenCalledWith(
+        'beach',
+        1,
+        10
+      )
+
+      expect(result.suggestions).toEqual([
+        'Beach Vacation',
+        'Beach Resort',
+        'Beach Trip',
+      ])
     })
   })
 
@@ -2321,13 +2378,13 @@ describe('ItineraryController', () => {
   describe('getViewItinerary', () => {
     it('should call service and return viewed itineraries', async () => {
       const user = { id: 'user123' }
-      const itinerary = [{ itineraryId: 'a' }, { itineraryId: 'b' }]
+      const itineraries = [{ itineraryId: 'a' }, { itineraryId: 'b' }]
 
-      mockItineraryService.getViewItinerary.mockResolvedValue(itinerary)
+      mockItineraryService.getViewItinerary.mockResolvedValue(itineraries)
       mockResponseUtil.response.mockReturnValue({
         statusCode: HttpStatus.OK,
         message: 'Itinerary views fetched successfully',
-        itinerary,
+        itineraries: itineraries,
       })
 
       const result = await controller.getViewItinerary(user as any)
@@ -2339,13 +2396,13 @@ describe('ItineraryController', () => {
           message: 'Itinerary views fetched successfully',
         },
         {
-          itinerary,
+          itineraries: itineraries,
         }
       )
       expect(result).toEqual({
         statusCode: HttpStatus.OK,
         message: 'Itinerary views fetched successfully',
-        itinerary,
+        itineraries: itineraries,
       })
     })
   })
