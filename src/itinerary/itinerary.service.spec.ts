@@ -1847,6 +1847,14 @@ describe('ItineraryService', () => {
               tag: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
         },
       })
     })
@@ -1867,7 +1875,16 @@ describe('ItineraryService', () => {
       const result = await service.findOne('123', mockUser)
 
       expect(result).toEqual(mockItinerary)
-      expect(prismaService.itinerary.findUnique).toHaveBeenCalledWith({
+      expect(prismaService.itinerary.findUnique).toHaveBeenNthCalledWith(1, {
+        where: { id: '123' },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
+      })
+      
+      expect(prismaService.itinerary.findUnique).toHaveBeenNthCalledWith(2, {
         where: { id: '123' },
         include: {
           sections: {
@@ -1877,8 +1894,8 @@ describe('ItineraryService', () => {
             include: {
               blocks: {
                 include: {
-                  routeToNext: true,
                   routeFromPrevious: true,
+                  routeToNext: true,
                 },
               },
             },
@@ -1888,8 +1905,16 @@ describe('ItineraryService', () => {
               tag: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
         },
-      })
+      })      
     })
 
     it('should throw NotFoundException if itinerary does not exist', async () => {
@@ -3931,16 +3956,22 @@ describe('ItineraryService', () => {
       mockPrismaService.itinerary.update = jest
         .fn()
         .mockResolvedValue(publishedItinerary)
-
+    
       const result = await service.publishItinerary(
         mockItineraryData.id,
         mockUser,
         true
       )
-
+    
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: mockItineraryData.id },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
+    
       expect(mockPrismaService.itinerary.update).toHaveBeenCalledWith({
         where: { id: mockItineraryData.id },
         data: { isPublished: true },
