@@ -324,12 +324,34 @@ export class ItineraryService {
   }
 
   async duplicateItinerary(id: string, user: User) {
-    await this._checkDuplicateItineraryPermission(id, user)
+    await this._checkReadItineraryPermission(id, user)
 
     // phase 1: duplicate the itinerary
-    const originalItinerary = await this.findOne(id, user)
+    const originalItinerary = await this.prisma.itinerary.findUnique({
+      where: { id: id },
+      include: {
+        sections: {
+          where: {
+            contingencyPlanId: null,
+          },
+          include: {
+            blocks: {
+              include: {
+                routeToNext: true,
+                routeFromPrevious: true,
+              },
+            },
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+      },
+    })
     const itineraryData: CreateItineraryDto = {
-      title: originalItinerary.title,
+      title: originalItinerary.title + ' (Copy)',
       description: originalItinerary.description,
       coverImage: originalItinerary.coverImage,
       startDate: originalItinerary.startDate,
