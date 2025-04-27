@@ -499,4 +499,17 @@ export class ItineraryController {
       publishedItinerary
     )
   }
+
+  @Post(':itineraryId/save')
+  async saveItinerary(@Param('itineraryId') id: string, @GetUser() user: User) {
+    const itineraryLike = await this.itineraryService.saveItinerary(id, user)
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary saved successfully',
+      },
+      itineraryLike
+    )
+  }
 }
