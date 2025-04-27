@@ -1469,14 +1469,34 @@ export class ItineraryService {
 
   async getViewItinerary(user: User) {
     const userId = user.id
-
-    return this.prisma.itineraryView.findMany({
-      where: {
-        userId: userId,
-      },
-      orderBy: {
-        viewedAt: 'desc',
+    const views = await this.prisma.itineraryView.findMany({
+      where: { userId: userId },
+      orderBy: { viewedAt: 'desc' },
+      include: {
+        itinerary: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                photoProfile: true,
+              },
+            },
+            _count: {
+              select: {
+                likes: true,
+              },
+            },
+          },
+        },
       },
     })
+
+    return views.map((view) => ({
+      ...view,
+      itinerary: {
+        ...view.itinerary,
+        likes: view.itinerary._count.likes,
+      },
+    }))
   }
 }
