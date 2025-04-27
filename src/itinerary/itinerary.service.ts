@@ -15,12 +15,14 @@ import { EmailService } from 'src/email/email.service'
 import { invitationTemplate } from './templates/invitation-template'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
 import { UpdateContingencyPlanDto } from './dto/update-contingency-plan.dto'
+import { MeilisearchService } from '../meilisearch/meilisearch.service'
 
 @Injectable()
 export class ItineraryService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly emailService: EmailService
+    private readonly emailService: EmailService,
+    private readonly meilisearchService: MeilisearchService
   ) {}
   async createItinerary(data: CreateItineraryDto, user: User) {
     const startDate = new Date(data.startDate)
@@ -111,6 +113,14 @@ export class ItineraryService {
               tag: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
         },
       })
 
@@ -158,12 +168,15 @@ export class ItineraryService {
         }
       }
 
+      if (itinerary.isPublished) {
+        await this.meilisearchService.addOrUpdateItinerary(itinerary)
+      }
+
       return itinerary
     })
   }
 
   async updateItinerary(id: string, data: UpdateItineraryDto, user: User) {
-    await this._checkItineraryExists(id, user)
     await this._checkUpdateItineraryPermission(id, user)
     this._validateItineraryDates(data)
     this._validateItinerarySections(data)
@@ -242,6 +255,14 @@ export class ItineraryService {
               tag: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
         },
       })
 
@@ -290,10 +311,24 @@ export class ItineraryService {
           }
         }
       }
+
+      if (updatedItinerary.isPublished) {
+        await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+      } else {
+        // If unpublished, remove from search index
+        await this.meilisearchService.deleteItinerary(id)
+      }
+
       return updatedItinerary
     })
   }
 
+  /**
+   * Checks whether itinerary with given id exists
+   * @param id Id for Itinerary
+   * @param user User for permission check
+   * @returns A simple Itinerary object
+   */
   async _checkItineraryExists(id: string, user: User) {
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id },
@@ -307,24 +342,35 @@ export class ItineraryService {
     if (!itinerary) {
       throw new NotFoundException(`Itinerary with ID ${id} not found`)
     }
-
-    if (itinerary.userId !== user.id && itinerary.access.length === 0) {
-      throw new ForbiddenException(
-        'You do not have permission to update or view this itinerary'
-      )
-    }
-
     return itinerary
   }
 
-  async _checkUpdateItineraryPermission(id: string, user: User) {
-    const itinerary = await this.prisma.itinerary.findUnique({
-      where: { id },
-    })
+  /**
+   * Checks whether user has READ access to a given itinerary or not
+   * @param id Id for Itinerary
+   * @param user User for permission check
+   * @returns A simple Itinerary object
+   */
+  async _checkReadItineraryPermission(id: string, user: User) {
+    const itinerary = await this._checkItineraryExists(id, user)
 
-    if (!itinerary) {
-      throw new NotFoundException(`Itinerary with ID ${id} not found`)
+    if (itinerary.userId !== user.id) {
+      if (!itinerary.isPublished && itinerary.access.length === 0)
+        throw new ForbiddenException(
+          'You do not have permission to view this itinerary'
+        )
     }
+    return itinerary
+  }
+
+  /**
+   * Checks whether user has UPDATE access to a given itinerary or not
+   * @param id Id for Itinerary
+   * @param user User for permission check
+   * @returns A simple Itinerary object
+   */
+  async _checkUpdateItineraryPermission(id: string, user: User) {
+    const itinerary = await this._checkItineraryExists(id, user)
 
     if (itinerary.userId !== user.id) {
       if (!itinerary.isPublished){
@@ -333,7 +379,6 @@ export class ItineraryService {
         )
       }
     }
-
     return itinerary
   }
 
@@ -764,7 +809,7 @@ export class ItineraryService {
   }
 
   async findOne(id: string, user: User) {
-    await this._checkItineraryExists(id, user)
+    await this._checkReadItineraryPermission(id, user)
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id: id },
       include: {
@@ -799,10 +844,11 @@ export class ItineraryService {
     if (!itinerary) {
       throw new NotFoundException('Itinerary not found')
     }
-
-    return this.prisma.itinerary.delete({
+    const result = await this.prisma.itinerary.delete({
       where: { id },
     })
+    await this.meilisearchService.deleteItinerary(id)
+    return result
   }
 
   async findAllTags() {
@@ -954,7 +1000,7 @@ export class ItineraryService {
   }
 
   async findContingencyPlans(itineraryId: string, user: User) {
-    const itinerary = await this._checkUpdateItineraryPermission(
+    const itinerary = await this._checkReadItineraryPermission(
       itineraryId,
       user
     )
@@ -972,7 +1018,7 @@ export class ItineraryService {
     contingencyPlanId: string,
     user: User
   ) {
-    const itinerary = await this._checkUpdateItineraryPermission(
+    const itinerary = await this._checkReadItineraryPermission(
       itineraryId,
       user
     )
@@ -1034,7 +1080,10 @@ export class ItineraryService {
     data: CreateContingencyPlanDto,
     user: User
   ) {
-    const itinerary = await this._checkItineraryExists(itineraryId, user)
+    const itinerary = await this._checkUpdateItineraryPermission(
+      itineraryId,
+      user
+    )
     const contingencyCount = await this._checkContingencyCount(itinerary.id)
     const CONTINGENCY_TITLE = ['B', 'C']
     return this.prisma.$transaction(async (prisma) => {
@@ -1338,6 +1387,7 @@ export class ItineraryService {
     })
   }
 
+<<<<<<< HEAD
   async publishItinerary(itineraryId: string, user: User, isPublished: boolean) {
     await this._checkUpdateItineraryPermission(itineraryId, user)
 
@@ -1349,5 +1399,100 @@ export class ItineraryService {
     })
   
     return { updatedItinerary }
+=======
+  async searchItineraries(
+    query: string = '',
+    page: number = 1,
+    limit: number = 20,
+    filters?: any,
+    sortBy: string = 'createdAt',
+    order: 'asc' | 'desc' = 'asc'
+  ) {
+    const offset = (page - 1) * limit
+
+    const searchOptions = {
+      limit,
+      offset,
+      filter: filters,
+      sort: [`${sortBy}:${order}`],
+    }
+
+    const result = await this.meilisearchService.searchItineraries(
+      query,
+      searchOptions
+    )
+
+    return {
+      data: result.hits.map((hit) => ({
+        id: hit.id,
+        createdAt: hit.createdAt,
+        title: hit.title,
+        description: hit.description,
+        coverImage: hit.coverImage,
+        user: hit.user,
+        tags: hit.tags,
+        daysCount: hit.daysCount,
+        likes: hit.likes,
+      })),
+      metadata: {
+        total: result.estimatedTotalHits,
+        page,
+        totalPages: Math.ceil(result.estimatedTotalHits / limit) || 1,
+      },
+    }
+  }
+
+  async createViewItinerary(itineraryId: string, user: User) {
+    const userId = user.id
+
+    const userViews = await this.prisma.itineraryView.findMany({
+      where: { userId },
+      orderBy: { viewedAt: 'desc' },
+    })
+
+    const itineraryExists = userViews.some(
+      (view) => view.itineraryId === itineraryId
+    )
+
+    if (itineraryExists) {
+      return this.prisma.itineraryView.update({
+        where: {
+          userId_itineraryId: { userId, itineraryId },
+        },
+        data: {
+          viewedAt: new Date(),
+        },
+      })
+    }
+
+    if (userViews.length >= 10) {
+      await this.prisma.itineraryView.delete({
+        where: {
+          id: userViews[userViews.length - 1].id,
+        },
+      })
+    }
+
+    return this.prisma.itineraryView.create({
+      data: {
+        userId,
+        itineraryId,
+        viewedAt: new Date(),
+      },
+    })
+  }
+
+  async getViewItinerary(user: User) {
+    const userId = user.id
+
+    return this.prisma.itineraryView.findMany({
+      where: {
+        userId: userId,
+      },
+      orderBy: {
+        viewedAt: 'desc',
+      },
+    })
+>>>>>>> 680a890805ba61883d43193d66616cc56f789762
   }
 }

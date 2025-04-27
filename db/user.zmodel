@@ -24,6 +24,7 @@ model User extends Base {
     itineraryAccess  ItineraryAccess[]
     itineraryLikes   ItineraryLike[]
     tourTickets      TourTicket[]
+    itineraryViews ItineraryView[]
 }
 
 model Ticket extends Base {
