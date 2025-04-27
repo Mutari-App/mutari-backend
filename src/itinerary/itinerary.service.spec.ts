@@ -1855,6 +1855,9 @@ describe('ItineraryService', () => {
               photoProfile: true,
             },
           },
+          _count:{
+            select: { likes:true }
+          }
         },
       })
     })
@@ -1913,6 +1916,9 @@ describe('ItineraryService', () => {
               photoProfile: true,
             },
           },
+          _count:{
+            select: { likes: true }
+          }
         },
       })      
     })
