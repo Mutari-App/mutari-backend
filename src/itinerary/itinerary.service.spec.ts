@@ -4229,20 +4229,77 @@ describe('ItineraryService', () => {
       const user = { id: 'user123' }
 
       const expectedResult = [
-        { itineraryId: 'a', viewedAt: new Date() },
-        { itineraryId: 'b', viewedAt: new Date() },
+        {
+          itineraryId: 'a',
+          viewedAt: new Date(),
+          itinerary: {
+            id: 'a',
+            title: 'Sample Itinerary A',
+            userId: 'user1',
+            user: {
+              id: 'user1',
+              name: 'User 1',
+            },
+            _count: {
+              likes: 10,
+            },
+          },
+        },
+        {
+          itineraryId: 'b',
+          viewedAt: new Date(),
+          itinerary: {
+            id: 'b',
+            title: 'Sample Itinerary B',
+            userId: 'user2',
+            user: {
+              id: 'user2',
+              name: 'User 2',
+            },
+            _count: {
+              likes: 5,
+            },
+          },
+        },
       ]
 
       mockPrismaService.itineraryView.findMany.mockResolvedValue(expectedResult)
 
       const result = await service.getViewItinerary(user as any)
 
-      expect(mockPrismaService.itineraryView.findMany).toHaveBeenCalledWith({
-        where: { userId: user.id },
-        orderBy: { viewedAt: 'desc' },
-      })
+      expect(mockPrismaService.itineraryView.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: user.id },
+          orderBy: { viewedAt: 'desc' },
+          include: expect.objectContaining({
+            itinerary: expect.objectContaining({
+              include: expect.objectContaining({
+                user: expect.objectContaining({
+                  select: expect.objectContaining({
+                    firstName: true,
+                    photoProfile: true,
+                  }),
+                }),
+                _count: expect.objectContaining({
+                  select: expect.objectContaining({
+                    likes: true,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        })
+      )
 
-      expect(result).toEqual(expectedResult)
+      expect(result).toEqual(
+        expectedResult.map((view) => ({
+          ...view,
+          itinerary: {
+            ...view.itinerary,
+            likes: view.itinerary._count.likes,
+          },
+        }))
+      )
     })
   })
 
