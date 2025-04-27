@@ -386,12 +386,11 @@ export class ItineraryService {
   }
 
   async duplicateContingency(
+    newItineraryId: string,
     itineraryId: string,
     contingencyPlanId: string,
     user: User
   ) {
-    await this._checkDuplicateItineraryPermission(itineraryId, user)
-
     // phase 2: duplicate contingency
     const contingecyPlan = await this.findContingencyPlan(
       itineraryId,
@@ -423,7 +422,7 @@ export class ItineraryService {
       })),
     }
     const newContingencyPlan = await this.createContingencyPlan(
-      itineraryId,
+      newItineraryId,
       contingencyData,
       user
     )
