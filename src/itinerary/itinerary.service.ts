@@ -830,22 +830,18 @@ export class ItineraryService {
             tag: true,
           },
         },
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            photoProfile: true,
+          },
+        },
       },
     })
 
-    const userDetail = await this.prisma.user.findUnique({
-      where: { id: itinerary.userId },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-      },
-    })
-
-    return {
-      ...itinerary,
-      user: userDetail,
-    }
+    return itinerary
   }
 
   async removeItinerary(id: string, user: User) {
