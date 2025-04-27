@@ -203,6 +203,20 @@ export class ItineraryController {
     )
   }
 
+  @Get('/trending')
+  async findTrendingItineraries() {
+    const itineraries = await this.itineraryService.findTrendingItineraries()
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Trending itineraries fetched successfully.',
+      },
+      {
+        itineraries,
+      }
+    )
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string, @GetUser() user: User) {
     const itinerary = await this.itineraryService.findOne(id, user)

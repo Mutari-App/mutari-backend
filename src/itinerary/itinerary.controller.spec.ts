@@ -59,6 +59,7 @@ describe('ItineraryController', () => {
     createViewItinerary: jest.fn(),
     getViewItinerary: jest.fn(),
     publishItinerary: jest.fn(),
+    findTrendingItineraries: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -2519,6 +2520,115 @@ describe('ItineraryController', () => {
       await expect(
         controller.publishItinerary(mockItinerary.id, mockUser, false)
       ).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  describe('findTrendingItineraries', () => {
+    it('should return trending itineraries successfully', async () => {
+      // Arrange
+      const mockTrendingItineraries = [
+        {
+          id: 'itinerary-1',
+          title: 'Popular Trip',
+          description: 'A very popular itinerary',
+          coverImage: 'popular.jpg',
+          likesCount: 10,
+          user: {
+            firstName: 'John',
+            lastName: 'Doe',
+            photoProfile: 'profile.jpg',
+          },
+        },
+        {
+          id: 'itinerary-2',
+          title: 'Another Popular Trip',
+          description: 'Another popular itinerary',
+          coverImage: 'popular2.jpg',
+          likesCount: 8,
+          user: {
+            firstName: 'Jane',
+            lastName: 'Smith',
+            photoProfile: 'profile2.jpg',
+          },
+        },
+      ]
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Trending itineraries fetched successfully.',
+        data: {
+          itineraries: mockTrendingItineraries,
+        },
+      }
+
+      mockItineraryService.findTrendingItineraries.mockResolvedValue(
+        mockTrendingItineraries
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      // Act
+      const result = await controller.findTrendingItineraries()
+
+      // Assert
+      expect(mockItineraryService.findTrendingItineraries).toHaveBeenCalled()
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Trending itineraries fetched successfully.',
+        },
+        {
+          itineraries: mockTrendingItineraries,
+        }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should return empty array when no trending itineraries exist', async () => {
+      // Arrange
+      const mockTrendingItineraries = []
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Trending itineraries fetched successfully.',
+        data: {
+          itineraries: [],
+        },
+      }
+
+      mockItineraryService.findTrendingItineraries.mockResolvedValue(
+        mockTrendingItineraries
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      // Act
+      const result = await controller.findTrendingItineraries()
+
+      // Assert
+      expect(mockItineraryService.findTrendingItineraries).toHaveBeenCalled()
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Trending itineraries fetched successfully.',
+        },
+        {
+          itineraries: [],
+        }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should handle errors from the service', async () => {
+      // Arrange
+      const errorMessage = 'Failed to fetch trending itineraries'
+      const mockError = new Error(errorMessage)
+
+      mockItineraryService.findTrendingItineraries.mockRejectedValue(mockError)
+
+      // Act & Assert
+      await expect(controller.findTrendingItineraries()).rejects.toThrow(
+        errorMessage
+      )
+      expect(mockItineraryService.findTrendingItineraries).toHaveBeenCalled()
+      expect(mockResponseUtil.response).not.toHaveBeenCalled()
     })
   })
 })
