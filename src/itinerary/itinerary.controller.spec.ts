@@ -2327,8 +2327,8 @@ describe('ItineraryController', () => {
       const existingContingencyPlans = []
 
       const mockResponse = {
-        statusCode: HttpStatus.OK,
-        message: 'Contingency updated successfully.',
+        statusCode: HttpStatus.CREATED,
+        message: 'Contingency duplicated successfully.',
         itinerary: duplicatedItinerary,
       }
 
