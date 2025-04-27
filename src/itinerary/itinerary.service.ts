@@ -373,9 +373,11 @@ export class ItineraryService {
     const itinerary = await this._checkItineraryExists(id, user)
 
     if (itinerary.userId !== user.id) {
-      throw new ForbiddenException(
-        'You do not have permission to update this itinerary'
-      )
+      if (!itinerary.isPublished) {
+        throw new ForbiddenException(
+          'You do not have permission to update this itinerary'
+        )
+      }
     }
     return itinerary
   }
@@ -1499,5 +1501,29 @@ export class ItineraryService {
         likes: view.itinerary._count.likes,
       },
     }))
+  }
+
+  async publishItinerary(
+    itineraryId: string,
+    user: User,
+    isPublished: boolean
+  ) {
+    await this._checkUpdateItineraryPermission(itineraryId, user)
+
+    const updatedItinerary = await this.prisma.itinerary.update({
+      where: { id: itineraryId },
+      data: {
+        isPublished,
+      },
+    })
+
+    if (updatedItinerary.isPublished) {
+      await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+    } else {
+      // If unpublished, remove from search index
+      await this.meilisearchService.deleteItinerary(itineraryId)
+    }
+
+    return { updatedItinerary }
   }
 }

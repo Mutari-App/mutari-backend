@@ -469,4 +469,25 @@ export class ItineraryController {
       }
     )
   }
+
+  @Patch(':itineraryId/publish')
+  async publishItinerary(
+    @Param('itineraryId') id: string,
+    @GetUser() user: User,
+    @Body('isPublished') isPublished: boolean
+  ) {
+    const publishedItinerary = await this.itineraryService.publishItinerary(
+      id,
+      user,
+      isPublished
+    )
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary published successfully',
+      },
+      publishedItinerary
+    )
+  }
 }
