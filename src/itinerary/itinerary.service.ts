@@ -1479,6 +1479,7 @@ export class ItineraryService {
               select: {
                 firstName: true,
                 photoProfile: true,
+                id: true,
               },
             },
             _count: {
