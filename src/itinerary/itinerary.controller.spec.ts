@@ -61,6 +61,7 @@ describe('ItineraryController', () => {
     getViewItinerary: jest.fn(),
     publishItinerary: jest.fn(),
     saveItinerary: jest.fn(),
+    unsaveItinerary: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -2568,6 +2569,48 @@ describe('ItineraryController', () => {
       ).rejects.toThrow(mockError)
 
       expect(mockItineraryService.saveItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        mockUser
+      )
+
+      expect(mockResponseUtil.response).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('unsaveItinerary', () => {
+    it('should unsave the itinerary for the user', async () => {
+      const itineraryId = 'itn-123'
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary unsaved successfully',
+      }
+
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.unsaveItinerary(itineraryId, mockUser)
+
+      expect(mockItineraryService.unsaveItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        mockUser
+      )
+
+      expect(mockResponseUtil.response).toHaveBeenCalledWith({
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary unsaved successfully',
+      })
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should pass errors from service to the caller', async () => {
+      const itineraryId = 'itn-123'
+      const mockError = new Error("Cannot unsave user's own itinerary")
+      mockItineraryService.unsaveItinerary.mockRejectedValue(mockError)
+      await expect(
+        controller.unsaveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(mockError)
+
+      expect(mockItineraryService.unsaveItinerary).toHaveBeenCalledWith(
         itineraryId,
         mockUser
       )
