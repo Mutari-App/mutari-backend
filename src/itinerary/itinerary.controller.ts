@@ -512,4 +512,17 @@ export class ItineraryController {
       itineraryLike
     )
   }
+
+  @Delete(':itineraryId/save')
+  async unsaveItinerary(
+    @Param('itineraryId') id: string,
+    @GetUser() user: User
+  ) {
+    await this.itineraryService.unsaveItinerary(id, user)
+
+    return this.responseUtil.response({
+      statusCode: HttpStatus.OK,
+      message: 'Itinerary unsaved successfully',
+    })
+  }
 }
