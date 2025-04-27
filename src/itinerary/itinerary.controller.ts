@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common'
 import { ItineraryService } from './itinerary.service'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
@@ -46,15 +47,14 @@ export class ItineraryController {
   @Get('search')
   async searchItineraries(
     @Query('q') query: string = '',
-    @Query('page') page: number = 1,
+    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
     @Query('tags') tags?: string,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
     @Query('minDaysCount') minDaysCount?: string,
     @Query('maxDaysCount') maxDaysCount?: string,
     @Query('sortBy')
-    sortBy: 'startDate' | 'endDate' | 'likes' | 'daysCount' = 'startDate',
-    @Query('order') order: 'asc' | 'desc' = 'asc'
+    sortBy: 'createdAt' | 'likes' | 'daysCount' = 'likes',
+    @Query('order') order: 'asc' | 'desc' = 'desc'
   ) {
     let filters = []
 
@@ -63,14 +63,6 @@ export class ItineraryController {
       filters.push(
         `tags.tag.id IN [${tagIds.map((id) => `"${id}"`).join(', ')}]`
       )
-    }
-
-    if (startDate) {
-      filters.push(`startDate >= "${new Date(startDate).toISOString()}"`)
-    }
-
-    if (endDate) {
-      filters.push(`endDate <= "${new Date(endDate).toISOString()}"`)
     }
 
     if (minDaysCount) {
@@ -86,11 +78,28 @@ export class ItineraryController {
     return this.itineraryService.searchItineraries(
       query,
       page,
-      undefined,
+      limit,
       filtersString,
       sortBy,
       order
     )
+  }
+
+  @Public()
+  @Get('suggestions')
+  async getSearchSuggestions(@Query('q') query: string = '') {
+    if (query.length < 2) {
+      return { suggestions: [] }
+    }
+
+    const results = await this.itineraryService.searchItineraries(query, 1, 10)
+
+    // Extract unique titles and format them as suggestions
+    const suggestions = [...new Set(results.data.map((item) => item.title))]
+
+    return {
+      suggestions: suggestions.slice(0, 5),
+    }
   }
 
   @Get('me')
@@ -182,14 +191,14 @@ export class ItineraryController {
 
   @Get('views')
   async getViewItinerary(@GetUser() user: User) {
-    const itinerary = await this.itineraryService.getViewItinerary(user)
+    const itineraries = await this.itineraryService.getViewItinerary(user)
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.OK,
         message: 'Itinerary views fetched successfully',
       },
       {
-        itinerary,
+        itineraries,
       }
     )
   }
@@ -470,6 +479,27 @@ export class ItineraryController {
     )
   }
 
+  @Patch(':itineraryId/publish')
+  async publishItinerary(
+    @Param('itineraryId') id: string,
+    @GetUser() user: User,
+    @Body('isPublished') isPublished: boolean
+  ) {
+    const publishedItinerary = await this.itineraryService.publishItinerary(
+      id,
+      user,
+      isPublished
+    )
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary published successfully',
+      },
+      publishedItinerary
+    )
+  }
+  
   @Post(':itineraryId/duplicate')
   async duplicateItineraryAndContingencies(
     @Param('itineraryId') itineraryId: string,

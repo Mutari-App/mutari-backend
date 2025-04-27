@@ -479,9 +479,11 @@ export class ItineraryService {
     const itinerary = await this._checkItineraryExists(id, user)
 
     if (itinerary.userId !== user.id) {
-      throw new ForbiddenException(
-        'You do not have permission to update this itinerary'
-      )
+      if (!itinerary.isPublished) {
+        throw new ForbiddenException(
+          'You do not have permission to update this itinerary'
+        )
+      }
     }
     return itinerary
   }
@@ -935,8 +937,20 @@ export class ItineraryService {
             tag: true,
           },
         },
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            photoProfile: true,
+          },
+        },
+        _count: {
+          select: { likes: true },
+        },
       },
     })
+
     return itinerary
   }
 
@@ -1496,8 +1510,8 @@ export class ItineraryService {
     page: number = 1,
     limit: number = 20,
     filters?: any,
-    sortBy: string = 'createdAt',
-    order: 'asc' | 'desc' = 'asc'
+    sortBy: string = 'likes',
+    order: 'asc' | 'desc' = 'desc'
   ) {
     const offset = (page - 1) * limit
 
@@ -1505,7 +1519,10 @@ export class ItineraryService {
       limit,
       offset,
       filter: filters,
-      sort: [`${sortBy}:${order}`],
+      sort:
+        sortBy === 'likes'
+          ? [`likes:desc`]
+          : [`likes:desc`, `${sortBy}:${order}`],
     }
 
     const result = await this.meilisearchService.searchItineraries(
@@ -1575,14 +1592,59 @@ export class ItineraryService {
 
   async getViewItinerary(user: User) {
     const userId = user.id
-
-    return this.prisma.itineraryView.findMany({
-      where: {
-        userId: userId,
-      },
-      orderBy: {
-        viewedAt: 'desc',
+    const views = await this.prisma.itineraryView.findMany({
+      where: { userId: userId },
+      orderBy: { viewedAt: 'desc' },
+      include: {
+        itinerary: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                photoProfile: true,
+                id: true,
+              },
+            },
+            _count: {
+              select: {
+                likes: true,
+              },
+            },
+          },
+        },
       },
     })
+
+    return views.map((view) => ({
+      ...view,
+      itinerary: {
+        ...view.itinerary,
+        likes: view.itinerary._count.likes,
+      },
+    }))
+  }
+
+  async publishItinerary(
+    itineraryId: string,
+    user: User,
+    isPublished: boolean
+  ) {
+    await this._checkUpdateItineraryPermission(itineraryId, user)
+
+    const updatedItinerary = await this.prisma.itinerary.update({
+      where: { id: itineraryId },
+      data: {
+        isPublished,
+      },
+    })
+
+    if (updatedItinerary.isPublished) {
+      await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+    } else {
+      // If unpublished, remove from search index
+      await this.meilisearchService.deleteItinerary(itineraryId)
+    }
+
+    return { updatedItinerary }
   }
 }

@@ -1,42 +1,60 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-} from '@nestjs/common'
+import { Controller, Get, HttpCode, HttpStatus, Param } from '@nestjs/common'
 import { ProfileService } from './profile.service'
-import { CreateProfileDto } from './dto/create-profile.dto'
-import { UpdateProfileDto } from './dto/update-profile.dto'
+import { ResponseUtil } from 'src/common/utils/response.util'
+import { Public } from 'src/common/decorators/public.decorator'
 
 @Controller('profile')
 export class ProfileController {
-  constructor(private readonly profileService: ProfileService) {}
+  constructor(
+    private readonly profileService: ProfileService,
+    private readonly responseUtil: ResponseUtil
+  ) {}
 
-  @Post()
-  create(@Body() createProfileDto: CreateProfileDto) {
-    return this.profileService.create(createProfileDto)
-  }
-
-  @Get()
-  findAll() {
-    return this.profileService.findAll()
-  }
-
+  @Public()
+  @HttpCode(HttpStatus.OK)
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.profileService.findOne(+id)
+  async findOne(@Param('id') id: string) {
+    const profile = await this.profileService.findOne(id)
+    return this.responseUtil.response(
+      {
+        message: 'Profile retrieved successfully',
+        statusCode: HttpStatus.OK,
+      },
+      {
+        profile,
+      }
+    )
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateProfileDto: UpdateProfileDto) {
-    return this.profileService.update(+id, updateProfileDto)
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Get(':id/itineraries')
+  async getListItineraries(@Param('id') id: string) {
+    const itineraries = await this.profileService.getListItineraries(id)
+    return this.responseUtil.response(
+      {
+        message: 'List itinerary retrieved successfully',
+        statusCode: HttpStatus.OK,
+      },
+      {
+        itineraries,
+      }
+    )
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.profileService.remove(+id)
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Get(':id/itinerary-likes')
+  async getListItineraryLikes(@Param('id') id: string) {
+    const itineraryLikes = await this.profileService.getListItineraryLikes(id)
+    return this.responseUtil.response(
+      {
+        message: 'List itinerary likes retrieved successfully',
+        statusCode: HttpStatus.OK,
+      },
+      {
+        itineraryLikes,
+      }
+    )
   }
 }

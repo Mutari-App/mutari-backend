@@ -1846,6 +1846,17 @@ describe('ItineraryService', () => {
               tag: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
+          _count: {
+            select: { likes: true },
+          },
         },
       })
     })
@@ -1866,7 +1877,16 @@ describe('ItineraryService', () => {
       const result = await service.findOne('123', mockUser)
 
       expect(result).toEqual(mockItinerary)
-      expect(prismaService.itinerary.findUnique).toHaveBeenCalledWith({
+      expect(prismaService.itinerary.findUnique).toHaveBeenNthCalledWith(1, {
+        where: { id: '123' },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
+      })
+
+      expect(prismaService.itinerary.findUnique).toHaveBeenNthCalledWith(2, {
         where: { id: '123' },
         include: {
           sections: {
@@ -1876,8 +1896,8 @@ describe('ItineraryService', () => {
             include: {
               blocks: {
                 include: {
-                  routeToNext: true,
                   routeFromPrevious: true,
+                  routeToNext: true,
                 },
               },
             },
@@ -1886,6 +1906,17 @@ describe('ItineraryService', () => {
             include: {
               tag: true,
             },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
+          _count: {
+            select: { likes: true },
           },
         },
       })
@@ -3902,6 +3933,87 @@ describe('ItineraryService', () => {
     })
   })
 
+  describe('publishItinerary', () => {
+    const mockItineraryData = {
+      id: '1',
+      userId: 'user-123',
+      title: 'Itinerary Mock',
+      description: 'This is a mocked itinerary',
+      coverImage: 'image.jpg',
+      startDate: new Date(),
+      endDate: new Date(),
+      isPublished: false,
+      isCompleted: false,
+      sections: [],
+      locationCount: 0,
+      pendingInvites: [],
+      access: [],
+      invitedUsers: [],
+    }
+    const publishedItinerary = {
+      ...mockItineraryData,
+      isPublished: true,
+    }
+    it('should publish the itinerary if all checks pass', async () => {
+      mockPrismaService.itinerary.findUnique = jest
+        .fn()
+        .mockResolvedValue(mockItineraryData)
+      mockPrismaService.itinerary.update = jest
+        .fn()
+        .mockResolvedValue(publishedItinerary)
+
+      const result = await service.publishItinerary(
+        mockItineraryData.id,
+        mockUser,
+        true
+      )
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: mockItineraryData.id },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
+      })
+
+      expect(mockPrismaService.itinerary.update).toHaveBeenCalledWith({
+        where: { id: mockItineraryData.id },
+        data: { isPublished: true },
+      })
+      expect(result).toEqual({ updatedItinerary: publishedItinerary })
+    })
+
+    it('should throw NotFoundException if itinerary not found', async () => {
+      mockPrismaService.itinerary.findUnique = jest.fn().mockResolvedValue(null)
+
+      await expect(
+        service.publishItinerary(mockItineraryData.id, mockUser, false)
+      ).rejects.toThrowError(
+        new NotFoundException('Itinerary with ID 1 not found')
+      )
+
+      expect(mockPrismaService.itinerary.update).not.toHaveBeenCalled()
+    })
+
+    it('should throw ForbiddenException if user is not the owner', async () => {
+      mockPrismaService.itinerary.findUnique = jest.fn().mockResolvedValue({
+        ...mockItineraryData,
+        userId: 'FAKE-ID',
+      })
+
+      await expect(
+        service.publishItinerary(mockItineraryData.id, mockUser, false)
+      ).rejects.toThrowError(
+        new ForbiddenException(
+          'You do not have permission to update this itinerary'
+        )
+      )
+
+      expect(mockPrismaService.itinerary.update).not.toHaveBeenCalled()
+    })
+  })
+
   describe('searchItineraries', () => {
     it('should search itineraries with default parameters', async () => {
       // Setup mock response from MeilisearchService
@@ -3945,7 +4057,7 @@ describe('ItineraryService', () => {
           limit: 20,
           offset: 0,
           filter: undefined,
-          sort: ['createdAt:asc'],
+          sort: ['likes:desc'],
         }
       )
 
@@ -4012,7 +4124,7 @@ describe('ItineraryService', () => {
           limit: 4,
           offset: 4, // (page 2 - 1) * limit 4
           filter: undefined,
-          sort: ['createdAt:asc'],
+          sort: ['likes:desc'],
         }
       )
 
@@ -4066,7 +4178,7 @@ describe('ItineraryService', () => {
           limit: 20,
           offset: 0,
           filter: filterString,
-          sort: ['createdAt:asc'],
+          sort: ['likes:desc'],
         }
       )
 
@@ -4183,7 +4295,7 @@ describe('ItineraryService', () => {
           limit: 20,
           offset: 0,
           filter: filterString,
-          sort: ['daysCount:desc'],
+          sort: ['likes:desc', 'daysCount:desc'],
         }
       )
 
@@ -4229,20 +4341,77 @@ describe('ItineraryService', () => {
       const user = { id: 'user123' }
 
       const expectedResult = [
-        { itineraryId: 'a', viewedAt: new Date() },
-        { itineraryId: 'b', viewedAt: new Date() },
+        {
+          itineraryId: 'a',
+          viewedAt: new Date(),
+          itinerary: {
+            id: 'a',
+            title: 'Sample Itinerary A',
+            userId: 'user1',
+            user: {
+              id: 'user1',
+              name: 'User 1',
+            },
+            _count: {
+              likes: 10,
+            },
+          },
+        },
+        {
+          itineraryId: 'b',
+          viewedAt: new Date(),
+          itinerary: {
+            id: 'b',
+            title: 'Sample Itinerary B',
+            userId: 'user2',
+            user: {
+              id: 'user2',
+              name: 'User 2',
+            },
+            _count: {
+              likes: 5,
+            },
+          },
+        },
       ]
 
       mockPrismaService.itineraryView.findMany.mockResolvedValue(expectedResult)
 
       const result = await service.getViewItinerary(user as any)
 
-      expect(mockPrismaService.itineraryView.findMany).toHaveBeenCalledWith({
-        where: { userId: user.id },
-        orderBy: { viewedAt: 'desc' },
-      })
+      expect(mockPrismaService.itineraryView.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: user.id },
+          orderBy: { viewedAt: 'desc' },
+          include: expect.objectContaining({
+            itinerary: expect.objectContaining({
+              include: expect.objectContaining({
+                user: expect.objectContaining({
+                  select: expect.objectContaining({
+                    firstName: true,
+                    photoProfile: true,
+                  }),
+                }),
+                _count: expect.objectContaining({
+                  select: expect.objectContaining({
+                    likes: true,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        })
+      )
 
-      expect(result).toEqual(expectedResult)
+      expect(result).toEqual(
+        expectedResult.map((view) => ({
+          ...view,
+          itinerary: {
+            ...view.itinerary,
+            likes: view.itinerary._count.likes,
+          },
+        }))
+      )
     })
   })
 
