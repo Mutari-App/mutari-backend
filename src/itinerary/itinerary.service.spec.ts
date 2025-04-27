@@ -4359,7 +4359,7 @@ describe('ItineraryService', () => {
       }
 
       const duplicatedItineraryDto: CreateItineraryDto = {
-        title: existingItinerary.title,
+        title: existingItinerary.title + ' (Copy)',
         description: existingItinerary.description,
         startDate: existingItinerary.startDate,
         endDate: existingItinerary.endDate,
@@ -4520,6 +4520,49 @@ describe('ItineraryService', () => {
         },
       })
       expect(result).toEqual(duplicatedItinerary)
+    })
+
+    it('should throw NotFoundException if itinerary does not exist', async () => {
+      // Arrange
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      // Act & Assert
+      await expect(
+        service.duplicateItinerary('non-existent-id', mockUser)
+      ).rejects.toThrow(NotFoundException)
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+    })
+
+    it('should throw ForbiddenException if user does not own the itinerary and the itinerary is not public', async () => {
+      // Arrange
+      const existingItinerary = {
+        id: 'itinerary-123',
+        userId: 'another-user-id',
+        title: 'Beach Trip',
+        description: 'A relaxing beach vacation',
+        isPublished: false,
+        startDate: new Date('2025-03-10'),
+        endDate: new Date('2025-03-15'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Hari ke-1', // Default title
+            blocks: [], // Empty blocks
+          },
+        ],
+        pendingInvites: [],
+        access: [],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        existingItinerary
+      )
+
+      // Act & Assert
+      await expect(
+        service.duplicateItinerary('itinerary-123', mockUser)
+      ).rejects.toThrow(ForbiddenException)
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
     })
   })
 })
