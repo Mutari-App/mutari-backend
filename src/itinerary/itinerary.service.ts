@@ -1529,4 +1529,47 @@ export class ItineraryService {
 
     return { updatedItinerary }
   }
+
+  async saveItinerary(itineraryId: string, user: User) {
+    const itinerary = await this._checkReadItineraryPermission(
+      itineraryId,
+      user
+    )
+    if (itinerary.userId === user.id) {
+      throw new BadRequestException("Cannot save user's own itinerary")
+    }
+
+    const isItinerarySaved = await this._checkUserSavedItinerary(
+      itineraryId,
+      user,
+      false
+    )
+    if (!isItinerarySaved) {
+      throw new BadRequestException('Itinerary already saved by user')
+    }
+
+    const itineraryLike = await this.prisma.itineraryLike.create({
+      data: {
+        itineraryId: itineraryId,
+        userId: user.id,
+      },
+    })
+
+    return itineraryLike
+  }
+
+  async _checkUserSavedItinerary(
+    itineraryId: string,
+    user: User,
+    expectExists: boolean
+  ) {
+    const itineraryLike = await this.prisma.itineraryLike.findUnique({
+      where: { itineraryId_userId: { itineraryId, userId: user.id } },
+    })
+
+    if (itineraryLike && !expectExists) {
+      return false
+    }
+    return true
+  }
 }
