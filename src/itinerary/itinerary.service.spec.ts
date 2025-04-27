@@ -3902,6 +3902,87 @@ describe('ItineraryService', () => {
     })
   })
 
+  describe('publishItinerary', () => {
+    const mockItineraryData = {
+      id: '1',
+      userId: 'user-123',
+      title: 'Itinerary Mock',
+      description: 'This is a mocked itinerary',
+      coverImage: 'image.jpg',
+      startDate: new Date(),
+      endDate: new Date(),
+      isPublished: false,
+      isCompleted: false,
+      sections: [],
+      locationCount: 0,
+      pendingInvites: [],
+      access: [],
+      invitedUsers: [],
+    }
+    const publishedItinerary = {
+      ...mockItineraryData,
+      isPublished: true,
+    }
+    it('should publish the itinerary if all checks pass', async () => {
+      mockPrismaService.itinerary.findUnique = jest
+        .fn()
+        .mockResolvedValue(mockItineraryData)
+      mockPrismaService.itinerary.update = jest
+        .fn()
+        .mockResolvedValue(publishedItinerary)
+
+      const result = await service.publishItinerary(
+        mockItineraryData.id,
+        mockUser,
+        true
+      )
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: mockItineraryData.id },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
+      })
+
+      expect(mockPrismaService.itinerary.update).toHaveBeenCalledWith({
+        where: { id: mockItineraryData.id },
+        data: { isPublished: true },
+      })
+      expect(result).toEqual({ updatedItinerary: publishedItinerary })
+    })
+
+    it('should throw NotFoundException if itinerary not found', async () => {
+      mockPrismaService.itinerary.findUnique = jest.fn().mockResolvedValue(null)
+
+      await expect(
+        service.publishItinerary(mockItineraryData.id, mockUser, false)
+      ).rejects.toThrowError(
+        new NotFoundException('Itinerary with ID 1 not found')
+      )
+
+      expect(mockPrismaService.itinerary.update).not.toHaveBeenCalled()
+    })
+
+    it('should throw ForbiddenException if user is not the owner', async () => {
+      mockPrismaService.itinerary.findUnique = jest.fn().mockResolvedValue({
+        ...mockItineraryData,
+        userId: 'FAKE-ID',
+      })
+
+      await expect(
+        service.publishItinerary(mockItineraryData.id, mockUser, false)
+      ).rejects.toThrowError(
+        new ForbiddenException(
+          'You do not have permission to update this itinerary'
+        )
+      )
+
+      expect(mockPrismaService.itinerary.update).not.toHaveBeenCalled()
+    })
+  })
+
   describe('searchItineraries', () => {
     it('should search itineraries with default parameters', async () => {
       // Setup mock response from MeilisearchService
@@ -4306,81 +4387,6 @@ describe('ItineraryService', () => {
           viewedAt: expect.any(Date),
         },
       })
-    })
-  })
-
-  describe('publishItinerary', () => {
-    const mockItineraryData = {
-      id: '1',
-      userId: 'user-123',
-      title: 'Itinerary Mock',
-      description: 'This is a mocked itinerary',
-      coverImage: 'image.jpg',
-      startDate: new Date(),
-      endDate: new Date(),
-      isPublished: false,
-      isCompleted: false,
-      sections: [],
-      locationCount: 0,
-      pendingInvites: [],
-      access: [],
-      invitedUsers: [],
-    }
-    const publishedItinerary = {
-      ...mockItineraryData,
-      isPublished: true,
-    }
-    it('should publish the itinerary if all checks pass', async () => {
-      mockPrismaService.itinerary.findUnique = jest
-        .fn()
-        .mockResolvedValue(mockItineraryData)
-      mockPrismaService.itinerary.update = jest
-        .fn()
-        .mockResolvedValue(publishedItinerary)
-
-      const result = await service.publishItinerary(
-        mockItineraryData.id,
-        mockUser,
-        true
-      )
-
-      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
-        where: { id: mockItineraryData.id },
-      })
-      expect(mockPrismaService.itinerary.update).toHaveBeenCalledWith({
-        where: { id: mockItineraryData.id },
-        data: { isPublished: true },
-      })
-      expect(result).toEqual({ updatedItinerary: publishedItinerary })
-    })
-
-    it('should throw NotFoundException if itinerary not found', async () => {
-      mockPrismaService.itinerary.findUnique = jest.fn().mockResolvedValue(null)
-
-      await expect(
-        service.publishItinerary(mockItineraryData.id, mockUser, false)
-      ).rejects.toThrowError(
-        new NotFoundException('Itinerary with ID 1 not found')
-      )
-
-      expect(mockPrismaService.itinerary.update).not.toHaveBeenCalled()
-    })
-
-    it('should throw ForbiddenException if user is not the owner', async () => {
-      mockPrismaService.itinerary.findUnique = jest.fn().mockResolvedValue({
-        ...mockItineraryData,
-        userId: 'FAKE-ID',
-      })
-
-      await expect(
-        service.publishItinerary(mockItineraryData.id, mockUser, false)
-      ).rejects.toThrowError(
-        new ForbiddenException(
-          'You do not have permission to update this itinerary'
-        )
-      )
-
-      expect(mockPrismaService.itinerary.update).not.toHaveBeenCalled()
     })
   })
 })
