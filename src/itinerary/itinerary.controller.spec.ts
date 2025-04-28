@@ -64,6 +64,7 @@ describe('ItineraryController', () => {
     findTrendingItineraries: jest.fn(),
     saveItinerary: jest.fn(),
     unsaveItinerary: jest.fn(),
+    batchCheckUserSavedItinerary: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -3117,6 +3118,46 @@ describe('ItineraryController', () => {
       )
 
       expect(mockResponseUtil.response).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('batchCheckUserSavedItinerary', () => {
+    it('should check saved status of public itinerary ids for the user and return success response', async () => {
+      const itineraryIds = ['itn-123', 'itn-456', 'itn-789']
+      const expectedBatchSaveCheckResult = {
+        'itn-123': true,
+        'itn-456': false,
+        'itn-789': false,
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries saved status fetched succesfully',
+        itinerary: expectedBatchSaveCheckResult,
+      }
+
+      mockItineraryService.batchCheckUserSavedItinerary.mockResolvedValue(
+        expectedBatchSaveCheckResult
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.batchCheckUserSavedItinerary(
+        mockUser,
+        itineraryIds
+      )
+
+      expect(
+        mockItineraryService.batchCheckUserSavedItinerary
+      ).toHaveBeenCalledWith(itineraryIds, mockUser)
+
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Itineraries saved status fetched succesfully',
+        },
+        expectedBatchSaveCheckResult
+      )
+      expect(result).toEqual(mockResponse)
     })
   })
 })
