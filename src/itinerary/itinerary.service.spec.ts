@@ -1818,18 +1818,37 @@ describe('ItineraryService', () => {
     it('should return itinerary when found and user has access to it', async () => {
       const mockItinerary = {
         id: '123',
-        userId: 'user-123',
+        userId: mockUser.id,
         sections: [
           {
             id: '1',
             blocks: [{ id: 'block1' }, { id: 'block2' }],
           },
         ],
+        access: [],
+        tags: [],
+        user: {
+          id: mockUser.id,
+          firstName: 'John',
+          lastName: 'Doe',
+          photoProfile: null,
+        },
+        _count: {
+          likes: 0,
+        },
+        pendingInvites: [],
       }
+
       mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
       const result = await service.findOne('123', mockUser)
 
-      expect(result).toEqual(mockItinerary)
+      const { access: _access, ...mockItineraryWithoutAccess } = mockItinerary
+
+      expect(result).toEqual({
+        ...mockItineraryWithoutAccess,
+        invitedUsers: [],
+      })
+
       expect(prismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: '123' },
         include: {
@@ -1863,8 +1882,19 @@ describe('ItineraryService', () => {
             select: { likes: true },
           },
           access: {
-            where: { userId: mockUser.id },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  photoProfile: true,
+                  email: true,
+                },
+              },
+            },
           },
+          pendingInvites: true,
         },
       })
     })
@@ -1873,7 +1903,18 @@ describe('ItineraryService', () => {
       const mockItinerary = {
         id: '123',
         userId: 'different-user-123',
-        access: [{ userId: mockUser.id }],
+        access: [
+          {
+            userId: mockUser.id,
+            user: {
+              id: mockUser.id,
+              firstName: 'John',
+              lastName: 'Doe',
+              photoProfile: null,
+              email: 'john@example.com',
+            },
+          },
+        ],
         sections: [
           {
             id: '1',
@@ -1884,7 +1925,14 @@ describe('ItineraryService', () => {
       mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
       const result = await service.findOne('123', mockUser)
 
-      expect(result).toEqual(mockItinerary)
+      // Expected result after transformation by service
+      const expectedResult = {
+        ...mockItinerary,
+        invitedUsers: [mockItinerary.access[0].user],
+      }
+      delete expectedResult.access
+
+      expect(result).toEqual(expectedResult)
 
       expect(prismaService.itinerary.findUnique).toHaveBeenNthCalledWith(1, {
         where: { id: '123' },
@@ -1896,8 +1944,8 @@ describe('ItineraryService', () => {
             include: {
               blocks: {
                 include: {
-                  routeFromPrevious: true,
                   routeToNext: true,
+                  routeFromPrevious: true,
                 },
               },
             },
@@ -1919,8 +1967,19 @@ describe('ItineraryService', () => {
             select: { likes: true },
           },
           access: {
-            where: { userId: mockUser.id },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  photoProfile: true,
+                  email: true,
+                },
+              },
+            },
           },
+          pendingInvites: true,
         },
       })
     })
