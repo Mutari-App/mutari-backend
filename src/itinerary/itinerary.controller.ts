@@ -499,7 +499,7 @@ export class ItineraryController {
       publishedItinerary
     )
   }
-  
+
   @Post(':itineraryId/duplicate')
   async duplicateItineraryAndContingencies(
     @Param('itineraryId') itineraryId: string,
@@ -528,7 +528,7 @@ export class ItineraryController {
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.CREATED,
-        message: 'Itinerary duplicated succesfully',
+        message: 'Itinerary duplicated successfully',
       },
       {
         duplicatedItinerary,
