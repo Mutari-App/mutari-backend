@@ -6,9 +6,9 @@ import { UnauthorizedException } from '@nestjs/common'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { Request, Response } from 'express'
 import { COOKIE_CONFIG } from './constant'
-import { CreateUserDTO } from './dto/create-user-dto'
-import { RegisterDTO } from './dto/register-dto'
-import { VerifyRegistrationDTO } from './dto/verify-registration-dto'
+import { CreateUserDTO } from './dto/create-user.dto'
+import { RegisterDTO } from './dto/register.dto'
+import { VerifyRegistrationDTO } from './dto/verify-registration.dto'
 
 describe('AuthController', () => {
   let controller: AuthController

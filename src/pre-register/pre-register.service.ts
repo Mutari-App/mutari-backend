@@ -464,7 +464,7 @@ export class PreRegisterService {
             </div>
             <h3>Masuk ke Akun Mutari</h3>
             <p>Klik tombol di bawah ini untuk masuk ke akun Mutari Anda.</p>
-            <a href="${process.env.CLIENT_URL}?ticket=${ticketId}" class="button">Masuk Sekarang</a>
+            <a href="${process.env.CLIENT_URL}/landing-page?ticket=${ticketId}" class="button">Masuk Sekarang</a>
             <p>Link ini hanya berlaku selama <strong>${Number(process.env.PRE_REGISTER_TICKET_EXPIRES_IN) / 60000} menit</strong>.</p>
             <p>Jika Anda tidak meminta login, abaikan email ini.</p>
 

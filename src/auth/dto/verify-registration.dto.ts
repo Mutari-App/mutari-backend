@@ -1,5 +1,5 @@
 import { IsString, MaxLength, MinLength } from 'class-validator'
-import { CreateUserDTO } from './create-user-dto'
+import { CreateUserDTO } from './create-user.dto'
 
 export class VerifyRegistrationDTO extends CreateUserDTO {
   @IsString()

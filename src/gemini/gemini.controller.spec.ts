@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { GeminiController } from './gemini.controller'
 import { GeminiService } from './gemini.service'
 import { GenerateFeedbackDto } from './model/generate-feedback.dto'
+import { BLOCK_TYPE } from '@prisma/client'
 
 describe('GeminiController', () => {
   let controller: GeminiController
@@ -63,7 +64,8 @@ describe('GeminiController', () => {
             title: 'Day 1 - Tokyo',
             blocks: [
               {
-                blockType: 'activity',
+                blockType: BLOCK_TYPE.LOCATION,
+                id: '341e6d18-7658-44e4-91c6-0e3dc4cde13d',
                 title: 'Visit Sensoji Temple',
                 description: 'Explore Asakusa and its surroundings',
                 startTime: '09:00',
