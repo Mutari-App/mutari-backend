@@ -5216,4 +5216,128 @@ describe('ItineraryService', () => {
       expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
     })
   })
+
+  describe('findTrendingItineraries', () => {
+    it('should return trending itineraries ordered by most likes', async () => {
+      // Arrange
+      const mockItineraries = [
+        {
+          id: 'itinerary-1',
+          title: 'Popular Trip',
+          description: 'A very popular itinerary',
+          coverImage: 'popular.jpg',
+          likes: [{ id: 'like-1' }, { id: 'like-2' }, { id: 'like-3' }],
+          user: {
+            firstName: 'John',
+            lastName: 'Doe',
+            photoProfile: 'profile.jpg',
+          },
+        },
+        {
+          id: 'itinerary-2',
+          title: 'Less Popular Trip',
+          description: 'A less popular itinerary',
+          coverImage: 'less-popular.jpg',
+          likes: [{ id: 'like-4' }],
+          user: {
+            firstName: 'Jane',
+            lastName: 'Smith',
+            photoProfile: 'profile2.jpg',
+          },
+        },
+      ]
+
+      mockPrismaService.itinerary.findMany.mockResolvedValue(mockItineraries)
+
+      // Act
+      const result = await service.findTrendingItineraries()
+
+      // Assert
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
+        where: {
+          isPublished: true,
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          coverImage: true,
+          startDate: true,
+          endDate: true,
+          likes: true,
+          user: {
+            select: {
+              photoProfile: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+        orderBy: {
+          likes: {
+            _count: 'desc',
+          },
+        },
+        take: 10,
+      })
+
+      expect(result).toHaveLength(2)
+
+      // Verify the likes array is replaced with a count
+      expect(result[0].likesCount).toBe(3)
+      expect(result[1].likesCount).toBe(1)
+
+      // Verify the expected structure
+      expect(result[0]).toEqual({
+        id: 'itinerary-1',
+        title: 'Popular Trip',
+        description: 'A very popular itinerary',
+        coverImage: 'popular.jpg',
+        likesCount: 3,
+        user: {
+          firstName: 'John',
+          lastName: 'Doe',
+          photoProfile: 'profile.jpg',
+        },
+      })
+    })
+
+    it('should return empty array when no trending itineraries exist', async () => {
+      // Arrange
+      mockPrismaService.itinerary.findMany.mockResolvedValue([])
+
+      // Act
+      const result = await service.findTrendingItineraries()
+
+      // Assert
+      expect(result).toEqual([])
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalled()
+    })
+
+    it('should handle itineraries with no likes', async () => {
+      // Arrange
+      const mockItineraries = [
+        {
+          id: 'itinerary-1',
+          title: 'No Likes Trip',
+          description: 'An itinerary with no likes',
+          coverImage: 'no-likes.jpg',
+          likes: [],
+          user: {
+            firstName: 'John',
+            lastName: 'Doe',
+            photoProfile: 'profile.jpg',
+          },
+        },
+      ]
+
+      mockPrismaService.itinerary.findMany.mockResolvedValue(mockItineraries)
+
+      // Act
+      const result = await service.findTrendingItineraries()
+
+      // Assert
+      expect(result[0].likesCount).toBe(0)
+    })
+  })
 })
