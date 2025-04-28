@@ -44,8 +44,11 @@ export class AuthGuard implements CanActivate {
       : this.extractTokenFromHeader(request)
 
     // If no token provided, still allow access
-    if (isSemiPublic && !rawToken) {
-      return true
+    if (!rawToken) {
+      if (isSemiPublic) {
+        return true
+      }
+      throw new UnauthorizedException('token not provided')
     }
 
     try {

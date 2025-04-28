@@ -67,7 +67,7 @@ describe('AuthGuard', () => {
     } as unknown as ExecutionContext
 
     await expect(authGuard.canActivate(context)).rejects.toThrow(
-      new UnauthorizedException('jwt must be provided')
+      new UnauthorizedException('token not provided')
     )
   })
   it('should throw UnauthorizedException if token is invalid', async () => {
