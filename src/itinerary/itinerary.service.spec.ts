@@ -4630,6 +4630,9 @@ describe('ItineraryService', () => {
 
       const result = await service.saveItinerary(itineraryId, mockUser)
 
+      expect(mockMeilisearchService.addOrUpdateItinerary).toHaveBeenCalledWith(
+        mockItinerary
+      )
       expect(mockPrismaService.itineraryLike.create).toHaveBeenCalledWith({
         data: {
           itineraryId: itineraryId,
@@ -4716,6 +4719,9 @@ describe('ItineraryService', () => {
 
       await service.unsaveItinerary(itineraryId, mockUser)
 
+      expect(mockMeilisearchService.addOrUpdateItinerary).toHaveBeenCalledWith(
+        mockItinerary
+      )
       expect(mockPrismaService.itineraryLike.delete).toHaveBeenCalledWith({
         where: { itineraryId_userId: { itineraryId, userId: mockUser.id } },
       })
