@@ -166,7 +166,10 @@ export class MeilisearchService implements OnModuleInit {
       likes: Array.isArray(itinerary.likes)
         ? itinerary.likes.length
         : itinerary.likes || 0,
-      daysCount: this.calculateDaysCount(itinerary.sections),
+      daysCount: this.calculateDaysCount(
+        itinerary.startDate,
+        itinerary.endDate
+      ),
       user: {
         id: itinerary.user.id,
         firstName: itinerary.user.firstName,
@@ -199,10 +202,38 @@ export class MeilisearchService implements OnModuleInit {
     }
   }
 
-  // Helper method to calculate days count from sections
-  private calculateDaysCount(sections: any[]): number {
-    if (!sections || !Array.isArray(sections) || sections.length === 0) return 0
-    return Math.max(...sections.map((section) => section.sectionNumber))
+  // Helper method to calculate days count from date range
+  private calculateDaysCount(
+    startDate: Date | string,
+    endDate: Date | string
+  ): number {
+    // If either date is missing, fallback to 1 day
+    if (!startDate || !endDate) return 1
+
+    // Convert string dates to Date objects if needed
+    const start = startDate instanceof Date ? startDate : new Date(startDate)
+    const end = endDate instanceof Date ? endDate : new Date(endDate)
+
+    // Reset time components to calculate full days only
+    const startDateOnly = new Date(
+      start.getFullYear(),
+      start.getMonth(),
+      start.getDate()
+    )
+    const endDateOnly = new Date(
+      end.getFullYear(),
+      end.getMonth(),
+      end.getDate()
+    )
+
+    // Calculate the time difference in milliseconds
+    const timeDiff = endDateOnly.getTime() - startDateOnly.getTime()
+
+    // Convert to days and add 1 (inclusive of both start and end dates)
+    const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24)) + 1
+
+    // Return at least 1 day, even if dates are the same
+    return Math.max(1, daysDiff)
   }
 
   async searchItineraries(query: string, options?: any) {
