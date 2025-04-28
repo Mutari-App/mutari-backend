@@ -1541,10 +1541,9 @@ export class ItineraryService {
 
     const isItinerarySaved = await this._checkUserSavedItinerary(
       itineraryId,
-      user,
-      false
+      user
     )
-    if (!isItinerarySaved) {
+    if (isItinerarySaved) {
       throw new BadRequestException('Itinerary already saved by user')
     }
 
@@ -1564,12 +1563,11 @@ export class ItineraryService {
       throw new BadRequestException("Cannot unsave user's own itinerary")
     }
 
-    const isItineraryNotSaved = await this._checkUserSavedItinerary(
+    const isItinerarySaved = await this._checkUserSavedItinerary(
       itineraryId,
-      user,
-      true
+      user
     )
-    if (!isItineraryNotSaved) {
+    if (!isItinerarySaved) {
       throw new BadRequestException('Itinerary is not saved by user')
     }
 
@@ -1580,21 +1578,11 @@ export class ItineraryService {
     return itineraryLike
   }
 
-  async _checkUserSavedItinerary(
-    itineraryId: string,
-    user: User,
-    expectExists: boolean
-  ) {
+  async _checkUserSavedItinerary(itineraryId: string, user: User) {
     const itineraryLike = await this.prisma.itineraryLike.findUnique({
       where: { itineraryId_userId: { itineraryId, userId: user.id } },
     })
 
-    if (!itineraryLike && expectExists) {
-      return false
-    }
-    if (itineraryLike && !expectExists) {
-      return false
-    }
-    return true
+    return itineraryLike !== null
   }
 }
