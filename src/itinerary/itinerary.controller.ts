@@ -591,7 +591,7 @@ export class ItineraryController {
         statusCode: HttpStatus.OK,
         message: 'Itineraries saved status fetched succesfully',
       },
-      result
+      { result }
     )
   }
 }
