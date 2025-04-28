@@ -1698,6 +1698,18 @@ export class ItineraryService {
     await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
   }
 
+  async batchCheckUserSavedItinerary(itineraryIds: string[], user: User) {
+    let result: { [key: string]: boolean } = {}
+    const itineraryLikes = await this.prisma.itineraryLike.findMany({
+      where: { itineraryId: { in: itineraryIds }, userId: user.id },
+    })
+    const likedItineraryIds = itineraryLikes.map((like) => like.itineraryId)
+    for (const itineraryId of itineraryIds) {
+      result[itineraryId] = likedItineraryIds.includes(itineraryId)
+    }
+    return result
+  }
+
   async _checkUserSavedItinerary(itineraryId: string, user: User) {
     const itineraryLike = await this.prisma.itineraryLike.findUnique({
       where: { itineraryId_userId: { itineraryId, userId: user.id } },
