@@ -1576,4 +1576,45 @@ export class ItineraryService {
       return { ...itineraryWIthoutLikes, likesCount: likes.length }
     })
   }
+
+  async findItinerariesByLatestTags(user: User) {
+    const latestItinerary = await this.prisma.itinerary.findFirst({
+      where: {
+        userId: user.id,
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    })
+
+    if (!latestItinerary) {
+      return []
+    }
+
+    const latestTags = await this.prisma.itineraryTag.findMany({
+      where: {
+        itineraryId: latestItinerary.id,
+      },
+      select: {
+        tag: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      take: 3,
+    })
+
+    if (!latestTags) return []
+
+    const mappedTags = latestTags.map((tag) => `"${tag.tag.id.toString()}"`)
+
+    const searchResult = await this.meilisearchService.searchItineraries('', {
+      limit: 8,
+      filter: `tags.tag.id IN [${mappedTags.toString()}]`,
+    })
+
+    return searchResult.hits
+  }
 }
