@@ -1566,6 +1566,7 @@ export class ItineraryService {
       },
     })
 
+    this._updateLikeCount(itineraryId)
     return itineraryLike
   }
 
@@ -1587,7 +1588,19 @@ export class ItineraryService {
       where: { itineraryId_userId: { itineraryId, userId: user.id } },
     })
 
+    this._updateLikeCount(itineraryId)
     return itineraryLike
+  }
+
+  async _updateLikeCount(itineraryId: string) {
+    const updatedItinerary = await this.prisma.itinerary.findUnique({
+      where: { id: itineraryId },
+      include: {
+        likes: true,
+      },
+    })
+
+    await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
   }
 
   async _checkUserSavedItinerary(itineraryId: string, user: User) {
