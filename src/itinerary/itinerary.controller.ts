@@ -514,6 +514,42 @@ export class ItineraryController {
     )
   }
 
+  @Post(':itineraryId/duplicate')
+  async duplicateItineraryAndContingencies(
+    @Param('itineraryId') itineraryId: string,
+    @GetUser() user: User
+  ) {
+    // 1: Duplicate Itinerary
+    const duplicatedItinerary = await this.itineraryService.duplicateItinerary(
+      itineraryId,
+      user
+    )
+
+    // 2: Duplicate Contingencies
+    const existingContingencies =
+      await this.itineraryService.findContingencyPlans(itineraryId, user)
+    if (existingContingencies.length > 0) {
+      for (const plan of existingContingencies) {
+        await this.itineraryService.duplicateContingency(
+          duplicatedItinerary.id,
+          itineraryId,
+          plan.id,
+          user
+        )
+      }
+    }
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary duplicated successfully',
+      },
+      {
+        duplicatedItinerary,
+      }
+    )
+  }
+  
   @Post(':itineraryId/save')
   async saveItinerary(@Param('itineraryId') id: string, @GetUser() user: User) {
     const itineraryLike = await this.itineraryService.saveItinerary(id, user)
