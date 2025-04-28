@@ -549,7 +549,7 @@ export class ItineraryController {
       }
     )
   }
-  
+
   @Post(':itineraryId/save')
   async saveItinerary(@Param('itineraryId') id: string, @GetUser() user: User) {
     const itineraryLike = await this.itineraryService.saveItinerary(id, user)
@@ -574,5 +574,24 @@ export class ItineraryController {
       statusCode: HttpStatus.OK,
       message: 'Itinerary unsaved successfully',
     })
+  }
+
+  @Get('/checkSave')
+  async batchCheckUserSavedItinerary(
+    @GetUser() user: User,
+    @Body() itineraryIds: string[]
+  ) {
+    const result = await this.itineraryService.batchCheckUserSavedItinerary(
+      itineraryIds,
+      user
+    )
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries saved status fetched succesfully',
+      },
+      result
+    )
   }
 }
