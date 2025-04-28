@@ -2150,8 +2150,8 @@ describe('ItineraryController', () => {
       ]
 
       const mockResponse = {
-        statusCode: HttpStatus.OK,
-        message: 'Contingency updated successfully.',
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary duplicated succesfully',
         itinerary: duplicatedItinerary,
       }
 
@@ -2186,7 +2186,7 @@ describe('ItineraryController', () => {
       expect(mockResponseUtil.response).toHaveBeenCalledWith(
         {
           statusCode: HttpStatus.CREATED,
-          message: 'Itinerary duplicated succesfully',
+          message: 'Itinerary duplicated successfully',
         },
         { duplicatedItinerary }
       )
@@ -2365,7 +2365,7 @@ describe('ItineraryController', () => {
       expect(mockResponseUtil.response).toHaveBeenCalledWith(
         {
           statusCode: HttpStatus.CREATED,
-          message: 'Itinerary duplicated succesfully',
+          message: 'Itinerary duplicated successfully',
         },
         { duplicatedItinerary }
       )
