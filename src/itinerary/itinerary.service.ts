@@ -1702,6 +1702,14 @@ export class ItineraryService {
       where: { id: itineraryId },
       include: {
         likes: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            photoProfile: true,
+          },
+        },
       },
     })
 
