@@ -1862,6 +1862,9 @@ describe('ItineraryService', () => {
           _count: {
             select: { likes: true },
           },
+          access: {
+            where: { userId: mockUser.id },
+          },
         },
       })
     })
@@ -1882,16 +1885,8 @@ describe('ItineraryService', () => {
       const result = await service.findOne('123', mockUser)
 
       expect(result).toEqual(mockItinerary)
-      expect(prismaService.itinerary.findUnique).toHaveBeenNthCalledWith(1, {
-        where: { id: '123' },
-        include: {
-          access: {
-            where: { userId: mockUser.id },
-          },
-        },
-      })
 
-      expect(prismaService.itinerary.findUnique).toHaveBeenNthCalledWith(2, {
+      expect(prismaService.itinerary.findUnique).toHaveBeenNthCalledWith(1, {
         where: { id: '123' },
         include: {
           sections: {
@@ -1922,6 +1917,9 @@ describe('ItineraryService', () => {
           },
           _count: {
             select: { likes: true },
+          },
+          access: {
+            where: { userId: mockUser.id },
           },
         },
       })
