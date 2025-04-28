@@ -3155,7 +3155,9 @@ describe('ItineraryController', () => {
           statusCode: HttpStatus.OK,
           message: 'Itineraries saved status fetched succesfully',
         },
-        expectedBatchSaveCheckResult
+        {
+          result: expectedBatchSaveCheckResult,
+        }
       )
       expect(result).toEqual(mockResponse)
     })
