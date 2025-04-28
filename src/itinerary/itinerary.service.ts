@@ -1625,6 +1625,16 @@ export class ItineraryService {
       data: {
         isPublished,
       },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            photoProfile: true,
+          },
+        },
+      },
     })
 
     if (updatedItinerary.isPublished) {
