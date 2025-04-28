@@ -903,8 +903,7 @@ export class ItineraryService {
     })
   }
 
-  async findOne(id: string, user: User) {
-    await this._checkReadItineraryPermission(id, user)
+  async findOne(id: string, user: User | null) {
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id: id },
       include: {
@@ -937,8 +936,20 @@ export class ItineraryService {
         _count: {
           select: { likes: true },
         },
+        access: {
+          where: { userId: user?.id },
+        },
       },
     })
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${id} not found`)
+    }
+    if (itinerary.userId !== user?.id) {
+      if (!itinerary.isPublished && itinerary.access.length === 0)
+        throw new ForbiddenException(
+          'You do not have permission to view this itinerary'
+        )
+    }
 
     return itinerary
   }

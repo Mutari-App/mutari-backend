@@ -164,12 +164,22 @@ describe('ItineraryController', () => {
     })
 
     it('should throw NotFoundException if itinerary is not found', async () => {
-      mockItineraryService.findOne.mockResolvedValue(null)
+      mockItineraryService.findOne.mockResolvedValueOnce(null)
+
+      mockResponseUtil.response.mockReturnValueOnce({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: `Itinerary with ID INVALID_ID not found`,
+      })
 
       const result = await controller.findOne('INVALID_ID', mockUser)
 
+      expect(mockItineraryService.findOne).toHaveBeenCalledWith(
+        'INVALID_ID',
+        mockUser
+      )
       expect(result).toEqual({
         statusCode: HttpStatus.NOT_FOUND,
+        message: `Itinerary with ID INVALID_ID not found`,
       })
     })
 

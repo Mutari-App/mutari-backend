@@ -20,6 +20,7 @@ import { ResponseUtil } from 'src/common/utils/response.util'
 import { Public } from 'src/common/decorators/public.decorator'
 import { InviteToItineraryDTO } from './dto/invite-to-itinerary.dto'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
+import { SemiPublic } from 'src/common/decorators/semiPublic.decorator'
 
 @Controller('itineraries')
 export class ItineraryController {
@@ -217,14 +218,15 @@ export class ItineraryController {
     )
   }
 
+  @SemiPublic()
   @Get(':id')
-  async findOne(@Param('id') id: string, @GetUser() user: User) {
+  async findOne(@Param('id') id: string, @GetUser() user?: User) {
     const itinerary = await this.itineraryService.findOne(id, user)
     if (!itinerary) {
-      // throw new NotFoundException(`Itinerary with ID ${id} not found`)
-      return {
+      return this.responseUtil.response({
         statusCode: HttpStatus.NOT_FOUND,
-      }
+        message: `Itinerary with ID ${id} not found`,
+      })
     }
 
     return this.responseUtil.response(
