@@ -323,6 +323,101 @@ export class ItineraryService {
     })
   }
 
+  async duplicateItinerary(id: string, user: User) {
+    await this._checkReadItineraryPermission(id, user)
+
+    // phase 1: duplicate the itinerary
+    const originalItinerary = await this.prisma.itinerary.findUnique({
+      where: { id: id },
+      include: {
+        sections: {
+          where: {
+            contingencyPlanId: null,
+          },
+          include: {
+            blocks: {
+              include: {
+                routeToNext: true,
+                routeFromPrevious: true,
+              },
+            },
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+      },
+    })
+    const itineraryData: CreateItineraryDto = {
+      title: originalItinerary.title + ' (Copy)',
+      description: originalItinerary.description,
+      coverImage: originalItinerary.coverImage,
+      startDate: originalItinerary.startDate,
+      endDate: originalItinerary.endDate,
+      sections: originalItinerary.sections.map((section) =>
+        this._mapSections(section)
+      ),
+      tags:
+        originalItinerary.tags && originalItinerary.tags.length > 0
+          ? originalItinerary.tags.map((tags) => tags.tag.id)
+          : [],
+    }
+    const newItinerary = await this.createItinerary(itineraryData, user)
+    return newItinerary
+  }
+
+  async duplicateContingency(
+    newItineraryId: string,
+    itineraryId: string,
+    contingencyPlanId: string,
+    user: User
+  ) {
+    // phase 2: duplicate contingency
+    const contingecyPlan = await this.findContingencyPlan(
+      itineraryId,
+      contingencyPlanId,
+      user
+    )
+    const contingencyData: CreateContingencyPlanDto = {
+      title: contingecyPlan.title,
+      description: contingecyPlan.description,
+      sections: contingecyPlan.sections.map((section) =>
+        this._mapSections(section)
+      ),
+    }
+    const newContingencyPlan = await this.createContingencyPlan(
+      newItineraryId,
+      contingencyData,
+      user
+    )
+    return newContingencyPlan
+  }
+
+  _mapSections(section: CreateSectionDto) {
+    return {
+      sectionNumber: section.sectionNumber,
+      title: section.title ?? `Hari ke-${section.sectionNumber}`,
+      blocks:
+        section.blocks && section.blocks.length > 0
+          ? section.blocks.map((block, index) => ({
+              position: index,
+              blockType: block.blockType,
+              title: block.title,
+              description: block.description,
+              startTime: block.startTime ? new Date(block.startTime) : null,
+              endTime: block.endTime ? new Date(block.endTime) : null,
+              location: block.location,
+              price: block.price ?? 0,
+              photoUrl: block.photoUrl,
+              routeToNext: block.routeToNext,
+              routeFromPrevious: block.routeFromPrevious,
+            }))
+          : [],
+    }
+  }
+
   /**
    * Checks whether itinerary with given id exists
    * @param id Id for Itinerary

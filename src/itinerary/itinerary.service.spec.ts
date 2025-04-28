@@ -4478,6 +4478,745 @@ describe('ItineraryService', () => {
     })
   })
 
+  describe('duplicateItinerary', () => {
+    it('should duplicate an itinerary succesfully', async () => {
+      // Arrange
+      const existingItinerary = {
+        id: 'itinerary-123',
+        userId: 'different-userid',
+        title: 'Beach Trip',
+        isPublished: true,
+        description: 'An relaxing beach vacation',
+        startDate: new Date('2025-03-11'),
+        endDate: new Date('2025-03-16'),
+        coverImage: 'beach2.jpg',
+        tags: [
+          {
+            id: 'itinerarytag-1',
+            itineraryId: 'itinerary-123',
+            tagId: 'tag-123',
+            createdAt: new Date(),
+            tag: {
+              id: 'tag-123',
+              name: 'Beach',
+              description: 'Beach activities',
+              iconUrl: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          },
+        ],
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                position: 0,
+                startTime: new Date('2025-03-11T14:00:00Z'),
+                endTime: new Date('2025-03-11T15:00:00Z'),
+                location: 'Updated Beach Resort',
+                price: 600000,
+                photoUrl: 'updated_resort.jpg',
+              },
+            ],
+          },
+        ],
+      }
+
+      const duplicatedItineraryDto: CreateItineraryDto = {
+        title: existingItinerary.title + ' (Copy)',
+        description: existingItinerary.description,
+        startDate: existingItinerary.startDate,
+        endDate: existingItinerary.endDate,
+        coverImage: existingItinerary.coverImage,
+        tags: ['tag-123'],
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                position: 0,
+                startTime: new Date('2025-03-11T14:00:00Z'),
+                endTime: new Date('2025-03-11T15:00:00Z'),
+                location: 'Updated Beach Resort',
+                price: 600000,
+                photoUrl: 'updated_resort.jpg',
+              },
+            ],
+          },
+        ],
+      }
+
+      const duplicatedItinerary = {
+        id: 'itinerary-789',
+        userId: mockUser.id,
+        title: duplicatedItineraryDto.title,
+        description: duplicatedItineraryDto.description,
+        coverImage: duplicatedItineraryDto.coverImage,
+        startDate: duplicatedItineraryDto.startDate,
+        endDate: duplicatedItineraryDto.endDate,
+        isPublished: false,
+        isCompleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        sections: [
+          {
+            id: 'section-1',
+            itineraryId: 'itinerary-789',
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            blocks: [
+              {
+                id: 'block-1',
+                sectionId: 'section-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                startTime: new Date('2025-03-11T14:00:00Z'),
+                endTime: new Date('2025-03-11T15:00:00Z'),
+                location: 'Updated Beach Resort',
+                price: 600000,
+                photoUrl: 'updated_resort.jpg',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ],
+          },
+        ],
+        tags: [
+          {
+            id: 'itinerarytag-1',
+            itineraryId: 'itinerary-123',
+            tagId: 'tag-123',
+            createdAt: new Date(),
+            tag: {
+              id: 'tag-123',
+              name: 'Beach',
+              description: 'Beach activities',
+              iconUrl: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          },
+        ],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        existingItinerary
+      )
+      mockPrismaService.tag.findMany.mockResolvedValue([
+        { id: 'tag-123', name: 'Beach' },
+      ])
+      mockPrismaService.itinerary.create.mockResolvedValue(duplicatedItinerary)
+
+      // Act
+      const result = await service.duplicateItinerary('itinerary-123', mockUser)
+
+      // Assert
+      expect(mockPrismaService.tag.findMany).toHaveBeenCalledWith({
+        where: {
+          id: {
+            in: ['tag-123'],
+          },
+        },
+      })
+      expect(mockPrismaService.$transaction).toHaveBeenCalled()
+      expect(mockPrismaService.itinerary.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUser.id,
+          title: duplicatedItinerary.title,
+          description: duplicatedItinerary.description,
+          coverImage: duplicatedItinerary.coverImage,
+          startDate: new Date(duplicatedItinerary.startDate),
+          endDate: new Date(duplicatedItinerary.endDate),
+          tags: {
+            create: [{ tag: { connect: { id: 'tag-123' } } }],
+          },
+          sections: {
+            create: [
+              {
+                sectionNumber: 1,
+                title: 'Updated Day 1',
+                blocks: {
+                  create: [
+                    {
+                      position: 0,
+                      blockType: BLOCK_TYPE.LOCATION,
+                      title: 'Updated Beach Resort',
+                      description: 'Check in at the updated beach resort',
+                      startTime: new Date('2025-03-11T14:00:00Z'),
+                      endTime: new Date('2025-03-11T15:00:00Z'),
+                      location: 'Updated Beach Resort',
+                      price: 600000,
+                      photoUrl: 'updated_resort.jpg',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+        include: {
+          sections: {
+            include: {
+              blocks: true,
+            },
+          },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+          user: {
+            select: {
+              firstName: true,
+              id: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
+        },
+      })
+      expect(result).toEqual(duplicatedItinerary)
+    })
+
+    it('should duplicate an itinerary with default fields succesfully', async () => {
+      // Arrange
+      const existingItinerary = {
+        id: 'itinerary-123',
+        userId: 'different-userid',
+        title: 'Beach Trip',
+        isPublished: true,
+        description: 'An relaxing beach vacation',
+        startDate: new Date('2025-03-11'),
+        endDate: new Date('2025-03-16'),
+        coverImage: 'beach2.jpg',
+        tags: [],
+        sections: [
+          {
+            sectionNumber: 1,
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                position: 0,
+              },
+            ],
+          },
+          {
+            sectionNumber: 2,
+            blocks: [],
+          },
+        ],
+      }
+
+      const duplicatedItineraryDto: CreateItineraryDto = {
+        title: existingItinerary.title + ' (Copy)',
+        description: existingItinerary.description,
+        startDate: existingItinerary.startDate,
+        endDate: existingItinerary.endDate,
+        coverImage: existingItinerary.coverImage,
+        tags: [],
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Hari ke-1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                position: 0,
+                startTime: null,
+                endTime: null,
+                price: 0,
+              },
+            ],
+          },
+          {
+            sectionNumber: 2,
+            title: 'Hari ke-2',
+            blocks: [],
+          },
+        ],
+      }
+
+      const duplicatedItinerary = {
+        id: 'itinerary-789',
+        userId: mockUser.id,
+        title: duplicatedItineraryDto.title,
+        description: duplicatedItineraryDto.description,
+        coverImage: duplicatedItineraryDto.coverImage,
+        startDate: duplicatedItineraryDto.startDate,
+        endDate: duplicatedItineraryDto.endDate,
+        isPublished: false,
+        isCompleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        sections: [
+          {
+            id: 'section-1',
+            itineraryId: 'itinerary-789',
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            blocks: [
+              {
+                id: 'block-1',
+                sectionId: 'section-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Hari ke-1',
+                description: 'Check in at the updated beach resort',
+                startTime: null,
+                endTime: null,
+                price: 0,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ],
+          },
+          {
+            id: 'section-2',
+            itineraryId: 'itinerary-789',
+            sectionNumber: 2,
+            title: 'Hari ke-2',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            blocks: [],
+          },
+        ],
+        tags: [],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        existingItinerary
+      )
+      mockPrismaService.itinerary.create.mockResolvedValue(duplicatedItinerary)
+
+      // Act
+      const result = await service.duplicateItinerary('itinerary-123', mockUser)
+
+      // Assert
+      expect(mockPrismaService.$transaction).toHaveBeenCalled()
+      expect(mockPrismaService.itinerary.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUser.id,
+          title: duplicatedItinerary.title,
+          description: duplicatedItinerary.description,
+          coverImage: duplicatedItinerary.coverImage,
+          startDate: new Date(duplicatedItinerary.startDate),
+          endDate: new Date(duplicatedItinerary.endDate),
+          sections: {
+            create: [
+              {
+                sectionNumber: 1,
+                title: 'Hari ke-1',
+                blocks: {
+                  create: [
+                    {
+                      position: 0,
+                      blockType: BLOCK_TYPE.LOCATION,
+                      title: 'Updated Beach Resort',
+                      description: 'Check in at the updated beach resort',
+                      startTime: null,
+                      endTime: null,
+                      price: 0,
+                      location: undefined,
+                      photoUrl: undefined,
+                    },
+                  ],
+                },
+              },
+              {
+                sectionNumber: 2,
+                title: 'Hari ke-2',
+                blocks: {
+                  create: [],
+                },
+              },
+            ],
+          },
+          tags: undefined,
+        },
+        include: {
+          sections: {
+            include: {
+              blocks: true,
+            },
+          },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+          user: {
+            select: {
+              firstName: true,
+              id: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
+        },
+      })
+      expect(result).toEqual(duplicatedItinerary)
+    })
+
+    it('should throw NotFoundException if itinerary does not exist', async () => {
+      // Arrange
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      // Act & Assert
+      await expect(
+        service.duplicateItinerary('non-existent-id', mockUser)
+      ).rejects.toThrow(NotFoundException)
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+    })
+
+    it('should throw ForbiddenException if user does not own the itinerary and the itinerary is not public', async () => {
+      // Arrange
+      const existingItinerary = {
+        id: 'itinerary-123',
+        userId: 'another-user-id',
+        title: 'Beach Trip',
+        description: 'A relaxing beach vacation',
+        isPublished: false,
+        startDate: new Date('2025-03-10'),
+        endDate: new Date('2025-03-15'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Hari ke-1', // Default title
+            blocks: [], // Empty blocks
+          },
+        ],
+        pendingInvites: [],
+        access: [],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        existingItinerary
+      )
+
+      // Act & Assert
+      await expect(
+        service.duplicateItinerary('itinerary-123', mockUser)
+      ).rejects.toThrow(ForbiddenException)
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('duplicateContingency', () => {
+    it('should duplicate an itinerary contingency', async () => {
+      // Arrange
+      const existingContingencyPlan = {
+        id: 'contingency-plan-123',
+        itineraryId: 'itinerary-123',
+        title: 'Plan B', // Service determines this based on contingencyCount
+        description: 'Backup plan',
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1001,
+            title: 'Section 1',
+            blocks: [
+              {
+                id: 'block-1',
+                position: 0,
+                blockType: 'LOCATION',
+                title: 'Block 1',
+                description: 'Block 1 Description',
+                startTime: new Date('2025-03-10T14:00:00Z'),
+                endTime: new Date('2025-03-10T15:00:00Z'),
+                location: 'Location 1',
+                price: 100,
+                photoUrl: 'photo1.jpg',
+                routeToNext: null,
+                routeFromPrevious: null,
+              },
+            ],
+          },
+        ],
+      }
+
+      const duplicatedContingencyDto: CreateContingencyPlanDto = {
+        title: existingContingencyPlan.title,
+        description: existingContingencyPlan.description,
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Section 1',
+            blocks: [
+              {
+                blockType: 'LOCATION',
+                title: 'Block 1',
+                description: 'Block 1 Description',
+                startTime: new Date('2025-03-10T14:00:00Z'),
+                endTime: new Date('2025-03-10T15:00:00Z'),
+                location: 'Location 1',
+                price: 100,
+                photoUrl: 'photo1.jpg',
+                position: 0,
+                routeToNext: {
+                  sourceBlockId: 'source-block-1',
+                  destinationBlockId: 'destination-block-1',
+                  distance: 5000,
+                  duration: 900,
+                  polyline: 'abc123',
+                  transportMode: TRANSPORT_MODE.DRIVE,
+                },
+              },
+            ],
+          },
+        ],
+      }
+
+      const mockItinerary = {
+        id: 'itinerary-123',
+        isPublished: true,
+      }
+
+      const mockOtherItinerary = {
+        id: 'itinerary-789',
+        userId: mockUser.id,
+      }
+
+      const contingencyCount = 0
+
+      const duplicatedContingencyPlan = {
+        id: 'contingency-plan-123',
+        itineraryId: 'itinerary-789',
+        title: 'Plan B', // Service determines this based on contingencyCount
+        description: 'Backup plan',
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1001, // Modified by the service (sectionNumber + (contingencyCount + 1) * 1000)
+            title: 'Section 1',
+            blocks: [
+              {
+                id: 'block-1',
+                position: 0,
+                blockType: 'LOCATION',
+                title: 'Block 1',
+                description: 'Block 1 Description',
+                startTime: new Date('2025-03-10T14:00:00Z'),
+                endTime: new Date('2025-03-10T15:00:00Z'),
+                location: 'Location 1',
+                price: 100,
+                photoUrl: 'photo1.jpg',
+                routeToNext: null,
+                routeFromPrevious: null,
+              },
+            ],
+          },
+        ],
+      }
+
+      // Expected result with mapped section numbers
+      const expectedResult = {
+        ...duplicatedContingencyPlan,
+        sections: [
+          {
+            ...duplicatedContingencyPlan.sections[0],
+            sectionNumber: 1, // Mapped back to original (sectionNumber % 1000)
+          },
+        ],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValueOnce(
+        mockItinerary
+      )
+      mockPrismaService.itinerary.findUnique.mockResolvedValueOnce(
+        mockOtherItinerary
+      )
+      mockPrismaService.contingencyPlan.findUnique.mockResolvedValue(
+        existingContingencyPlan
+      )
+      mockPrismaService.contingencyPlan.count.mockResolvedValue(
+        contingencyCount
+      )
+      mockPrismaService.contingencyPlan.create.mockResolvedValue(
+        duplicatedContingencyPlan
+      )
+      mockPrismaService.route.create.mockResolvedValue({
+        id: 'route-1',
+        sourceBlockId: 'block-1',
+        destinationBlockId: 'block-2',
+        distance: 5000,
+        duration: 900,
+        polyline: 'abc123',
+        transportMode: TRANSPORT_MODE.DRIVE,
+      })
+
+      // Act
+      const result = await service.duplicateContingency(
+        'itinerary-789',
+        'itinerary-123',
+        'contingency-plan-123',
+        mockUser
+      )
+
+      // Assert
+      expect(mockPrismaService.$transaction).toHaveBeenCalled()
+      expect(mockPrismaService.contingencyPlan.create).toHaveBeenCalledWith({
+        data: {
+          itineraryId: mockOtherItinerary.id,
+          title: 'Plan B', // Determined by CONTINGENCY_TITLE[contingencyCount]
+          description: duplicatedContingencyDto.description,
+          sections: {
+            create: [
+              {
+                sectionNumber: 1001, // 1 + (0 + 1) * 1000
+                title: 'Section 1',
+                itinerary: {
+                  connect: { id: mockOtherItinerary.id },
+                },
+                blocks: {
+                  create: [
+                    {
+                      position: 0,
+                      blockType: 'LOCATION',
+                      title: 'Block 1',
+                      description: 'Block 1 Description',
+                      startTime: new Date('2025-03-10T14:00:00Z'),
+                      endTime: new Date('2025-03-10T15:00:00Z'),
+                      location: 'Location 1',
+                      price: 100,
+                      photoUrl: 'photo1.jpg',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+        include: {
+          sections: {
+            include: {
+              blocks: {
+                include: {
+                  routeToNext: true,
+                  routeFromPrevious: true,
+                },
+              },
+            },
+          },
+        },
+      })
+
+      expect(result).toEqual(expectedResult)
+    })
+
+    it('should throw NotFoundException if contingency does not exist', async () => {
+      // Arrange
+      const existingItinerary = {
+        id: 'itinerary-123',
+        userId: 'another-user-id',
+        title: 'Beach Trip',
+        description: 'A relaxing beach vacation',
+        isPublished: true,
+        startDate: new Date('2025-03-10'),
+        endDate: new Date('2025-03-15'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Hari ke-1', // Default title
+            blocks: [], // Empty blocks
+          },
+        ],
+        pendingInvites: [],
+        access: [],
+      }
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        existingItinerary
+      )
+      mockPrismaService.contingencyPlan.findUnique.mockResolvedValue(null)
+
+      // Act & Assert
+      await expect(
+        service.duplicateContingency(
+          'itinerary-345',
+          'itn-123',
+          'non-existant-contingency',
+          mockUser
+        )
+      ).rejects.toThrow(NotFoundException)
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+    })
+
+    it('should throw NotFoundException if itinerary does not exist', async () => {
+      // Arrange
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+      mockPrismaService.contingencyPlan.findUnique.mockResolvedValue(null)
+
+      // Act & Assert
+      await expect(
+        service.duplicateContingency(
+          'itinerary-345',
+          'non-existent-id',
+          '123',
+          mockUser
+        )
+      ).rejects.toThrow(NotFoundException)
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+    })
+
+    it('should throw ForbiddenException if user does not own the itinerary and the itinerary is not public', async () => {
+      // Arrange
+      const existingItinerary = {
+        id: 'itinerary-123',
+        userId: 'another-user-id',
+        title: 'Beach Trip',
+        description: 'A relaxing beach vacation',
+        isPublished: false,
+        startDate: new Date('2025-03-10'),
+        endDate: new Date('2025-03-15'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Hari ke-1', // Default title
+            blocks: [], // Empty blocks
+          },
+        ],
+        pendingInvites: [],
+        access: [],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        existingItinerary
+      )
+      mockPrismaService.contingencyPlan.findUnique.mockResolvedValue(
+        'something'
+      )
+
+      // Act & Assert
+      await expect(
+        service.duplicateContingency(
+          'itinerary-345',
+          'itinerary-123',
+          '123',
+          mockUser
+        )
+      ).rejects.toThrow(ForbiddenException)
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+    })
+  })
+
   describe('findTrendingItineraries', () => {
     it('should return trending itineraries ordered by most likes', async () => {
       // Arrange
