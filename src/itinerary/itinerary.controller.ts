@@ -577,4 +577,23 @@ export class ItineraryController {
       message: 'Itinerary unsaved successfully',
     })
   }
+
+  @Post('/checkSave')
+  async batchCheckUserSavedItinerary(
+    @GetUser() user: User,
+    @Body() itineraryIds: string[]
+  ) {
+    const result = await this.itineraryService.batchCheckUserSavedItinerary(
+      itineraryIds,
+      user
+    )
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries saved status fetched succesfully',
+      },
+      { result }
+    )
+  }
 }

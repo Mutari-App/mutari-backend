@@ -65,6 +65,7 @@ describe('ItineraryService', () => {
     },
     itineraryLike: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
       create: jest.fn(),
       delete: jest.fn(),
     },
@@ -1818,18 +1819,37 @@ describe('ItineraryService', () => {
     it('should return itinerary when found and user has access to it', async () => {
       const mockItinerary = {
         id: '123',
-        userId: 'user-123',
+        userId: mockUser.id,
         sections: [
           {
             id: '1',
             blocks: [{ id: 'block1' }, { id: 'block2' }],
           },
         ],
+        access: [],
+        tags: [],
+        user: {
+          id: mockUser.id,
+          firstName: 'John',
+          lastName: 'Doe',
+          photoProfile: null,
+        },
+        _count: {
+          likes: 0,
+        },
+        pendingInvites: [],
       }
+
       mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
       const result = await service.findOne('123', mockUser)
 
-      expect(result).toEqual(mockItinerary)
+      const { access: _access, ...mockItineraryWithoutAccess } = mockItinerary
+
+      expect(result).toEqual({
+        ...mockItineraryWithoutAccess,
+        invitedUsers: [],
+      })
+
       expect(prismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: '123' },
         include: {
@@ -1863,8 +1883,19 @@ describe('ItineraryService', () => {
             select: { likes: true },
           },
           access: {
-            where: { userId: mockUser.id },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  photoProfile: true,
+                  email: true,
+                },
+              },
+            },
           },
+          pendingInvites: true,
         },
       })
     })
@@ -1873,7 +1904,18 @@ describe('ItineraryService', () => {
       const mockItinerary = {
         id: '123',
         userId: 'different-user-123',
-        access: [{ userId: mockUser.id }],
+        access: [
+          {
+            userId: mockUser.id,
+            user: {
+              id: mockUser.id,
+              firstName: 'John',
+              lastName: 'Doe',
+              photoProfile: null,
+              email: 'john@example.com',
+            },
+          },
+        ],
         sections: [
           {
             id: '1',
@@ -1884,7 +1926,14 @@ describe('ItineraryService', () => {
       mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
       const result = await service.findOne('123', mockUser)
 
-      expect(result).toEqual(mockItinerary)
+      // Expected result after transformation by service
+      const expectedResult = {
+        ...mockItinerary,
+        invitedUsers: [mockItinerary.access[0].user],
+      }
+      delete expectedResult.access
+
+      expect(result).toEqual(expectedResult)
 
       expect(prismaService.itinerary.findUnique).toHaveBeenNthCalledWith(1, {
         where: { id: '123' },
@@ -1896,8 +1945,8 @@ describe('ItineraryService', () => {
             include: {
               blocks: {
                 include: {
-                  routeFromPrevious: true,
                   routeToNext: true,
+                  routeFromPrevious: true,
                 },
               },
             },
@@ -1919,8 +1968,19 @@ describe('ItineraryService', () => {
             select: { likes: true },
           },
           access: {
-            where: { userId: mockUser.id },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  photoProfile: true,
+                  email: true,
+                },
+              },
+            },
           },
+          pendingInvites: true,
         },
       })
     })
@@ -5518,6 +5578,82 @@ describe('ItineraryService', () => {
       await expect(
         service.unsaveItinerary(itineraryId, mockUser)
       ).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  describe('batchCheckUserSavedItinerary', () => {
+    it('should check saved status of public itinerary ids for the user', async () => {
+      const itineraryIds = ['itn-123', 'itn-456', 'itn-789']
+      const expectedBatchSaveCheckResult = {
+        'itn-123': true,
+        'itn-456': false,
+        'itn-789': false,
+      }
+
+      const expectedLikeFetchResult = [
+        {
+          id: 'like-123',
+          itineraryId: 'itn-123',
+          userId: mockUser.id,
+        },
+      ]
+
+      mockPrismaService.itineraryLike.findMany.mockResolvedValue(
+        expectedLikeFetchResult
+      )
+
+      const result = await service.batchCheckUserSavedItinerary(
+        itineraryIds,
+        mockUser
+      )
+      expect(mockPrismaService.itineraryLike.findMany).toHaveBeenCalledWith({
+        where: { itineraryId: { in: itineraryIds }, userId: mockUser.id },
+      })
+      expect(result).toEqual(expectedBatchSaveCheckResult)
+    })
+
+    it('should still return even if user has not liked any itinerary on the list', async () => {
+      const itineraryIds = ['itn-123', 'itn-456', 'itn-789']
+      const expectedBatchSaveCheckResult = {
+        'itn-123': false,
+        'itn-456': false,
+        'itn-789': false,
+      }
+
+      const expectedLikeFetchResult = []
+
+      mockPrismaService.itineraryLike.findMany.mockResolvedValue(
+        expectedLikeFetchResult
+      )
+
+      const result = await service.batchCheckUserSavedItinerary(
+        itineraryIds,
+        mockUser
+      )
+      expect(mockPrismaService.itineraryLike.findMany).toHaveBeenCalledWith({
+        where: { itineraryId: { in: itineraryIds }, userId: mockUser.id },
+      })
+      expect(result).toEqual(expectedBatchSaveCheckResult)
+    })
+
+    it('should return empty array if the list is empty', async () => {
+      const itineraryIds = []
+      const expectedBatchSaveCheckResult = {}
+
+      const expectedLikeFetchResult = []
+
+      mockPrismaService.itineraryLike.findMany.mockResolvedValue(
+        expectedLikeFetchResult
+      )
+
+      const result = await service.batchCheckUserSavedItinerary(
+        itineraryIds,
+        mockUser
+      )
+      expect(mockPrismaService.itineraryLike.findMany).toHaveBeenCalledWith({
+        where: { itineraryId: { in: itineraryIds }, userId: mockUser.id },
+      })
+      expect(result).toEqual(expectedBatchSaveCheckResult)
     })
   })
 })
