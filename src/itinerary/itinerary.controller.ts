@@ -549,7 +549,7 @@ export class ItineraryController {
       }
     )
   }
-  
+
   @Post(':itineraryId/save')
   async saveItinerary(@Param('itineraryId') id: string, @GetUser() user: User) {
     const itineraryLike = await this.itineraryService.saveItinerary(id, user)

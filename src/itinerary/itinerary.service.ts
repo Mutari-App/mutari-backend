@@ -1625,6 +1625,16 @@ export class ItineraryService {
       data: {
         isPublished,
       },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            photoProfile: true,
+          },
+        },
+      },
     })
 
     if (updatedItinerary.isPublished) {
@@ -1692,6 +1702,14 @@ export class ItineraryService {
       where: { id: itineraryId },
       include: {
         likes: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            photoProfile: true,
+          },
+        },
       },
     })
 

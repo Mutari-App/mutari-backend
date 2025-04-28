@@ -3985,6 +3985,16 @@ describe('ItineraryService', () => {
       expect(mockPrismaService.itinerary.update).toHaveBeenCalledWith({
         where: { id: mockItineraryData.id },
         data: { isPublished: true },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
+        },
       })
       expect(result).toEqual({ updatedItinerary: publishedItinerary })
     })
