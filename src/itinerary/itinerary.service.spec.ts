@@ -65,6 +65,7 @@ describe('ItineraryService', () => {
     },
     itineraryLike: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
       create: jest.fn(),
       delete: jest.fn(),
     },
@@ -5510,6 +5511,82 @@ describe('ItineraryService', () => {
       await expect(
         service.unsaveItinerary(itineraryId, mockUser)
       ).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  describe('batchCheckUserSavedItinerary', () => {
+    it('should check saved status of public itinerary ids for the user', async () => {
+      const itineraryIds = ['itn-123', 'itn-456', 'itn-789']
+      const expectedBatchSaveCheckResult = {
+        'itn-123': true,
+        'itn-456': false,
+        'itn-789': false,
+      }
+
+      const expectedLikeFetchResult = [
+        {
+          id: 'like-123',
+          itineraryId: 'itn-123',
+          userId: mockUser.id,
+        },
+      ]
+
+      mockPrismaService.itineraryLike.findMany.mockResolvedValue(
+        expectedLikeFetchResult
+      )
+
+      const result = await service.batchCheckUserSavedItinerary(
+        itineraryIds,
+        mockUser
+      )
+      expect(mockPrismaService.itineraryLike.findMany).toHaveBeenCalledWith({
+        where: { itineraryId: { in: itineraryIds }, userId: mockUser.id },
+      })
+      expect(result).toEqual(expectedBatchSaveCheckResult)
+    })
+
+    it('should still return even if user has not liked any itinerary on the list', async () => {
+      const itineraryIds = ['itn-123', 'itn-456', 'itn-789']
+      const expectedBatchSaveCheckResult = {
+        'itn-123': false,
+        'itn-456': false,
+        'itn-789': false,
+      }
+
+      const expectedLikeFetchResult = []
+
+      mockPrismaService.itineraryLike.findMany.mockResolvedValue(
+        expectedLikeFetchResult
+      )
+
+      const result = await service.batchCheckUserSavedItinerary(
+        itineraryIds,
+        mockUser
+      )
+      expect(mockPrismaService.itineraryLike.findMany).toHaveBeenCalledWith({
+        where: { itineraryId: { in: itineraryIds }, userId: mockUser.id },
+      })
+      expect(result).toEqual(expectedBatchSaveCheckResult)
+    })
+
+    it('should return empty array if the list is empty', async () => {
+      const itineraryIds = []
+      const expectedBatchSaveCheckResult = {}
+
+      const expectedLikeFetchResult = []
+
+      mockPrismaService.itineraryLike.findMany.mockResolvedValue(
+        expectedLikeFetchResult
+      )
+
+      const result = await service.batchCheckUserSavedItinerary(
+        itineraryIds,
+        mockUser
+      )
+      expect(mockPrismaService.itineraryLike.findMany).toHaveBeenCalledWith({
+        where: { itineraryId: { in: itineraryIds }, userId: mockUser.id },
+      })
+      expect(result).toEqual(expectedBatchSaveCheckResult)
     })
   })
 })
