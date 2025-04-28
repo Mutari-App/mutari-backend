@@ -60,6 +60,8 @@ describe('ItineraryController', () => {
     getViewItinerary: jest.fn(),
     publishItinerary: jest.fn(),
     findTrendingItineraries: jest.fn(),
+    saveItinerary: jest.fn(),
+    unsaveItinerary: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -2631,7 +2633,7 @@ describe('ItineraryController', () => {
       expect(mockResponseUtil.response).not.toHaveBeenCalled()
     })
   })
-  
+
   describe('saveItinerary', () => {
     it('should save a public itinerary for the user and return success response', async () => {
       const itineraryId = 'itn-123'

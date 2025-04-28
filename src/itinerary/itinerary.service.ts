@@ -1542,7 +1542,6 @@ export class ItineraryService {
     return { updatedItinerary }
   }
 
-
   async saveItinerary(itineraryId: string, user: User) {
     const itinerary = await this._checkReadItineraryPermission(
       itineraryId,

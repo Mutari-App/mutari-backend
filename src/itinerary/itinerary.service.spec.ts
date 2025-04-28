@@ -63,6 +63,11 @@ describe('ItineraryService', () => {
       delete: jest.fn(),
       update: jest.fn(),
     },
+    itineraryLike: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      delete: jest.fn(),
+    },
     _checkItineraryExists: jest.fn(),
     _checkContingencyCount: jest.fn(),
   }
@@ -4601,7 +4606,7 @@ describe('ItineraryService', () => {
       expect(result[0].likesCount).toBe(0)
     })
   })
-  
+
   describe('saveItinerary', () => {
     it('should save a public itinerary for the user', async () => {
       const itineraryId = 'itn-123'
