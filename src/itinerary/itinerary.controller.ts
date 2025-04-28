@@ -549,4 +549,30 @@ export class ItineraryController {
       }
     )
   }
+  
+  @Post(':itineraryId/save')
+  async saveItinerary(@Param('itineraryId') id: string, @GetUser() user: User) {
+    const itineraryLike = await this.itineraryService.saveItinerary(id, user)
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary saved successfully',
+      },
+      itineraryLike
+    )
+  }
+
+  @Delete(':itineraryId/save')
+  async unsaveItinerary(
+    @Param('itineraryId') id: string,
+    @GetUser() user: User
+  ) {
+    await this.itineraryService.unsaveItinerary(id, user)
+
+    return this.responseUtil.response({
+      statusCode: HttpStatus.OK,
+      message: 'Itinerary unsaved successfully',
+    })
+  }
 }

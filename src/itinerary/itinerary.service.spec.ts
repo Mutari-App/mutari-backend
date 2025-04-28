@@ -63,6 +63,11 @@ describe('ItineraryService', () => {
       delete: jest.fn(),
       update: jest.fn(),
     },
+    itineraryLike: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      delete: jest.fn(),
+    },
     _checkItineraryExists: jest.fn(),
     _checkContingencyCount: jest.fn(),
   }
@@ -5338,6 +5343,173 @@ describe('ItineraryService', () => {
 
       // Assert
       expect(result[0].likesCount).toBe(0)
+    })
+  })
+
+  describe('saveItinerary', () => {
+    it('should save a public itinerary for the user', async () => {
+      const itineraryId = 'itn-123'
+      const mockItinerary = {
+        id: 'itn-123',
+        userId: 'some other user',
+        isPublished: true,
+      }
+
+      const expectedLikeResult = {
+        id: 'itnlike-1',
+        itineraryId: 'itn-123',
+        userId: mockUser.id,
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+      mockPrismaService.itineraryLike.findUnique.mockResolvedValue(null)
+      mockPrismaService.itineraryLike.create.mockResolvedValue(
+        expectedLikeResult
+      )
+
+      const result = await service.saveItinerary(itineraryId, mockUser)
+
+      expect(mockMeilisearchService.addOrUpdateItinerary).toHaveBeenCalledWith(
+        mockItinerary
+      )
+      expect(mockPrismaService.itineraryLike.create).toHaveBeenCalledWith({
+        data: {
+          itineraryId: itineraryId,
+          userId: mockUser.id,
+        },
+      })
+      expect(result).toEqual(expectedLikeResult)
+    })
+
+    it('should throw NotFoundException if itinerary does not exist', async () => {
+      const itineraryId = 'itn-123'
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.saveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(NotFoundException)
+    })
+
+    it('should throw ForbiddenException if user doesnt have access to itinerary', async () => {
+      const itineraryId = 'itn-123'
+      const mockItinerary = {
+        id: 'itn-123',
+        userId: 'some other user',
+        isPublished: false,
+        access: [],
+      }
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+
+      await expect(
+        service.saveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(ForbiddenException)
+    })
+
+    it('should throw BadRequestException if user owns the itinerary its trying to save', async () => {
+      const itineraryId = 'itn-123'
+      const mockItinerary = {
+        id: 'itn-123',
+        userId: mockUser.id,
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+      mockPrismaService.itineraryLike.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.saveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(BadRequestException)
+    })
+
+    it('should throw BadRequestException if user already saved the itinerary', async () => {
+      const itineraryId = 'itn-123'
+      const mockItinerary = {
+        id: 'itn-123',
+        userId: 'some other user',
+        isPublished: true,
+        access: [],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+      mockPrismaService.itineraryLike.findUnique.mockResolvedValue('something')
+
+      await expect(
+        service.saveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  describe('unsaveItinerary', () => {
+    it('should unsave the itinerary for the user', async () => {
+      const itineraryId = 'itn-123'
+      const mockItinerary = {
+        id: 'itn-123',
+        userId: 'some other user',
+        isPublished: true,
+      }
+
+      const existingLike = {
+        id: 'itnlike-1',
+        itineraryId: 'itn-123',
+        userId: mockUser.id,
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+      mockPrismaService.itineraryLike.findUnique.mockResolvedValue(existingLike)
+
+      await service.unsaveItinerary(itineraryId, mockUser)
+
+      expect(mockMeilisearchService.addOrUpdateItinerary).toHaveBeenCalledWith(
+        mockItinerary
+      )
+      expect(mockPrismaService.itineraryLike.delete).toHaveBeenCalledWith({
+        where: { itineraryId_userId: { itineraryId, userId: mockUser.id } },
+      })
+    })
+
+    it('should throw NotFoundException if itinerary does not exist', async () => {
+      const itineraryId = 'itn-123'
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.unsaveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(NotFoundException)
+    })
+
+    it('should throw BadRequestException if user owns the itinerary its trying to unsave', async () => {
+      const itineraryId = 'itn-123'
+      const mockItinerary = {
+        id: 'itn-123',
+        userId: mockUser.id,
+      }
+
+      const existingLike = {
+        id: 'itnlike-1',
+        itineraryId: 'itn-123',
+        userId: mockUser.id,
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+      mockPrismaService.itineraryLike.findUnique.mockResolvedValue(existingLike)
+
+      await expect(
+        service.unsaveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(BadRequestException)
+    })
+
+    it('should throw BadRequestException if user does not have the itinerary saved', async () => {
+      const itineraryId = 'itn-123'
+      const mockItinerary = {
+        id: 'itn-123',
+        userId: 'some other user',
+        isPublished: true,
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+      mockPrismaService.itineraryLike.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.unsaveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(BadRequestException)
     })
   })
 })

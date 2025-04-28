@@ -1637,6 +1637,75 @@ export class ItineraryService {
     return { updatedItinerary }
   }
 
+  async saveItinerary(itineraryId: string, user: User) {
+    const itinerary = await this._checkReadItineraryPermission(
+      itineraryId,
+      user
+    )
+    if (itinerary.userId === user.id) {
+      throw new BadRequestException("Cannot save user's own itinerary")
+    }
+
+    const isItinerarySaved = await this._checkUserSavedItinerary(
+      itineraryId,
+      user
+    )
+    if (isItinerarySaved) {
+      throw new BadRequestException('Itinerary already saved by user')
+    }
+
+    const itineraryLike = await this.prisma.itineraryLike.create({
+      data: {
+        itineraryId: itineraryId,
+        userId: user.id,
+      },
+    })
+
+    this._updateLikeCount(itineraryId)
+    return itineraryLike
+  }
+
+  async unsaveItinerary(itineraryId: string, user: User) {
+    const itinerary = await this._checkItineraryExists(itineraryId, user)
+    if (itinerary.userId === user.id) {
+      throw new BadRequestException("Cannot unsave user's own itinerary")
+    }
+
+    const isItinerarySaved = await this._checkUserSavedItinerary(
+      itineraryId,
+      user
+    )
+    if (!isItinerarySaved) {
+      throw new BadRequestException('Itinerary is not saved by user')
+    }
+
+    const itineraryLike = await this.prisma.itineraryLike.delete({
+      where: { itineraryId_userId: { itineraryId, userId: user.id } },
+    })
+
+    this._updateLikeCount(itineraryId)
+    return itineraryLike
+  }
+
+  async _updateLikeCount(itineraryId: string) {
+    const updatedItinerary = await this.prisma.itinerary.findUnique({
+      where: { id: itineraryId },
+      include: {
+        likes: true,
+      },
+    })
+
+    await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+  }
+
+  async _checkUserSavedItinerary(itineraryId: string, user: User) {
+    const itineraryLike = await this.prisma.itineraryLike.findUnique({
+      where: { itineraryId_userId: { itineraryId, userId: user.id } },
+    })
+
+    return itineraryLike !== null
+  }
+
   async findTrendingItineraries() {
     const trendingItineraries = await this.prisma.itinerary.findMany({
       where: {
