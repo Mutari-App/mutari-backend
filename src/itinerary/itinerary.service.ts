@@ -937,21 +937,41 @@ export class ItineraryService {
           select: { likes: true },
         },
         access: {
-          where: { userId: user?.id },
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                photoProfile: true,
+                email: true,
+              },
+            },
+          },
         },
+        pendingInvites: true,
       },
     })
     if (!itinerary) {
       throw new NotFoundException(`Itinerary with ID ${id} not found`)
     }
     if (itinerary.userId !== user?.id) {
-      if (!itinerary.isPublished && itinerary.access.length === 0)
+      if (
+        !itinerary.isPublished &&
+        !itinerary.access.some((access) => access.userId === user?.id)
+      )
         throw new ForbiddenException(
           'You do not have permission to view this itinerary'
         )
     }
 
-    return itinerary
+    const result = {
+      ...itinerary,
+      invitedUsers: itinerary.access.map((access) => access.user),
+    }
+    delete result.access
+
+    return result
   }
 
   async removeItinerary(id: string, user: User) {
