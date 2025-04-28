@@ -576,7 +576,7 @@ export class ItineraryController {
     })
   }
 
-  @Get('/checkSave')
+  @Post('/checkSave')
   async batchCheckUserSavedItinerary(
     @GetUser() user: User,
     @Body() itineraryIds: string[]
