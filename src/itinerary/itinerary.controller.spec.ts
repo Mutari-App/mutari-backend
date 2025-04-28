@@ -55,11 +55,16 @@ describe('ItineraryController', () => {
     createContingencyPlan: jest.fn(),
     selectContingencyPlan: jest.fn(),
     updateContingencyPlan: jest.fn(),
+    duplicateItinerary: jest.fn(),
+    duplicateContingency: jest.fn(),
     searchItineraries: jest.fn(),
     createViewItinerary: jest.fn(),
     getViewItinerary: jest.fn(),
     publishItinerary: jest.fn(),
     findTrendingItineraries: jest.fn(),
+    saveItinerary: jest.fn(),
+    unsaveItinerary: jest.fn(),
+    batchCheckUserSavedItinerary: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -160,12 +165,22 @@ describe('ItineraryController', () => {
     })
 
     it('should throw NotFoundException if itinerary is not found', async () => {
-      mockItineraryService.findOne.mockResolvedValue(null)
+      mockItineraryService.findOne.mockResolvedValueOnce(null)
+
+      mockResponseUtil.response.mockReturnValueOnce({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: `Itinerary with ID INVALID_ID not found`,
+      })
 
       const result = await controller.findOne('INVALID_ID', mockUser)
 
+      expect(mockItineraryService.findOne).toHaveBeenCalledWith(
+        'INVALID_ID',
+        mockUser
+      )
       expect(result).toEqual({
         statusCode: HttpStatus.NOT_FOUND,
+        message: `Itinerary with ID INVALID_ID not found`,
       })
     })
 
@@ -1999,6 +2014,396 @@ describe('ItineraryController', () => {
     })
   })
 
+  describe('duplicateItineraryAndContingencies', () => {
+    it('should duplicate an itinerary and its contingencies and return a formatted response', async () => {
+      const itineraryId = 'itinerary-123'
+      const existingItinerary = {
+        id: itineraryId,
+        userId: 'different-userid',
+        title: 'Beach Trip',
+        isPublished: true,
+        description: 'An relaxing beach vacation',
+        startDate: new Date('2025-03-11'),
+        endDate: new Date('2025-03-16'),
+        coverImage: 'beach2.jpg',
+        tags: [
+          {
+            id: 'itinerarytag-1',
+            itineraryId: 'itinerary-123',
+            tagId: 'tag-123',
+            createdAt: new Date(),
+            tag: {
+              id: 'tag-123',
+              name: 'Beach',
+              description: 'Beach activities',
+              iconUrl: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          },
+        ],
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                position: 0,
+                startTime: new Date('2025-03-11T14:00:00Z'),
+                endTime: new Date('2025-03-11T15:00:00Z'),
+                location: 'Updated Beach Resort',
+                price: 600000,
+                photoUrl: 'updated_resort.jpg',
+              },
+            ],
+          },
+        ],
+      }
+
+      const duplicatedItineraryDto: CreateItineraryDto = {
+        title: existingItinerary.title,
+        description: existingItinerary.description,
+        startDate: existingItinerary.startDate,
+        endDate: existingItinerary.endDate,
+        coverImage: existingItinerary.coverImage,
+        tags: ['tag-123'],
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                position: 0,
+                startTime: new Date('2025-03-11T14:00:00Z'),
+                endTime: new Date('2025-03-11T15:00:00Z'),
+                location: 'Updated Beach Resort',
+                price: 600000,
+                photoUrl: 'updated_resort.jpg',
+              },
+            ],
+          },
+        ],
+      }
+
+      const duplicatedItinerary = {
+        id: 'itinerary-789',
+        userId: mockUser.id,
+        title: duplicatedItineraryDto.title,
+        description: duplicatedItineraryDto.description,
+        coverImage: duplicatedItineraryDto.coverImage,
+        startDate: duplicatedItineraryDto.startDate,
+        endDate: duplicatedItineraryDto.endDate,
+        isPublished: false,
+        isCompleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        sections: [
+          {
+            id: 'section-1',
+            itineraryId: 'itinerary-789',
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            blocks: [
+              {
+                id: 'block-1',
+                sectionId: 'section-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                startTime: new Date('2025-03-11T14:00:00Z'),
+                endTime: new Date('2025-03-11T15:00:00Z'),
+                location: 'Updated Beach Resort',
+                price: 600000,
+                photoUrl: 'updated_resort.jpg',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ],
+          },
+        ],
+        tags: [
+          {
+            id: 'itinerarytag-1',
+            itineraryId: 'itinerary-123',
+            tagId: 'tag-123',
+            createdAt: new Date(),
+            tag: {
+              id: 'tag-123',
+              name: 'Beach',
+              description: 'Beach activities',
+              iconUrl: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          },
+        ],
+      }
+
+      const existingContingencyPlans = [
+        {
+          id: 'contingency-plan-123',
+          title: 'Contingency Plan 1',
+          description: 'Desc',
+          sections: [],
+        },
+        {
+          id: 'contingency-plan-456',
+          title: 'Contingency Plan 2',
+          description: 'Desc',
+          sections: [],
+        },
+      ]
+
+      const mockResponse = {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary duplicated succesfully',
+        itinerary: duplicatedItinerary,
+      }
+
+      mockItineraryService.findContingencyPlans.mockResolvedValue(
+        existingContingencyPlans
+      )
+      mockItineraryService.duplicateItinerary.mockResolvedValue(
+        duplicatedItinerary
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.duplicateItineraryAndContingencies(
+        itineraryId,
+        mockUser
+      )
+
+      expect(mockItineraryService.duplicateItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        mockUser
+      )
+      expect(mockItineraryService.duplicateContingency).toHaveBeenCalledTimes(
+        existingContingencyPlans.length
+      )
+      existingContingencyPlans.forEach((plan) => {
+        expect(mockItineraryService.duplicateContingency).toHaveBeenCalledWith(
+          duplicatedItinerary.id,
+          itineraryId,
+          plan.id,
+          mockUser
+        )
+      })
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.CREATED,
+          message: 'Itinerary duplicated successfully',
+        },
+        { duplicatedItinerary }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should duplicate an itinerary with no contingencies and return a formatted response', async () => {
+      const itineraryId = 'itinerary-123'
+      const existingItinerary = {
+        id: itineraryId,
+        userId: 'different-userid',
+        title: 'Beach Trip',
+        isPublished: true,
+        description: 'An relaxing beach vacation',
+        startDate: new Date('2025-03-11'),
+        endDate: new Date('2025-03-16'),
+        coverImage: 'beach2.jpg',
+        tags: [
+          {
+            id: 'itinerarytag-1',
+            itineraryId: 'itinerary-123',
+            tagId: 'tag-123',
+            createdAt: new Date(),
+            tag: {
+              id: 'tag-123',
+              name: 'Beach',
+              description: 'Beach activities',
+              iconUrl: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          },
+        ],
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                position: 0,
+                startTime: new Date('2025-03-11T14:00:00Z'),
+                endTime: new Date('2025-03-11T15:00:00Z'),
+                location: 'Updated Beach Resort',
+                price: 600000,
+                photoUrl: 'updated_resort.jpg',
+              },
+            ],
+          },
+        ],
+      }
+
+      const duplicatedItineraryDto: CreateItineraryDto = {
+        title: existingItinerary.title,
+        description: existingItinerary.description,
+        startDate: existingItinerary.startDate,
+        endDate: existingItinerary.endDate,
+        coverImage: existingItinerary.coverImage,
+        tags: ['tag-123'],
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                position: 0,
+                startTime: new Date('2025-03-11T14:00:00Z'),
+                endTime: new Date('2025-03-11T15:00:00Z'),
+                location: 'Updated Beach Resort',
+                price: 600000,
+                photoUrl: 'updated_resort.jpg',
+              },
+            ],
+          },
+        ],
+      }
+
+      const duplicatedItinerary = {
+        id: 'itinerary-789',
+        userId: mockUser.id,
+        title: duplicatedItineraryDto.title,
+        description: duplicatedItineraryDto.description,
+        coverImage: duplicatedItineraryDto.coverImage,
+        startDate: duplicatedItineraryDto.startDate,
+        endDate: duplicatedItineraryDto.endDate,
+        isPublished: false,
+        isCompleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        sections: [
+          {
+            id: 'section-1',
+            itineraryId: 'itinerary-789',
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            blocks: [
+              {
+                id: 'block-1',
+                sectionId: 'section-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                startTime: new Date('2025-03-11T14:00:00Z'),
+                endTime: new Date('2025-03-11T15:00:00Z'),
+                location: 'Updated Beach Resort',
+                price: 600000,
+                photoUrl: 'updated_resort.jpg',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ],
+          },
+        ],
+        tags: [
+          {
+            id: 'itinerarytag-1',
+            itineraryId: 'itinerary-123',
+            tagId: 'tag-123',
+            createdAt: new Date(),
+            tag: {
+              id: 'tag-123',
+              name: 'Beach',
+              description: 'Beach activities',
+              iconUrl: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          },
+        ],
+      }
+
+      const existingContingencyPlans = []
+
+      const mockResponse = {
+        statusCode: HttpStatus.CREATED,
+        message: 'Contingency duplicated successfully.',
+        itinerary: duplicatedItinerary,
+      }
+
+      mockItineraryService.findContingencyPlans.mockResolvedValue(
+        existingContingencyPlans
+      )
+      mockItineraryService.duplicateItinerary.mockResolvedValue(
+        duplicatedItinerary
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.duplicateItineraryAndContingencies(
+        itineraryId,
+        mockUser
+      )
+
+      expect(mockItineraryService.duplicateItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        mockUser
+      )
+      expect(mockItineraryService.duplicateContingency).toHaveBeenCalledTimes(
+        existingContingencyPlans.length
+      )
+      existingContingencyPlans.forEach((plan) => {
+        expect(mockItineraryService.duplicateContingency).toHaveBeenCalledWith(
+          duplicatedItinerary.id,
+          itineraryId,
+          plan.id,
+          mockUser
+        )
+      })
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.CREATED,
+          message: 'Itinerary duplicated successfully',
+        },
+        { duplicatedItinerary }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should pass errors from service to the caller', async () => {
+      // Arrange
+      const mockError = new Error('Itinerary is not public')
+      mockItineraryService.duplicateItinerary.mockRejectedValue(mockError)
+
+      // Act & Assert
+      await expect(
+        controller.duplicateItineraryAndContingencies('itn-123', mockUser)
+      ).rejects.toThrow(mockError)
+
+      expect(mockItineraryService.duplicateItinerary).toHaveBeenCalledWith(
+        'itn-123',
+        mockUser
+      )
+      expect(mockResponseUtil.response).not.toHaveBeenCalled()
+    })
+  })
+
   describe('searchItineraries', () => {
     it('should search itineraries with default parameters', async () => {
       // Mock search results
@@ -2629,6 +3034,142 @@ describe('ItineraryController', () => {
       )
       expect(mockItineraryService.findTrendingItineraries).toHaveBeenCalled()
       expect(mockResponseUtil.response).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('saveItinerary', () => {
+    it('should save a public itinerary for the user and return success response', async () => {
+      const itineraryId = 'itn-123'
+      const expectedLikeResult = {
+        id: 'itnlike-1',
+        itineraryId: 'itn-123',
+        userId: mockUser.id,
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary saved successfully',
+        itinerary: expectedLikeResult,
+      }
+
+      mockItineraryService.saveItinerary.mockResolvedValue(expectedLikeResult)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.saveItinerary(itineraryId, mockUser)
+
+      expect(mockItineraryService.saveItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        mockUser
+      )
+
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.CREATED,
+          message: 'Itinerary saved successfully',
+        },
+        expectedLikeResult
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should pass errors from service to the caller', async () => {
+      const itineraryId = 'itn-123'
+      const mockError = new Error("Cannot save user's own itinerary")
+      mockItineraryService.saveItinerary.mockRejectedValue(mockError)
+      await expect(
+        controller.saveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(mockError)
+
+      expect(mockItineraryService.saveItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        mockUser
+      )
+
+      expect(mockResponseUtil.response).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('unsaveItinerary', () => {
+    it('should unsave the itinerary for the user', async () => {
+      const itineraryId = 'itn-123'
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary unsaved successfully',
+      }
+
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.unsaveItinerary(itineraryId, mockUser)
+
+      expect(mockItineraryService.unsaveItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        mockUser
+      )
+
+      expect(mockResponseUtil.response).toHaveBeenCalledWith({
+        statusCode: HttpStatus.OK,
+        message: 'Itinerary unsaved successfully',
+      })
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should pass errors from service to the caller', async () => {
+      const itineraryId = 'itn-123'
+      const mockError = new Error("Cannot unsave user's own itinerary")
+      mockItineraryService.unsaveItinerary.mockRejectedValue(mockError)
+      await expect(
+        controller.unsaveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(mockError)
+
+      expect(mockItineraryService.unsaveItinerary).toHaveBeenCalledWith(
+        itineraryId,
+        mockUser
+      )
+
+      expect(mockResponseUtil.response).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('batchCheckUserSavedItinerary', () => {
+    it('should check saved status of public itinerary ids for the user and return success response', async () => {
+      const itineraryIds = ['itn-123', 'itn-456', 'itn-789']
+      const expectedBatchSaveCheckResult = {
+        'itn-123': true,
+        'itn-456': false,
+        'itn-789': false,
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries saved status fetched succesfully',
+        itinerary: expectedBatchSaveCheckResult,
+      }
+
+      mockItineraryService.batchCheckUserSavedItinerary.mockResolvedValue(
+        expectedBatchSaveCheckResult
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.batchCheckUserSavedItinerary(
+        mockUser,
+        itineraryIds
+      )
+
+      expect(
+        mockItineraryService.batchCheckUserSavedItinerary
+      ).toHaveBeenCalledWith(itineraryIds, mockUser)
+
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Itineraries saved status fetched succesfully',
+        },
+        {
+          result: expectedBatchSaveCheckResult,
+        }
+      )
+      expect(result).toEqual(mockResponse)
     })
   })
 })

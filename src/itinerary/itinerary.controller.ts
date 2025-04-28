@@ -20,6 +20,7 @@ import { ResponseUtil } from 'src/common/utils/response.util'
 import { Public } from 'src/common/decorators/public.decorator'
 import { InviteToItineraryDTO } from './dto/invite-to-itinerary.dto'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
+import { SemiPublic } from 'src/common/decorators/semiPublic.decorator'
 
 @Controller('itineraries')
 export class ItineraryController {
@@ -217,14 +218,15 @@ export class ItineraryController {
     )
   }
 
+  @SemiPublic()
   @Get(':id')
-  async findOne(@Param('id') id: string, @GetUser() user: User) {
+  async findOne(@Param('id') id: string, @GetUser() user?: User) {
     const itinerary = await this.itineraryService.findOne(id, user)
     if (!itinerary) {
-      // throw new NotFoundException(`Itinerary with ID ${id} not found`)
-      return {
+      return this.responseUtil.response({
         statusCode: HttpStatus.NOT_FOUND,
-      }
+        message: `Itinerary with ID ${id} not found`,
+      })
     }
 
     return this.responseUtil.response(
@@ -511,6 +513,87 @@ export class ItineraryController {
         message: 'Itinerary published successfully',
       },
       publishedItinerary
+    )
+  }
+
+  @Post(':itineraryId/duplicate')
+  async duplicateItineraryAndContingencies(
+    @Param('itineraryId') itineraryId: string,
+    @GetUser() user: User
+  ) {
+    // 1: Duplicate Itinerary
+    const duplicatedItinerary = await this.itineraryService.duplicateItinerary(
+      itineraryId,
+      user
+    )
+
+    // 2: Duplicate Contingencies
+    const existingContingencies =
+      await this.itineraryService.findContingencyPlans(itineraryId, user)
+    if (existingContingencies.length > 0) {
+      for (const plan of existingContingencies) {
+        await this.itineraryService.duplicateContingency(
+          duplicatedItinerary.id,
+          itineraryId,
+          plan.id,
+          user
+        )
+      }
+    }
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary duplicated successfully',
+      },
+      {
+        duplicatedItinerary,
+      }
+    )
+  }
+
+  @Post(':itineraryId/save')
+  async saveItinerary(@Param('itineraryId') id: string, @GetUser() user: User) {
+    const itineraryLike = await this.itineraryService.saveItinerary(id, user)
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Itinerary saved successfully',
+      },
+      itineraryLike
+    )
+  }
+
+  @Delete(':itineraryId/save')
+  async unsaveItinerary(
+    @Param('itineraryId') id: string,
+    @GetUser() user: User
+  ) {
+    await this.itineraryService.unsaveItinerary(id, user)
+
+    return this.responseUtil.response({
+      statusCode: HttpStatus.OK,
+      message: 'Itinerary unsaved successfully',
+    })
+  }
+
+  @Post('/checkSave')
+  async batchCheckUserSavedItinerary(
+    @GetUser() user: User,
+    @Body() itineraryIds: string[]
+  ) {
+    const result = await this.itineraryService.batchCheckUserSavedItinerary(
+      itineraryIds,
+      user
+    )
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Itineraries saved status fetched succesfully',
+      },
+      { result }
     )
   }
 }

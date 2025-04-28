@@ -12,6 +12,8 @@ const mockItineraries = [
     description: 'A weekend in Paris',
     coverImage: 'paris.jpg',
     createdAt: new Date('2025-04-10'),
+    startDate: new Date('2025-04-15'),
+    endDate: new Date('2025-04-16'),
     isPublished: true,
     likes: [{ id: 'like1' }, { id: 'like2' }],
     sections: [
@@ -326,7 +328,7 @@ describe('MeilisearchService', () => {
         createdAt: expect.any(String),
         isPublished: true,
         likes: 0,
-        daysCount: 0,
+        daysCount: 1, // Default to 1 day when no dates provided
         user: {
           id: 'user1',
           firstName: 'John',
@@ -395,20 +397,63 @@ describe('MeilisearchService', () => {
   })
 
   describe('calculateDaysCount', () => {
-    it('should calculate days count from highest section number', () => {
-      const sections = [
-        { sectionNumber: 1 },
-        { sectionNumber: 3 },
-        { sectionNumber: 2 },
-      ]
+    it('should calculate days count from date range', () => {
+      // Two-day trip (Apr 15-16, 2025)
+      expect(
+        service['calculateDaysCount'](
+          new Date('2025-04-15'),
+          new Date('2025-04-16')
+        )
+      ).toBe(2)
 
-      expect(service['calculateDaysCount'](sections)).toBe(3)
+      // Same day trip
+      expect(
+        service['calculateDaysCount'](
+          new Date('2025-04-15'),
+          new Date('2025-04-15')
+        )
+      ).toBe(1)
+
+      // Multi-day trip
+      expect(
+        service['calculateDaysCount'](
+          new Date('2025-04-15'),
+          new Date('2025-04-20')
+        )
+      ).toBe(6)
     })
 
-    it('should return 0 for empty sections', () => {
-      expect(service['calculateDaysCount']([])).toBe(0)
-      expect(service['calculateDaysCount'](null)).toBe(0)
-      expect(service['calculateDaysCount'](undefined)).toBe(0)
+    it('should handle time components correctly', () => {
+      // Same day with different times should still be 1 day
+      expect(
+        service['calculateDaysCount'](
+          new Date('2025-04-15T08:00:00'),
+          new Date('2025-04-15T20:00:00')
+        )
+      ).toBe(1)
+
+      // Different days with times should count full days
+      expect(
+        service['calculateDaysCount'](
+          new Date('2025-04-15T20:00:00'),
+          new Date('2025-04-17T08:00:00')
+        )
+      ).toBe(3)
+    })
+
+    it('should handle string dates', () => {
+      expect(service['calculateDaysCount']('2025-04-15', '2025-04-17')).toBe(3)
+    })
+
+    it('should return 1 for missing dates', () => {
+      expect(service['calculateDaysCount'](null, null)).toBe(1)
+      expect(service['calculateDaysCount'](undefined, undefined)).toBe(1)
+      expect(service['calculateDaysCount'](new Date('2025-04-15'), null)).toBe(
+        1
+      )
+      expect(service['calculateDaysCount'](null, new Date('2025-04-15'))).toBe(
+        1
+      )
     })
   })
 

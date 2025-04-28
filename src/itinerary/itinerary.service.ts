@@ -323,6 +323,101 @@ export class ItineraryService {
     })
   }
 
+  async duplicateItinerary(id: string, user: User) {
+    await this._checkReadItineraryPermission(id, user)
+
+    // phase 1: duplicate the itinerary
+    const originalItinerary = await this.prisma.itinerary.findUnique({
+      where: { id: id },
+      include: {
+        sections: {
+          where: {
+            contingencyPlanId: null,
+          },
+          include: {
+            blocks: {
+              include: {
+                routeToNext: true,
+                routeFromPrevious: true,
+              },
+            },
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+      },
+    })
+    const itineraryData: CreateItineraryDto = {
+      title: originalItinerary.title + ' (Copy)',
+      description: originalItinerary.description,
+      coverImage: originalItinerary.coverImage,
+      startDate: originalItinerary.startDate,
+      endDate: originalItinerary.endDate,
+      sections: originalItinerary.sections.map((section) =>
+        this._mapSections(section)
+      ),
+      tags:
+        originalItinerary.tags && originalItinerary.tags.length > 0
+          ? originalItinerary.tags.map((tags) => tags.tag.id)
+          : [],
+    }
+    const newItinerary = await this.createItinerary(itineraryData, user)
+    return newItinerary
+  }
+
+  async duplicateContingency(
+    newItineraryId: string,
+    itineraryId: string,
+    contingencyPlanId: string,
+    user: User
+  ) {
+    // phase 2: duplicate contingency
+    const contingecyPlan = await this.findContingencyPlan(
+      itineraryId,
+      contingencyPlanId,
+      user
+    )
+    const contingencyData: CreateContingencyPlanDto = {
+      title: contingecyPlan.title,
+      description: contingecyPlan.description,
+      sections: contingecyPlan.sections.map((section) =>
+        this._mapSections(section)
+      ),
+    }
+    const newContingencyPlan = await this.createContingencyPlan(
+      newItineraryId,
+      contingencyData,
+      user
+    )
+    return newContingencyPlan
+  }
+
+  _mapSections(section: CreateSectionDto) {
+    return {
+      sectionNumber: section.sectionNumber,
+      title: section.title ?? `Hari ke-${section.sectionNumber}`,
+      blocks:
+        section.blocks && section.blocks.length > 0
+          ? section.blocks.map((block, index) => ({
+              position: index,
+              blockType: block.blockType,
+              title: block.title,
+              description: block.description,
+              startTime: block.startTime ? new Date(block.startTime) : null,
+              endTime: block.endTime ? new Date(block.endTime) : null,
+              location: block.location,
+              price: block.price ?? 0,
+              photoUrl: block.photoUrl,
+              routeToNext: block.routeToNext,
+              routeFromPrevious: block.routeFromPrevious,
+            }))
+          : [],
+    }
+  }
+
   /**
    * Checks whether itinerary with given id exists
    * @param id Id for Itinerary
@@ -808,8 +903,7 @@ export class ItineraryService {
     })
   }
 
-  async findOne(id: string, user: User) {
-    await this._checkReadItineraryPermission(id, user)
+  async findOne(id: string, user: User | null) {
     const itinerary = await this.prisma.itinerary.findUnique({
       where: { id: id },
       include: {
@@ -842,10 +936,42 @@ export class ItineraryService {
         _count: {
           select: { likes: true },
         },
+        access: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                photoProfile: true,
+                email: true,
+              },
+            },
+          },
+        },
+        pendingInvites: true,
       },
     })
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${id} not found`)
+    }
+    if (itinerary.userId !== user?.id) {
+      if (
+        !itinerary.isPublished &&
+        !itinerary.access.some((access) => access.userId === user?.id)
+      )
+        throw new ForbiddenException(
+          'You do not have permission to view this itinerary'
+        )
+    }
 
-    return itinerary
+    const result = {
+      ...itinerary,
+      invitedUsers: itinerary.access.map((access) => access.user),
+    }
+    delete result.access
+
+    return result
   }
 
   async removeItinerary(id: string, user: User) {
@@ -1530,6 +1656,16 @@ export class ItineraryService {
       data: {
         isPublished,
       },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            photoProfile: true,
+          },
+        },
+      },
     })
 
     if (updatedItinerary.isPublished) {
@@ -1540,6 +1676,95 @@ export class ItineraryService {
     }
 
     return { updatedItinerary }
+  }
+
+  async saveItinerary(itineraryId: string, user: User) {
+    const itinerary = await this._checkReadItineraryPermission(
+      itineraryId,
+      user
+    )
+    if (itinerary.userId === user.id) {
+      throw new BadRequestException("Cannot save user's own itinerary")
+    }
+
+    const isItinerarySaved = await this._checkUserSavedItinerary(
+      itineraryId,
+      user
+    )
+    if (isItinerarySaved) {
+      throw new BadRequestException('Itinerary already saved by user')
+    }
+
+    const itineraryLike = await this.prisma.itineraryLike.create({
+      data: {
+        itineraryId: itineraryId,
+        userId: user.id,
+      },
+    })
+
+    this._updateLikeCount(itineraryId)
+    return itineraryLike
+  }
+
+  async unsaveItinerary(itineraryId: string, user: User) {
+    const itinerary = await this._checkItineraryExists(itineraryId, user)
+    if (itinerary.userId === user.id) {
+      throw new BadRequestException("Cannot unsave user's own itinerary")
+    }
+
+    const isItinerarySaved = await this._checkUserSavedItinerary(
+      itineraryId,
+      user
+    )
+    if (!isItinerarySaved) {
+      throw new BadRequestException('Itinerary is not saved by user')
+    }
+
+    const itineraryLike = await this.prisma.itineraryLike.delete({
+      where: { itineraryId_userId: { itineraryId, userId: user.id } },
+    })
+
+    this._updateLikeCount(itineraryId)
+    return itineraryLike
+  }
+
+  async _updateLikeCount(itineraryId: string) {
+    const updatedItinerary = await this.prisma.itinerary.findUnique({
+      where: { id: itineraryId },
+      include: {
+        likes: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            photoProfile: true,
+          },
+        },
+      },
+    })
+
+    await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+  }
+
+  async batchCheckUserSavedItinerary(itineraryIds: string[], user: User) {
+    let result: { [key: string]: boolean } = {}
+    const itineraryLikes = await this.prisma.itineraryLike.findMany({
+      where: { itineraryId: { in: itineraryIds }, userId: user.id },
+    })
+    const likedItineraryIds = itineraryLikes.map((like) => like.itineraryId)
+    for (const itineraryId of itineraryIds) {
+      result[itineraryId] = likedItineraryIds.includes(itineraryId)
+    }
+    return result
+  }
+
+  async _checkUserSavedItinerary(itineraryId: string, user: User) {
+    const itineraryLike = await this.prisma.itineraryLike.findUnique({
+      where: { itineraryId_userId: { itineraryId, userId: user.id } },
+    })
+
+    return itineraryLike !== null
   }
 
   async findTrendingItineraries() {
