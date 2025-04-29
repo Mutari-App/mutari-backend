@@ -1613,7 +1613,7 @@ export class ItineraryService {
   async getViewItinerary(user: User) {
     const userId = user.id
     const views = await this.prisma.itineraryView.findMany({
-      where: { userId: userId },
+      where: { userId },
       orderBy: { viewedAt: 'desc' },
       include: {
         itinerary: {
@@ -1630,18 +1630,39 @@ export class ItineraryService {
                 likes: true,
               },
             },
+            // Make sure to include tags if needed
+            tags: true,
           },
         },
       },
     })
 
-    return views.map((view) => ({
-      ...view,
-      itinerary: {
-        ...view.itinerary,
-        likes: view.itinerary._count.likes,
-      },
-    }))
+    const formattedViews = views.map((view) => {
+      const itinerary = view.itinerary
+      const start = new Date(itinerary.startDate)
+      const end = new Date(itinerary.endDate)
+
+      return {
+        id: itinerary.id,
+        createdAt: itinerary.createdAt,
+        title: itinerary.title,
+        description: itinerary.description ?? null,
+        coverImage: itinerary.coverImage || null,
+        user: {
+          id: itinerary.user.id,
+          firstName: itinerary.user.firstName,
+          photoProfile: itinerary.user.photoProfile ?? null,
+        },
+        tags: itinerary.tags ?? [],
+        daysCount: Math.max(
+          1,
+          Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+        ),
+        likes: itinerary._count.likes ?? 0,
+      }
+    })
+
+    return formattedViews
   }
 
   async publishItinerary(
