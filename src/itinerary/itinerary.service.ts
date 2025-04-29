@@ -240,6 +240,7 @@ export class ItineraryService {
           },
         },
         include: {
+          likes: true,
           sections: {
             include: {
               blocks: {
