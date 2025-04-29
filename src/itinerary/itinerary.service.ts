@@ -1138,11 +1138,27 @@ export class ItineraryService {
     return deletedAccess
   }
 
-  async findContingencyPlans(itineraryId: string, user: User) {
-    const itinerary = await this._checkReadItineraryPermission(
-      itineraryId,
-      user
-    )
+  async findContingencyPlans(itineraryId: string, user?: User) {
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: itineraryId },
+      include: {
+        access: {
+          where: { userId: user?.id },
+        },
+      },
+    })
+
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
+    }
+
+    if (itinerary.userId !== user?.id) {
+      if (!itinerary.isPublished && itinerary.access.length === 0)
+        throw new ForbiddenException(
+          'You do not have permission to view this itinerary'
+        )
+    }
+
     const contingencyPlans = await this.prisma.contingencyPlan.findMany({
       where: { itineraryId: itinerary.id },
       orderBy: {
@@ -1155,12 +1171,26 @@ export class ItineraryService {
   async findContingencyPlan(
     itineraryId: string,
     contingencyPlanId: string,
-    user: User
+    user?: User
   ) {
-    const itinerary = await this._checkReadItineraryPermission(
-      itineraryId,
-      user
-    )
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: itineraryId },
+      include: {
+        access: {
+          where: { userId: user?.id },
+        },
+      },
+    })
+
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
+    }
+    if (itinerary.userId !== user?.id) {
+      if (!itinerary.isPublished && itinerary.access.length === 0)
+        throw new ForbiddenException(
+          'You do not have permission to view this itinerary'
+        )
+    }
 
     const contingencyPlan = await this.prisma.contingencyPlan.findUnique({
       where: { id: contingencyPlanId },
