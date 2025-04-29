@@ -398,6 +398,7 @@ export class ItineraryController {
     )
   }
 
+  @SemiPublic()
   @Get('/:itineraryId/contingencies')
   async findContingencies(
     @Param('itineraryId') itineraryId: string,
@@ -418,6 +419,7 @@ export class ItineraryController {
     )
   }
 
+  @SemiPublic()
   @Get('/:itineraryId/contingencies/:contingencyId')
   async findContingencyById(
     @Param('itineraryId') itineraryId: string,
