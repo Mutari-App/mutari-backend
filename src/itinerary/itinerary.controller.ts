@@ -190,6 +190,19 @@ export class ItineraryController {
     )
   }
 
+  @Get('me/explore-by-latest-tags')
+  async findItinerariesByLatestTags(@GetUser() user) {
+    const itineraries =
+      await this.itineraryService.findItinerariesByLatestTags(user)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Explore itineraries successfully fetched',
+      },
+      { itineraries }
+    )
+  }
+
   @Get('views')
   async getViewItinerary(@GetUser() user: User) {
     const itineraries = await this.itineraryService.getViewItinerary(user)
