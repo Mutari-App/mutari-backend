@@ -65,6 +65,7 @@ describe('ItineraryController', () => {
     saveItinerary: jest.fn(),
     unsaveItinerary: jest.fn(),
     batchCheckUserSavedItinerary: jest.fn(),
+    findItinerariesByLatestTags: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -3170,6 +3171,179 @@ describe('ItineraryController', () => {
         }
       )
       expect(result).toEqual(mockResponse)
+    })
+  })
+
+  describe('findItinerariesByLatestTags', () => {
+    it('should return itineraries recommended based on user tags', async () => {
+      // Arrange
+      const mockUser = { id: 'user-123', email: 'test@example.com' }
+
+      const mockRecommendedItineraries = [
+        {
+          id: 'itinerary-1',
+          title: 'Beach Vacation',
+          description: 'Relaxing beach trip',
+          coverImage: 'beach.jpg',
+          tags: [{ tag: { id: 'tag1', name: 'Beach' } }],
+        },
+        {
+          id: 'itinerary-2',
+          title: 'Mountain Adventure',
+          description: 'Hiking in the mountains',
+          coverImage: 'mountain.jpg',
+          tags: [{ tag: { id: 'tag2', name: 'Mountain' } }],
+        },
+      ]
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Explore itineraries successfully fetched',
+        itineraries: mockRecommendedItineraries,
+      }
+
+      mockItineraryService.findItinerariesByLatestTags.mockResolvedValue(
+        mockRecommendedItineraries
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      // Act
+      const result = await controller.findItinerariesByLatestTags(mockUser)
+
+      // Assert
+      expect(
+        mockItineraryService.findItinerariesByLatestTags
+      ).toHaveBeenCalledWith(mockUser)
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Explore itineraries successfully fetched',
+        },
+        { itineraries: mockRecommendedItineraries }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should return empty array when no recommended itineraries are found', async () => {
+      // Arrange
+      const mockUser = { id: 'user-123', email: 'test@example.com' }
+      const emptyItineraries = []
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Explore itineraries successfully fetched',
+        itineraries: [],
+      }
+
+      mockItineraryService.findItinerariesByLatestTags.mockResolvedValue(
+        emptyItineraries
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      // Act
+      const result = await controller.findItinerariesByLatestTags(mockUser)
+
+      // Assert
+      expect(
+        mockItineraryService.findItinerariesByLatestTags
+      ).toHaveBeenCalledWith(mockUser)
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Explore itineraries successfully fetched',
+        },
+        { itineraries: [] }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should handle errors from service and propagate them', async () => {
+      // Arrange
+      const mockUser = { id: 'user-123', email: 'test@example.com' }
+      const mockError = new Error('Failed to fetch recommended itineraries')
+
+      mockItineraryService.findItinerariesByLatestTags.mockRejectedValue(
+        mockError
+      )
+
+      // Act & Assert
+      await expect(
+        controller.findItinerariesByLatestTags(mockUser)
+      ).rejects.toThrow(mockError)
+      expect(
+        mockItineraryService.findItinerariesByLatestTags
+      ).toHaveBeenCalledWith(mockUser)
+      expect(mockResponseUtil.response).not.toHaveBeenCalled()
+    })
+
+    it('should properly handle user without any itineraries', async () => {
+      // Arrange
+      const mockUserWithoutItineraries = {
+        id: 'new-user',
+        email: 'newuser@example.com',
+      }
+      const emptyItineraries = []
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Explore itineraries successfully fetched',
+        itineraries: [],
+      }
+
+      mockItineraryService.findItinerariesByLatestTags.mockResolvedValue(
+        emptyItineraries
+      )
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      // Act
+      const result = await controller.findItinerariesByLatestTags(
+        mockUserWithoutItineraries
+      )
+
+      // Assert
+      expect(
+        mockItineraryService.findItinerariesByLatestTags
+      ).toHaveBeenCalledWith(mockUserWithoutItineraries)
+      expect(mockResponseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Explore itineraries successfully fetched',
+        },
+        { itineraries: [] }
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should pass user object directly to service', async () => {
+      // Arrange
+      const mockComplexUser = {
+        id: 'user-complex',
+        email: 'complex@example.com',
+        firstName: 'Complex',
+        lastName: 'User',
+        roles: ['user'],
+        preferences: { theme: 'dark' },
+      }
+
+      const mockItineraries = [{ id: 'itinerary-x', title: 'Test Trip' }]
+
+      mockItineraryService.findItinerariesByLatestTags.mockResolvedValue(
+        mockItineraries
+      )
+      mockResponseUtil.response.mockReturnValue({
+        statusCode: HttpStatus.OK,
+        message: 'Explore itineraries successfully fetched',
+        itineraries: mockItineraries,
+      })
+
+      // Act
+      await controller.findItinerariesByLatestTags(mockComplexUser)
+
+      // Assert
+      // Verify the entire user object is passed, not just the ID
+      expect(
+        mockItineraryService.findItinerariesByLatestTags
+      ).toHaveBeenCalledWith(mockComplexUser)
     })
   })
 })
