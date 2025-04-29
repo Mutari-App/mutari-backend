@@ -240,6 +240,7 @@ export class ItineraryService {
           },
         },
         include: {
+          likes: true,
           sections: {
             include: {
               blocks: {
@@ -1137,11 +1138,27 @@ export class ItineraryService {
     return deletedAccess
   }
 
-  async findContingencyPlans(itineraryId: string, user: User) {
-    const itinerary = await this._checkReadItineraryPermission(
-      itineraryId,
-      user
-    )
+  async findContingencyPlans(itineraryId: string, user?: User) {
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: itineraryId },
+      include: {
+        access: {
+          where: { userId: user?.id },
+        },
+      },
+    })
+
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
+    }
+
+    if (itinerary.userId !== user?.id) {
+      if (!itinerary.isPublished && itinerary.access.length === 0)
+        throw new ForbiddenException(
+          'You do not have permission to view this itinerary'
+        )
+    }
+
     const contingencyPlans = await this.prisma.contingencyPlan.findMany({
       where: { itineraryId: itinerary.id },
       orderBy: {
@@ -1154,12 +1171,26 @@ export class ItineraryService {
   async findContingencyPlan(
     itineraryId: string,
     contingencyPlanId: string,
-    user: User
+    user?: User
   ) {
-    const itinerary = await this._checkReadItineraryPermission(
-      itineraryId,
-      user
-    )
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: itineraryId },
+      include: {
+        access: {
+          where: { userId: user?.id },
+        },
+      },
+    })
+
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary with ID ${itineraryId} not found`)
+    }
+    if (itinerary.userId !== user?.id) {
+      if (!itinerary.isPublished && itinerary.access.length === 0)
+        throw new ForbiddenException(
+          'You do not have permission to view this itinerary'
+        )
+    }
 
     const contingencyPlan = await this.prisma.contingencyPlan.findUnique({
       where: { id: contingencyPlanId },
@@ -1613,7 +1644,7 @@ export class ItineraryService {
   async getViewItinerary(user: User) {
     const userId = user.id
     const views = await this.prisma.itineraryView.findMany({
-      where: { userId: userId },
+      where: { userId },
       orderBy: { viewedAt: 'desc' },
       include: {
         itinerary: {
@@ -1630,18 +1661,45 @@ export class ItineraryService {
                 likes: true,
               },
             },
+            // Make sure to include tags if needed
+            tags: {
+              select: {
+                tag: true,
+              },
+            },
           },
         },
       },
     })
 
-    return views.map((view) => ({
-      ...view,
-      itinerary: {
-        ...view.itinerary,
-        likes: view.itinerary._count.likes,
-      },
-    }))
+    const formattedViews = views.map((view) => {
+      const itinerary = view.itinerary
+      const start = new Date(itinerary.startDate)
+      const end = new Date(itinerary.endDate)
+
+      return {
+        id: itinerary.id,
+        createdAt: itinerary.createdAt,
+        title: itinerary.title,
+        description: itinerary.description ?? null,
+        coverImage: itinerary.coverImage || null,
+        user: {
+          id: itinerary.user.id,
+          firstName: itinerary.user.firstName,
+          photoProfile: itinerary.user.photoProfile ?? null,
+        },
+        tags: itinerary.tags ?? [],
+        daysCount: Math.max(
+          1,
+          Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+        ),
+        likes: itinerary._count.likes ?? 0,
+      }
+    })
+
+    console.log('format views', formattedViews)
+
+    return formattedViews
   }
 
   async publishItinerary(

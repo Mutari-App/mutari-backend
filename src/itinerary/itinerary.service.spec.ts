@@ -1097,6 +1097,7 @@ describe('ItineraryService', () => {
           },
         },
         include: {
+          likes: true,
           sections: {
             include: {
               blocks: {
@@ -1237,6 +1238,7 @@ describe('ItineraryService', () => {
           },
         },
         include: {
+          likes: true,
           sections: {
             include: {
               blocks: {
@@ -1397,6 +1399,7 @@ describe('ItineraryService', () => {
           },
         },
         include: {
+          likes: true,
           sections: {
             include: {
               blocks: {
@@ -4417,18 +4420,27 @@ describe('ItineraryService', () => {
     it('should return list of itinerary views ordered by viewedAt desc', async () => {
       const user = { id: 'user123' }
 
-      const expectedResult = [
+      const now = new Date()
+
+      const expectedResultFromDb = [
         {
           itineraryId: 'a',
-          viewedAt: new Date(),
+          viewedAt: now,
           itinerary: {
             id: 'a',
             title: 'Sample Itinerary A',
+            description: null,
+            coverImage: '',
+            createdAt: now,
+            startDate: new Date('2025-04-28'),
+            endDate: new Date('2025-04-30'),
             userId: 'user1',
             user: {
               id: 'user1',
-              name: 'User 1',
+              firstName: 'User 1',
+              photoProfile: null,
             },
+            tags: [],
             _count: {
               likes: 10,
             },
@@ -4436,15 +4448,22 @@ describe('ItineraryService', () => {
         },
         {
           itineraryId: 'b',
-          viewedAt: new Date(),
+          viewedAt: now,
           itinerary: {
             id: 'b',
             title: 'Sample Itinerary B',
+            description: null,
+            coverImage: '',
+            createdAt: now,
+            startDate: new Date('2025-05-01'),
+            endDate: new Date('2025-05-03'),
             userId: 'user2',
             user: {
               id: 'user2',
-              name: 'User 2',
+              firstName: 'User 2',
+              photoProfile: null,
             },
+            tags: [],
             _count: {
               likes: 5,
             },
@@ -4452,7 +4471,9 @@ describe('ItineraryService', () => {
         },
       ]
 
-      mockPrismaService.itineraryView.findMany.mockResolvedValue(expectedResult)
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(
+        expectedResultFromDb
+      )
 
       const result = await service.getViewItinerary(user as any)
 
@@ -4467,11 +4488,17 @@ describe('ItineraryService', () => {
                   select: expect.objectContaining({
                     firstName: true,
                     photoProfile: true,
+                    id: true,
                   }),
                 }),
                 _count: expect.objectContaining({
                   select: expect.objectContaining({
                     likes: true,
+                  }),
+                }),
+                tags: expect.objectContaining({
+                  select: expect.objectContaining({
+                    tag: true,
                   }),
                 }),
               }),
@@ -4480,15 +4507,38 @@ describe('ItineraryService', () => {
         })
       )
 
-      expect(result).toEqual(
-        expectedResult.map((view) => ({
-          ...view,
-          itinerary: {
-            ...view.itinerary,
-            likes: view.itinerary._count.likes,
+      expect(result).toEqual([
+        {
+          id: 'a',
+          createdAt: now,
+          title: 'Sample Itinerary A',
+          description: null,
+          coverImage: null,
+          user: {
+            id: 'user1',
+            firstName: 'User 1',
+            photoProfile: null,
           },
-        }))
-      )
+          tags: [],
+          daysCount: 2,
+          likes: 10,
+        },
+        {
+          id: 'b',
+          createdAt: now,
+          title: 'Sample Itinerary B',
+          description: null,
+          coverImage: null,
+          user: {
+            id: 'user2',
+            firstName: 'User 2',
+            photoProfile: null,
+          },
+          tags: [],
+          daysCount: 2,
+          likes: 5,
+        },
+      ])
     })
   })
 
