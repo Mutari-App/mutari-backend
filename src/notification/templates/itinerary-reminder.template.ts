@@ -1,7 +1,15 @@
+import { REMINDER_OPTION } from '@prisma/client'
+
+/**
+ * Converts a REMINDER_OPTION enum value to its Indonesian text equivalent
+ * @param reminderOption The reminder option enum value
+ * @returns The Indonesian text representation of the reminder time
+ */
+
 export const itineraryReminderTemplate = (
   firstName: string,
   tripName: string,
-  timeLeft: string
+  reminderOption: string
 ): string => {
   return `<!DOCTYPE html>
     <html>
@@ -71,7 +79,7 @@ export const itineraryReminderTemplate = (
                             <img src="https://res.cloudinary.com/mutari/image/upload/logo-with-name.png" alt="Mutari Logo">
                     </div>
                     <h3>Halo, ${firstName}!</h3>
-                    <p>Perjalanan anda <b>${tripName}</b> akan mulai dalam waktu ${timeLeft}.</p>
+                    <p>Perjalanan anda <b>${tripName}</b> akan mulai dalam waktu ${reminderOption}.</p>
     
                     <div class="support">
                             <p>Butuh bantuan? Hubungi kami di <a href="mailto:support@mutari.id">support@mutari.id</a></p>

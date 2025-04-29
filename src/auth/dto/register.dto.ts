@@ -1,4 +1,4 @@
-import { VerifyRegistrationDTO } from './verify-registration-dto'
+import { VerifyRegistrationDTO } from './verify-registration.dto'
 import { IsString, MinLength, Matches } from 'class-validator'
 
 export class RegisterDTO extends VerifyRegistrationDTO {

@@ -11,11 +11,11 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common'
-import { CreateUserDTO } from './dto/create-user-dto'
-import { VerifyRegistrationDTO } from './dto/verify-registration-dto'
-import { RegisterDTO } from './dto/register-dto'
-import { newUserRegistrationTemplate } from './templates/new-user-registration-template'
-import { verificationCodeTemplate } from './templates/verification-code-template'
+import { CreateUserDTO } from './dto/create-user.dto'
+import { VerifyRegistrationDTO } from './dto/verify-registration.dto'
+import { RegisterDTO } from './dto/register.dto'
+import { newUserRegistrationTemplate } from './templates/new-user-registration.template'
+import { verificationCodeTemplate } from './templates/verification-code.template'
 import { DeepMockProxy, mockDeep } from 'jest-mock-extended'
 import { PrismaClient, Ticket, User } from '@prisma/client'
 
