@@ -4496,7 +4496,11 @@ describe('ItineraryService', () => {
                     likes: true,
                   }),
                 }),
-                tags: true,
+                tags: expect.objectContaining({
+                  select: expect.objectContaining({
+                    tag: true,
+                  }),
+                }),
               }),
             }),
           }),
