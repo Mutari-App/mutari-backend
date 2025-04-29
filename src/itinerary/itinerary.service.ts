@@ -1632,7 +1632,11 @@ export class ItineraryService {
               },
             },
             // Make sure to include tags if needed
-            tags: true,
+            tags: {
+              select: {
+                tag: true,
+              },
+            },
           },
         },
       },
@@ -1662,6 +1666,8 @@ export class ItineraryService {
         likes: itinerary._count.likes ?? 0,
       }
     })
+
+    console.log('format views', formattedViews)
 
     return formattedViews
   }
