@@ -1097,6 +1097,7 @@ describe('ItineraryService', () => {
           },
         },
         include: {
+          likes: true,
           sections: {
             include: {
               blocks: {
@@ -1237,6 +1238,7 @@ describe('ItineraryService', () => {
           },
         },
         include: {
+          likes: true,
           sections: {
             include: {
               blocks: {
@@ -1397,6 +1399,7 @@ describe('ItineraryService', () => {
           },
         },
         include: {
+          likes: true,
           sections: {
             include: {
               blocks: {
