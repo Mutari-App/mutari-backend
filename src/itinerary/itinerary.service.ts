@@ -169,7 +169,7 @@ export class ItineraryService {
       }
 
       if (itinerary.isPublished) {
-        await this.meilisearchService.addOrUpdateItinerary(itinerary)
+        this.meilisearchService.addOrUpdateItinerary(itinerary)
       }
 
       return itinerary
@@ -314,10 +314,10 @@ export class ItineraryService {
       }
 
       if (updatedItinerary.isPublished) {
-        await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+        this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
       } else {
         // If unpublished, remove from search index
-        await this.meilisearchService.deleteItinerary(id)
+        this.meilisearchService.deleteItinerary(id)
       }
 
       return updatedItinerary
@@ -986,7 +986,7 @@ export class ItineraryService {
     const result = await this.prisma.itinerary.delete({
       where: { id },
     })
-    await this.meilisearchService.deleteItinerary(id)
+    this.meilisearchService.deleteItinerary(id)
     return result
   }
 
@@ -1744,9 +1744,9 @@ export class ItineraryService {
           likes: true,
         },
       })
-      await this.meilisearchService.addOrUpdateItinerary(completeItinerary)
+      this.meilisearchService.addOrUpdateItinerary(completeItinerary)
     } else {
-      await this.meilisearchService.deleteItinerary(itineraryId)
+      this.meilisearchService.deleteItinerary(itineraryId)
     }
 
     return { updatedItinerary }
@@ -1832,7 +1832,7 @@ export class ItineraryService {
     })
 
     if (updatedItinerary.isPublished) {
-      await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+      this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
     }
   }
 
