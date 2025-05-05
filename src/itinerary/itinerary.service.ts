@@ -1856,41 +1856,6 @@ export class ItineraryService {
     return itineraryLike !== null
   }
 
-  async findTrendingItineraries() {
-    const trendingItineraries = await this.prisma.itinerary.findMany({
-      where: {
-        isPublished: true,
-      },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        coverImage: true,
-        startDate: true,
-        endDate: true,
-        likes: true,
-        user: {
-          select: {
-            photoProfile: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-      orderBy: {
-        likes: {
-          _count: 'desc',
-        },
-      },
-      take: 10,
-    })
-
-    return trendingItineraries.map((itinerary) => {
-      const { likes, ...itineraryWIthoutLikes } = itinerary
-      return { ...itineraryWIthoutLikes, likesCount: likes.length }
-    })
-  }
-
   async findItinerariesByLatestTags(user: User) {
     const latestItineraries = await this.prisma.itinerary.findMany({
       where: {
