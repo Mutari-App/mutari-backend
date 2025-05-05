@@ -26,6 +26,7 @@
     "migrate:dev": "prisma migrate dev",
     "generate:migrate:dev": "zenstack generate && pnpm run migrate:dev",
     "start:migrate:prod": "prisma migrate deploy && pnpm run start:prod",
+    "infisical:dev": "infisical run -- pnpm run start:dev",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org mutari --project mutari-backend ./dist && sentry-cli sourcemaps upload --org mutari --project mutari-backend ./dist"
   },
   "dependencies": {
