@@ -1807,6 +1807,19 @@ export class ItineraryService {
       where: { id: itineraryId },
       include: {
         likes: true,
+        sections: {
+          where: {
+            contingencyPlanId: null,
+          },
+          include: {
+            blocks: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -1818,7 +1831,9 @@ export class ItineraryService {
       },
     })
 
-    await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+    if (updatedItinerary.isPublished) {
+      await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+    }
   }
 
   async batchCheckUserSavedItinerary(itineraryIds: string[], user: User) {
