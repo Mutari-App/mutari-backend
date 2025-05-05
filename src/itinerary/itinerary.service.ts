@@ -1714,22 +1714,38 @@ export class ItineraryService {
       data: {
         isPublished,
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            photoProfile: true,
-          },
-        },
-      },
     })
 
     if (updatedItinerary.isPublished) {
-      await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+      const completeItinerary = await this.prisma.itinerary.findUnique({
+        where: { id: itineraryId },
+        include: {
+          sections: {
+            where: {
+              contingencyPlanId: null,
+            },
+            include: {
+              blocks: true,
+            },
+          },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
+          likes: true,
+        },
+      })
+      await this.meilisearchService.addOrUpdateItinerary(completeItinerary)
     } else {
-      // If unpublished, remove from search index
       await this.meilisearchService.deleteItinerary(itineraryId)
     }
 
