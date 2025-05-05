@@ -4024,13 +4024,67 @@ describe('ItineraryService', () => {
       ...mockItineraryData,
       isPublished: true,
     }
+    const completeItineraryData = {
+      ...publishedItinerary,
+      sections: [
+        {
+          id: 'section-1',
+          sectionNumber: 1,
+          title: 'Day 1',
+          blocks: [
+            {
+              id: 'block-1',
+              title: 'Block 1',
+              description: 'Block description',
+              location: 'Location 1',
+            },
+          ],
+        },
+      ],
+      tags: [
+        {
+          tag: {
+            id: 'tag-1',
+            name: 'Adventure',
+          },
+        },
+      ],
+      user: {
+        id: 'user-123',
+        firstName: 'John',
+        lastName: 'Doe',
+        photoProfile: 'profile.jpg',
+      },
+      likes: [
+        { userId: 'like-user-1', itineraryId: '1' },
+        { userId: 'like-user-2', itineraryId: '1' },
+      ],
+    }
+
     it('should publish the itinerary if all checks pass', async () => {
+      // Mock the permission check
       mockPrismaService.itinerary.findUnique = jest
         .fn()
-        .mockResolvedValue(mockItineraryData)
+        .mockImplementation((params) => {
+          if (params?.include?.access) {
+            // Initial permission check
+            return Promise.resolve(mockItineraryData)
+          } else if (params?.include?.sections) {
+            // Complete data fetch for Meilisearch
+            return Promise.resolve(completeItineraryData)
+          }
+          return Promise.resolve(mockItineraryData)
+        })
+
+      // Mock the update operation
       mockPrismaService.itinerary.update = jest
         .fn()
         .mockResolvedValue(publishedItinerary)
+
+      // Mock Meilisearch service
+      mockMeilisearchService.addOrUpdateItinerary = jest
+        .fn()
+        .mockResolvedValue(undefined)
 
       const result = await service.publishItinerary(
         mockItineraryData.id,
@@ -4038,6 +4092,7 @@ describe('ItineraryService', () => {
         true
       )
 
+      // Verify permission check
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: mockItineraryData.id },
         include: {
@@ -4047,21 +4102,71 @@ describe('ItineraryService', () => {
         },
       })
 
+      // Verify update operation
       expect(mockPrismaService.itinerary.update).toHaveBeenCalledWith({
         where: { id: mockItineraryData.id },
         data: { isPublished: true },
-        include: {
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              photoProfile: true,
-            },
-          },
-        },
       })
+
+      // Verify complete data fetch for Meilisearch
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: mockItineraryData.id },
+        include: expect.objectContaining({
+          sections: expect.objectContaining({
+            where: { contingencyPlanId: null },
+            include: { blocks: true },
+          }),
+          tags: expect.objectContaining({
+            include: { tag: true },
+          }),
+          user: expect.any(Object),
+          likes: true,
+        }),
+      })
+
+      // Verify Meilisearch update
+      expect(mockMeilisearchService.addOrUpdateItinerary).toHaveBeenCalledWith(
+        completeItineraryData
+      )
+
       expect(result).toEqual({ updatedItinerary: publishedItinerary })
+    })
+
+    it('should unpublish the itinerary and remove from search index', async () => {
+      // Mock the permission check
+      mockPrismaService.itinerary.findUnique = jest
+        .fn()
+        .mockResolvedValue(publishedItinerary)
+
+      // Mock the update operation
+      mockPrismaService.itinerary.update = jest.fn().mockResolvedValue({
+        ...publishedItinerary,
+        isPublished: false,
+      })
+
+      // Mock Meilisearch service
+      mockMeilisearchService.deleteItinerary = jest
+        .fn()
+        .mockResolvedValue(undefined)
+
+      const result = await service.publishItinerary(
+        mockItineraryData.id,
+        mockUser,
+        false
+      )
+
+      // Verify update operation
+      expect(mockPrismaService.itinerary.update).toHaveBeenCalledWith({
+        where: { id: mockItineraryData.id },
+        data: { isPublished: false },
+      })
+
+      // Verify Meilisearch delete
+      expect(mockMeilisearchService.deleteItinerary).toHaveBeenCalledWith(
+        mockItineraryData.id
+      )
+
+      expect(result.updatedItinerary.isPublished).toBe(false)
     })
 
     it('should throw NotFoundException if itinerary not found', async () => {
@@ -4074,6 +4179,8 @@ describe('ItineraryService', () => {
       )
 
       expect(mockPrismaService.itinerary.update).not.toHaveBeenCalled()
+      expect(mockMeilisearchService.addOrUpdateItinerary).not.toHaveBeenCalled()
+      expect(mockMeilisearchService.deleteItinerary).not.toHaveBeenCalled()
     })
 
     it('should throw ForbiddenException if user is not the owner', async () => {
@@ -4091,6 +4198,8 @@ describe('ItineraryService', () => {
       )
 
       expect(mockPrismaService.itinerary.update).not.toHaveBeenCalled()
+      expect(mockMeilisearchService.addOrUpdateItinerary).not.toHaveBeenCalled()
+      expect(mockMeilisearchService.deleteItinerary).not.toHaveBeenCalled()
     })
   })
 

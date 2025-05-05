@@ -169,7 +169,7 @@ export class ItineraryService {
       }
 
       if (itinerary.isPublished) {
-        await this.meilisearchService.addOrUpdateItinerary(itinerary)
+        this.meilisearchService.addOrUpdateItinerary(itinerary)
       }
 
       return itinerary
@@ -314,10 +314,10 @@ export class ItineraryService {
       }
 
       if (updatedItinerary.isPublished) {
-        await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+        this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
       } else {
         // If unpublished, remove from search index
-        await this.meilisearchService.deleteItinerary(id)
+        this.meilisearchService.deleteItinerary(id)
       }
 
       return updatedItinerary
@@ -986,7 +986,7 @@ export class ItineraryService {
     const result = await this.prisma.itinerary.delete({
       where: { id },
     })
-    await this.meilisearchService.deleteItinerary(id)
+    this.meilisearchService.deleteItinerary(id)
     return result
   }
 
@@ -1714,23 +1714,39 @@ export class ItineraryService {
       data: {
         isPublished,
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            photoProfile: true,
-          },
-        },
-      },
     })
 
     if (updatedItinerary.isPublished) {
-      await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+      const completeItinerary = await this.prisma.itinerary.findUnique({
+        where: { id: itineraryId },
+        include: {
+          sections: {
+            where: {
+              contingencyPlanId: null,
+            },
+            include: {
+              blocks: true,
+            },
+          },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
+          likes: true,
+        },
+      })
+      this.meilisearchService.addOrUpdateItinerary(completeItinerary)
     } else {
-      // If unpublished, remove from search index
-      await this.meilisearchService.deleteItinerary(itineraryId)
+      this.meilisearchService.deleteItinerary(itineraryId)
     }
 
     return { updatedItinerary }
@@ -1791,6 +1807,19 @@ export class ItineraryService {
       where: { id: itineraryId },
       include: {
         likes: true,
+        sections: {
+          where: {
+            contingencyPlanId: null,
+          },
+          include: {
+            blocks: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -1802,7 +1831,9 @@ export class ItineraryService {
       },
     })
 
-    await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+    if (updatedItinerary.isPublished) {
+      this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+    }
   }
 
   async batchCheckUserSavedItinerary(itineraryIds: string[], user: User) {
