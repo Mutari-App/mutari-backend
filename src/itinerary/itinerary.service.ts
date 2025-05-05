@@ -1892,22 +1892,40 @@ export class ItineraryService {
   }
 
   async findItinerariesByLatestTags(user: User) {
-    const latestItinerary = await this.prisma.itinerary.findFirst({
+    const latestItineraries = await this.prisma.itinerary.findMany({
       where: {
         userId: user.id,
       },
       orderBy: {
         updatedAt: 'desc',
       },
+      take: 3,
     })
 
-    if (!latestItinerary) {
+    const recentViewedItineraries = await this.prisma.itineraryView.findMany({
+      where: {
+        userId: user.id,
+      },
+      orderBy: { viewedAt: 'desc' },
+      select: {
+        itinerary: true,
+      },
+      take: 3,
+    })
+
+    const combinedItineraries = recentViewedItineraries
+      .map((view) => view.itinerary)
+      .concat(latestItineraries)
+
+    if (combinedItineraries.length === 0) {
       return []
     }
 
     const latestTags = await this.prisma.itineraryTag.findMany({
       where: {
-        itineraryId: latestItinerary.id,
+        itineraryId: {
+          in: combinedItineraries.map((itinerary) => itinerary.id),
+        },
       },
       select: {
         tag: {
@@ -1917,10 +1935,9 @@ export class ItineraryService {
           },
         },
       },
-      take: 3,
     })
 
-    if (!latestTags) return []
+    if (!latestTags || latestTags.length === 0) return []
 
     const mappedTags = latestTags.map((tag) => `"${tag.tag.id.toString()}"`)
 
