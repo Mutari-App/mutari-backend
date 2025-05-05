@@ -13,10 +13,12 @@ import {
 import { EmailService } from 'src/email/email.service'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
 import { UpdateContingencyPlanDto } from './dto/update-contingency-plan.dto'
+import { MeilisearchService } from 'src/meilisearch/meilisearch.service'
 
 describe('ItineraryService', () => {
   let service: ItineraryService
   let prismaService: PrismaService
+  let meilisearchService: MeilisearchService
 
   const mockPrismaService = {
     $transaction: jest
@@ -29,6 +31,7 @@ describe('ItineraryService', () => {
       findMany: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      findFirst: jest.fn(),
     },
     tag: {
       findMany: jest.fn(),
@@ -54,8 +57,31 @@ describe('ItineraryService', () => {
       create: jest.fn(),
       delete: jest.fn(),
     },
+    itineraryView: {
+      upsert: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      delete: jest.fn(),
+      update: jest.fn(),
+    },
+    itineraryLike: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      delete: jest.fn(),
+    },
+    itineraryTag: {
+      findMany: jest.fn(),
+    },
     _checkItineraryExists: jest.fn(),
     _checkContingencyCount: jest.fn(),
+  }
+
+  const mockMeilisearchService = {
+    syncItineraries: jest.fn(),
+    addOrUpdateItinerary: jest.fn(),
+    deleteItinerary: jest.fn(),
+    searchItineraries: jest.fn(),
   }
 
   const mockUser: User = {
@@ -106,11 +132,16 @@ describe('ItineraryService', () => {
             sendEmail: jest.fn(), // Mock any methods used in the service
           },
         },
+        {
+          provide: MeilisearchService,
+          useValue: mockMeilisearchService,
+        },
       ],
     }).compile()
 
     service = module.get<ItineraryService>(ItineraryService)
     prismaService = module.get<PrismaService>(PrismaService)
+    meilisearchService = module.get<MeilisearchService>(MeilisearchService)
 
     mockPrismaService.$transaction.mockReset()
     mockPrismaService.$transaction.mockImplementation((arg) => {
@@ -389,6 +420,14 @@ describe('ItineraryService', () => {
               tag: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
         },
       })
       expect(result).toEqual(expectedItinerary)
@@ -473,6 +512,14 @@ describe('ItineraryService', () => {
           tags: {
             include: {
               tag: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
             },
           },
         },
@@ -1214,6 +1261,7 @@ describe('ItineraryService', () => {
           },
         },
         include: {
+          likes: true,
           sections: {
             include: {
               blocks: {
@@ -1227,6 +1275,14 @@ describe('ItineraryService', () => {
           tags: {
             include: {
               tag: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
             },
           },
         },
@@ -1346,6 +1402,7 @@ describe('ItineraryService', () => {
           },
         },
         include: {
+          likes: true,
           sections: {
             include: {
               blocks: {
@@ -1359,6 +1416,14 @@ describe('ItineraryService', () => {
           tags: {
             include: {
               tag: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
             },
           },
         },
@@ -1498,6 +1563,7 @@ describe('ItineraryService', () => {
           },
         },
         include: {
+          likes: true,
           sections: {
             include: {
               blocks: {
@@ -1511,6 +1577,14 @@ describe('ItineraryService', () => {
           tags: {
             include: {
               tag: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
             },
           },
         },
@@ -1852,6 +1926,11 @@ describe('ItineraryService', () => {
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: 'non-existent-id' },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
     })
 
@@ -1871,6 +1950,11 @@ describe('ItineraryService', () => {
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: 'itinerary-123' },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
     })
 
@@ -1893,6 +1977,11 @@ describe('ItineraryService', () => {
       expect(result).toEqual(mockItinerary)
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: 'itinerary-123' },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
     })
   })
@@ -1901,18 +1990,37 @@ describe('ItineraryService', () => {
     it('should return itinerary when found and user has access to it', async () => {
       const mockItinerary = {
         id: '123',
-        userId: 'user-123',
+        userId: mockUser.id,
         sections: [
           {
             id: '1',
             blocks: [{ id: 'block1' }, { id: 'block2' }],
           },
         ],
+        access: [],
+        tags: [],
+        user: {
+          id: mockUser.id,
+          firstName: 'John',
+          lastName: 'Doe',
+          photoProfile: null,
+        },
+        _count: {
+          likes: 0,
+        },
+        pendingInvites: [],
       }
+
       mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
       const result = await service.findOne('123', mockUser)
 
-      expect(result).toEqual(mockItinerary)
+      const { access: _access, ...mockItineraryWithoutAccess } = mockItinerary
+
+      expect(result).toEqual({
+        ...mockItineraryWithoutAccess,
+        invitedUsers: [],
+      })
+
       expect(prismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: '123' },
         include: {
@@ -1934,6 +2042,31 @@ describe('ItineraryService', () => {
               tag: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
+          _count: {
+            select: { likes: true },
+          },
+          access: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  photoProfile: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          pendingInvites: true,
         },
       })
     })
@@ -1942,7 +2075,18 @@ describe('ItineraryService', () => {
       const mockItinerary = {
         id: '123',
         userId: 'different-user-123',
-        access: [{ userId: mockUser.id }],
+        access: [
+          {
+            userId: mockUser.id,
+            user: {
+              id: mockUser.id,
+              firstName: 'John',
+              lastName: 'Doe',
+              photoProfile: null,
+              email: 'john@example.com',
+            },
+          },
+        ],
         sections: [
           {
             id: '1',
@@ -1953,8 +2097,16 @@ describe('ItineraryService', () => {
       mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
       const result = await service.findOne('123', mockUser)
 
-      expect(result).toEqual(mockItinerary)
-      expect(prismaService.itinerary.findUnique).toHaveBeenCalledWith({
+      // Expected result after transformation by service
+      const expectedResult = {
+        ...mockItinerary,
+        invitedUsers: [mockItinerary.access[0].user],
+      }
+      delete expectedResult.access
+
+      expect(result).toEqual(expectedResult)
+
+      expect(prismaService.itinerary.findUnique).toHaveBeenNthCalledWith(1, {
         where: { id: '123' },
         include: {
           sections: {
@@ -1975,6 +2127,31 @@ describe('ItineraryService', () => {
               tag: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
+          _count: {
+            select: { likes: true },
+          },
+          access: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  photoProfile: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          pendingInvites: true,
         },
       })
     })
@@ -2614,6 +2791,11 @@ describe('ItineraryService', () => {
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
 
       expect(mockPrismaService.itinerary.delete).toHaveBeenCalledWith({
@@ -2632,6 +2814,11 @@ describe('ItineraryService', () => {
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
 
       expect(mockPrismaService.itinerary.delete).not.toHaveBeenCalled()
@@ -3444,6 +3631,11 @@ describe('ItineraryService', () => {
       // Assert
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
 
       expect(mockPrismaService.contingencyPlan.findUnique).toHaveBeenCalledWith(
@@ -3497,6 +3689,11 @@ describe('ItineraryService', () => {
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
 
       expect(mockPrismaService.contingencyPlan.findUnique).toHaveBeenCalledWith(
@@ -3543,6 +3740,11 @@ describe('ItineraryService', () => {
 
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
 
       expect(mockPrismaService.contingencyPlan.findUnique).toHaveBeenCalledWith(
@@ -3636,6 +3838,11 @@ describe('ItineraryService', () => {
       // Assert
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
 
       expect(mockPrismaService.contingencyPlan.findUnique).toHaveBeenCalledWith(
@@ -3837,6 +4044,11 @@ describe('ItineraryService', () => {
       // Assert
       expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
       })
 
       expect(mockPrismaService.contingencyPlan.findUnique).toHaveBeenCalledWith(
@@ -3952,6 +4164,2020 @@ describe('ItineraryService', () => {
           mockUser
         )
       ).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  describe('publishItinerary', () => {
+    const mockItineraryData = {
+      id: '1',
+      userId: 'user-123',
+      title: 'Itinerary Mock',
+      description: 'This is a mocked itinerary',
+      coverImage: 'image.jpg',
+      startDate: new Date(),
+      endDate: new Date(),
+      isPublished: false,
+      isCompleted: false,
+      sections: [],
+      locationCount: 0,
+      pendingInvites: [],
+      access: [],
+      invitedUsers: [],
+    }
+    const publishedItinerary = {
+      ...mockItineraryData,
+      isPublished: true,
+    }
+    const completeItineraryData = {
+      ...publishedItinerary,
+      sections: [
+        {
+          id: 'section-1',
+          sectionNumber: 1,
+          title: 'Day 1',
+          blocks: [
+            {
+              id: 'block-1',
+              title: 'Block 1',
+              description: 'Block description',
+              location: 'Location 1',
+            },
+          ],
+        },
+      ],
+      tags: [
+        {
+          tag: {
+            id: 'tag-1',
+            name: 'Adventure',
+          },
+        },
+      ],
+      user: {
+        id: 'user-123',
+        firstName: 'John',
+        lastName: 'Doe',
+        photoProfile: 'profile.jpg',
+      },
+      likes: [
+        { userId: 'like-user-1', itineraryId: '1' },
+        { userId: 'like-user-2', itineraryId: '1' },
+      ],
+    }
+
+    it('should publish the itinerary if all checks pass', async () => {
+      // Mock the permission check
+      mockPrismaService.itinerary.findUnique = jest
+        .fn()
+        .mockImplementation((params) => {
+          if (params?.include?.access) {
+            // Initial permission check
+            return Promise.resolve(mockItineraryData)
+          } else if (params?.include?.sections) {
+            // Complete data fetch for Meilisearch
+            return Promise.resolve(completeItineraryData)
+          }
+          return Promise.resolve(mockItineraryData)
+        })
+
+      // Mock the update operation
+      mockPrismaService.itinerary.update = jest
+        .fn()
+        .mockResolvedValue(publishedItinerary)
+
+      // Mock Meilisearch service
+      mockMeilisearchService.addOrUpdateItinerary = jest
+        .fn()
+        .mockResolvedValue(undefined)
+
+      const result = await service.publishItinerary(
+        mockItineraryData.id,
+        mockUser,
+        true
+      )
+
+      // Verify permission check
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: mockItineraryData.id },
+        include: {
+          access: {
+            where: { userId: mockUser.id },
+          },
+        },
+      })
+
+      // Verify update operation
+      expect(mockPrismaService.itinerary.update).toHaveBeenCalledWith({
+        where: { id: mockItineraryData.id },
+        data: { isPublished: true },
+      })
+
+      // Verify complete data fetch for Meilisearch
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: mockItineraryData.id },
+        include: expect.objectContaining({
+          sections: expect.objectContaining({
+            where: { contingencyPlanId: null },
+            include: { blocks: true },
+          }),
+          tags: expect.objectContaining({
+            include: { tag: true },
+          }),
+          user: expect.any(Object),
+          likes: true,
+        }),
+      })
+
+      // Verify Meilisearch update
+      expect(mockMeilisearchService.addOrUpdateItinerary).toHaveBeenCalledWith(
+        completeItineraryData
+      )
+
+      expect(result).toEqual({ updatedItinerary: publishedItinerary })
+    })
+
+    it('should unpublish the itinerary and remove from search index', async () => {
+      // Mock the permission check
+      mockPrismaService.itinerary.findUnique = jest
+        .fn()
+        .mockResolvedValue(publishedItinerary)
+
+      // Mock the update operation
+      mockPrismaService.itinerary.update = jest.fn().mockResolvedValue({
+        ...publishedItinerary,
+        isPublished: false,
+      })
+
+      // Mock Meilisearch service
+      mockMeilisearchService.deleteItinerary = jest
+        .fn()
+        .mockResolvedValue(undefined)
+
+      const result = await service.publishItinerary(
+        mockItineraryData.id,
+        mockUser,
+        false
+      )
+
+      // Verify update operation
+      expect(mockPrismaService.itinerary.update).toHaveBeenCalledWith({
+        where: { id: mockItineraryData.id },
+        data: { isPublished: false },
+      })
+
+      // Verify Meilisearch delete
+      expect(mockMeilisearchService.deleteItinerary).toHaveBeenCalledWith(
+        mockItineraryData.id
+      )
+
+      expect(result.updatedItinerary.isPublished).toBe(false)
+    })
+
+    it('should throw NotFoundException if itinerary not found', async () => {
+      mockPrismaService.itinerary.findUnique = jest.fn().mockResolvedValue(null)
+
+      await expect(
+        service.publishItinerary(mockItineraryData.id, mockUser, false)
+      ).rejects.toThrowError(
+        new NotFoundException('Itinerary with ID 1 not found')
+      )
+
+      expect(mockPrismaService.itinerary.update).not.toHaveBeenCalled()
+      expect(mockMeilisearchService.addOrUpdateItinerary).not.toHaveBeenCalled()
+      expect(mockMeilisearchService.deleteItinerary).not.toHaveBeenCalled()
+    })
+
+    it('should throw ForbiddenException if user is not the owner', async () => {
+      mockPrismaService.itinerary.findUnique = jest.fn().mockResolvedValue({
+        ...mockItineraryData,
+        userId: 'FAKE-ID',
+      })
+
+      await expect(
+        service.publishItinerary(mockItineraryData.id, mockUser, false)
+      ).rejects.toThrowError(
+        new ForbiddenException(
+          'You do not have permission to update this itinerary'
+        )
+      )
+
+      expect(mockPrismaService.itinerary.update).not.toHaveBeenCalled()
+      expect(mockMeilisearchService.addOrUpdateItinerary).not.toHaveBeenCalled()
+      expect(mockMeilisearchService.deleteItinerary).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('searchItineraries', () => {
+    it('should search itineraries with default parameters', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [
+          {
+            id: 'itinerary-1',
+            title: 'Trip to Japan',
+            description: 'Exploring Tokyo and Kyoto',
+            coverImage: 'japan.jpg',
+            user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag1', name: 'Asia' } }],
+            daysCount: 10,
+            likes: 15,
+          },
+          {
+            id: 'itinerary-2',
+            title: 'Beach Vacation',
+            description: 'Relaxing by the sea',
+            coverImage: 'beach.jpg',
+            user: { id: 'user2', firstName: 'Jane', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag2', name: 'Beach' } }],
+            daysCount: 5,
+            likes: 8,
+          },
+        ],
+        estimatedTotalHits: 2,
+      }
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with default parameters
+      const result = await service.searchItineraries()
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        '',
+        {
+          limit: 20,
+          offset: 0,
+          filter: undefined,
+          sort: ['likes:desc'],
+        }
+      )
+
+      // Verify the returned result format matches our interface
+      expect(result).toEqual({
+        data: [
+          {
+            id: 'itinerary-1',
+            title: 'Trip to Japan',
+            description: 'Exploring Tokyo and Kyoto',
+            coverImage: 'japan.jpg',
+            user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag1', name: 'Asia' } }],
+            daysCount: 10,
+            likes: 15,
+          },
+          {
+            id: 'itinerary-2',
+            title: 'Beach Vacation',
+            description: 'Relaxing by the sea',
+            coverImage: 'beach.jpg',
+            user: { id: 'user2', firstName: 'Jane', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag2', name: 'Beach' } }],
+            daysCount: 5,
+            likes: 8,
+          },
+        ],
+        metadata: {
+          total: 2,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should search itineraries with custom pagination', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [
+          {
+            id: 'itinerary-3',
+            title: 'Mountain Trek',
+            description: 'Hiking in the Alps',
+            user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag3', name: 'Mountain' } }],
+            daysCount: 7,
+            likes: 12,
+          },
+        ],
+        estimatedTotalHits: 5,
+      }
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with custom pagination
+      const result = await service.searchItineraries('mountain', 2, 4)
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        'mountain',
+        {
+          limit: 4,
+          offset: 4, // (page 2 - 1) * limit 4
+          filter: undefined,
+          sort: ['likes:desc'],
+        }
+      )
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: mockSearchResults.hits,
+        metadata: {
+          total: 5,
+          page: 2,
+          totalPages: 2, // ceil(5/4) = 2
+        },
+      })
+    })
+
+    it('should search itineraries with filters', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [
+          {
+            id: 'itinerary-4',
+            title: 'Summer Beach Trip',
+            description: 'Fun in the sun',
+            coverImage: undefined,
+            user: { id: 'user3', firstName: 'Alice', lastName: 'Smith' },
+            tags: [{ tag: { id: 'tag2', name: 'Beach' } }],
+            daysCount: 7,
+            likes: 25,
+          },
+        ],
+        estimatedTotalHits: 1,
+      }
+
+      const filterString = 'tags.tag.id IN ["tag2"] AND daysCount >= 7'
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with filter string
+      const result = await service.searchItineraries(
+        'beach',
+        1,
+        20,
+        filterString
+      )
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        'beach',
+        {
+          limit: 20,
+          offset: 0,
+          filter: filterString,
+          sort: ['likes:desc'],
+        }
+      )
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: mockSearchResults.hits,
+        metadata: {
+          total: 1,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should search with custom sort parameters', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [
+          {
+            id: 'itinerary-5',
+            title: 'Popular City Trip',
+            likes: 50,
+            daysCount: 4,
+            user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag4', name: 'City' } }],
+          },
+          {
+            id: 'itinerary-6',
+            title: 'Popular Mountain Retreat',
+            likes: 45,
+            daysCount: 5,
+            user: { id: 'user2', firstName: 'Jane', lastName: 'Doe' },
+            tags: [{ tag: { id: 'tag3', name: 'Mountain' } }],
+          },
+        ],
+        estimatedTotalHits: 2,
+      }
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with custom sort and order
+      const result = await service.searchItineraries(
+        'popular',
+        1,
+        20,
+        undefined,
+        'likes',
+        'desc'
+      )
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        'popular',
+        {
+          limit: 20,
+          offset: 0,
+          filter: undefined,
+          sort: ['likes:desc'],
+        }
+      )
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: mockSearchResults.hits,
+        metadata: {
+          total: 2,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should handle search with complex filters and sorting', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [
+          {
+            id: 'itinerary-7',
+            title: 'Long European Adventure',
+            daysCount: 21,
+            user: { id: 'user4', firstName: 'Bob', lastName: 'Johnson' },
+            tags: [
+              { tag: { id: 'tag5', name: 'Europe' } },
+              { tag: { id: 'tag6', name: 'Adventure' } },
+            ],
+            likes: 35,
+          },
+        ],
+        estimatedTotalHits: 1,
+      }
+
+      const filterString = 'tags.tag.id IN ["tag5", "tag6"] AND daysCount > 14'
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method with filter string and custom sort
+      const result = await service.searchItineraries(
+        'europe adventure',
+        1,
+        20,
+        filterString,
+        'daysCount',
+        'desc'
+      )
+
+      // Verify the method was called with expected parameters
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        'europe adventure',
+        {
+          limit: 20,
+          offset: 0,
+          filter: filterString,
+          sort: ['likes:desc', 'daysCount:desc'],
+        }
+      )
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: mockSearchResults.hits,
+        metadata: {
+          total: 1,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should handle search with no results', async () => {
+      // Setup mock response from MeilisearchService
+      const mockSearchResults = {
+        hits: [],
+        estimatedTotalHits: 0,
+      }
+
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Call the method
+      const result = await service.searchItineraries('nonexistent')
+
+      // Verify the returned result
+      expect(result).toEqual({
+        data: [],
+        metadata: {
+          total: 0,
+          page: 1,
+          totalPages: 1, // Should be at least 1
+        },
+      })
+    })
+  })
+
+  describe('getViewItinerary', () => {
+    it('should return list of itinerary views ordered by viewedAt desc', async () => {
+      const user = { id: 'user123' }
+
+      const now = new Date()
+
+      const expectedResultFromDb = [
+        {
+          itineraryId: 'a',
+          viewedAt: now,
+          itinerary: {
+            id: 'a',
+            title: 'Sample Itinerary A',
+            description: null,
+            coverImage: '',
+            createdAt: now,
+            startDate: new Date('2025-04-28'),
+            endDate: new Date('2025-04-30'),
+            userId: 'user1',
+            user: {
+              id: 'user1',
+              firstName: 'User 1',
+              photoProfile: null,
+            },
+            tags: [],
+            _count: {
+              likes: 10,
+            },
+          },
+        },
+        {
+          itineraryId: 'b',
+          viewedAt: now,
+          itinerary: {
+            id: 'b',
+            title: 'Sample Itinerary B',
+            description: null,
+            coverImage: '',
+            createdAt: now,
+            startDate: new Date('2025-05-01'),
+            endDate: new Date('2025-05-03'),
+            userId: 'user2',
+            user: {
+              id: 'user2',
+              firstName: 'User 2',
+              photoProfile: null,
+            },
+            tags: [],
+            _count: {
+              likes: 5,
+            },
+          },
+        },
+      ]
+
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(
+        expectedResultFromDb
+      )
+
+      const result = await service.getViewItinerary(user as any)
+
+      expect(mockPrismaService.itineraryView.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: user.id },
+          orderBy: { viewedAt: 'desc' },
+          include: expect.objectContaining({
+            itinerary: expect.objectContaining({
+              include: expect.objectContaining({
+                user: expect.objectContaining({
+                  select: expect.objectContaining({
+                    firstName: true,
+                    photoProfile: true,
+                    id: true,
+                  }),
+                }),
+                _count: expect.objectContaining({
+                  select: expect.objectContaining({
+                    likes: true,
+                  }),
+                }),
+                tags: expect.objectContaining({
+                  select: expect.objectContaining({
+                    tag: true,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        })
+      )
+
+      expect(result).toEqual([
+        {
+          id: 'a',
+          createdAt: now,
+          title: 'Sample Itinerary A',
+          description: null,
+          coverImage: null,
+          user: {
+            id: 'user1',
+            firstName: 'User 1',
+            photoProfile: null,
+          },
+          tags: [],
+          daysCount: 2,
+          likes: 10,
+        },
+        {
+          id: 'b',
+          createdAt: now,
+          title: 'Sample Itinerary B',
+          description: null,
+          coverImage: null,
+          user: {
+            id: 'user2',
+            firstName: 'User 2',
+            photoProfile: null,
+          },
+          tags: [],
+          daysCount: 2,
+          likes: 5,
+        },
+      ])
+    })
+  })
+
+  describe('createViewItinerary', () => {
+    it('should update viewedAt if itinerary already viewed', async () => {
+      const userViews = [{ itineraryId: 'it-1' }]
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(userViews)
+
+      await service.createViewItinerary('it-1', mockUser)
+
+      expect(mockPrismaService.itineraryView.update).toHaveBeenCalledWith({
+        where: {
+          userId_itineraryId: {
+            userId: 'user-123',
+            itineraryId: 'it-1',
+          },
+        },
+        data: { viewedAt: expect.any(Date) },
+      })
+    })
+
+    it('should delete oldest view if already 10 and add new', async () => {
+      const userViews = Array.from({ length: 10 }).map((_, i) => ({
+        id: `view-${i}`,
+        itineraryId: `it-${i}`,
+      }))
+
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(userViews)
+      mockPrismaService.itineraryView.create.mockResolvedValue({})
+
+      await service.createViewItinerary('new-itinerary', mockUser)
+
+      expect(mockPrismaService.itineraryView.delete).toHaveBeenCalledWith({
+        where: { id: 'view-9' }, // assumed last in list is oldest
+      })
+      expect(mockPrismaService.itineraryView.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'user-123',
+          itineraryId: 'new-itinerary',
+          viewedAt: expect.any(Date),
+        },
+      })
+    })
+
+    it('should just create view if less than 10 views', async () => {
+      const userViews = Array.from({ length: 5 }).map((_, i) => ({
+        id: `view-${i}`,
+        itineraryId: `it-${i}`,
+      }))
+
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(userViews)
+      mockPrismaService.itineraryView.create.mockResolvedValue({})
+
+      await service.createViewItinerary('it-100', mockUser)
+
+      expect(mockPrismaService.itineraryView.delete).not.toHaveBeenCalled()
+      expect(mockPrismaService.itineraryView.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'user-123',
+          itineraryId: 'it-100',
+          viewedAt: expect.any(Date),
+        },
+      })
+    })
+  })
+
+  describe('duplicateItinerary', () => {
+    it('should duplicate an itinerary succesfully', async () => {
+      // Arrange
+      const existingItinerary = {
+        id: 'itinerary-123',
+        userId: 'different-userid',
+        title: 'Beach Trip',
+        isPublished: true,
+        description: 'An relaxing beach vacation',
+        startDate: new Date('2025-03-11'),
+        endDate: new Date('2025-03-16'),
+        coverImage: 'beach2.jpg',
+        tags: [
+          {
+            id: 'itinerarytag-1',
+            itineraryId: 'itinerary-123',
+            tagId: 'tag-123',
+            createdAt: new Date(),
+            tag: {
+              id: 'tag-123',
+              name: 'Beach',
+              description: 'Beach activities',
+              iconUrl: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          },
+        ],
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                position: 0,
+                startTime: new Date('2025-03-11T14:00:00Z'),
+                endTime: new Date('2025-03-11T15:00:00Z'),
+                location: 'Updated Beach Resort',
+                price: 600000,
+                photoUrl: 'updated_resort.jpg',
+              },
+            ],
+          },
+        ],
+      }
+
+      const duplicatedItineraryDto: CreateItineraryDto = {
+        title: existingItinerary.title + ' (Copy)',
+        description: existingItinerary.description,
+        startDate: existingItinerary.startDate,
+        endDate: existingItinerary.endDate,
+        coverImage: existingItinerary.coverImage,
+        tags: ['tag-123'],
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                position: 0,
+                startTime: new Date('2025-03-11T14:00:00Z'),
+                endTime: new Date('2025-03-11T15:00:00Z'),
+                location: 'Updated Beach Resort',
+                price: 600000,
+                photoUrl: 'updated_resort.jpg',
+              },
+            ],
+          },
+        ],
+      }
+
+      const duplicatedItinerary = {
+        id: 'itinerary-789',
+        userId: mockUser.id,
+        title: duplicatedItineraryDto.title,
+        description: duplicatedItineraryDto.description,
+        coverImage: duplicatedItineraryDto.coverImage,
+        startDate: duplicatedItineraryDto.startDate,
+        endDate: duplicatedItineraryDto.endDate,
+        isPublished: false,
+        isCompleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        sections: [
+          {
+            id: 'section-1',
+            itineraryId: 'itinerary-789',
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            blocks: [
+              {
+                id: 'block-1',
+                sectionId: 'section-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                startTime: new Date('2025-03-11T14:00:00Z'),
+                endTime: new Date('2025-03-11T15:00:00Z'),
+                location: 'Updated Beach Resort',
+                price: 600000,
+                photoUrl: 'updated_resort.jpg',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ],
+          },
+        ],
+        tags: [
+          {
+            id: 'itinerarytag-1',
+            itineraryId: 'itinerary-123',
+            tagId: 'tag-123',
+            createdAt: new Date(),
+            tag: {
+              id: 'tag-123',
+              name: 'Beach',
+              description: 'Beach activities',
+              iconUrl: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          },
+        ],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        existingItinerary
+      )
+      mockPrismaService.tag.findMany.mockResolvedValue([
+        { id: 'tag-123', name: 'Beach' },
+      ])
+      mockPrismaService.itinerary.create.mockResolvedValue(duplicatedItinerary)
+
+      // Act
+      const result = await service.duplicateItinerary('itinerary-123', mockUser)
+
+      // Assert
+      expect(mockPrismaService.tag.findMany).toHaveBeenCalledWith({
+        where: {
+          id: {
+            in: ['tag-123'],
+          },
+        },
+      })
+      expect(mockPrismaService.$transaction).toHaveBeenCalled()
+      expect(mockPrismaService.itinerary.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUser.id,
+          title: duplicatedItinerary.title,
+          description: duplicatedItinerary.description,
+          coverImage: duplicatedItinerary.coverImage,
+          startDate: new Date(duplicatedItinerary.startDate),
+          endDate: new Date(duplicatedItinerary.endDate),
+          tags: {
+            create: [{ tag: { connect: { id: 'tag-123' } } }],
+          },
+          sections: {
+            create: [
+              {
+                sectionNumber: 1,
+                title: 'Updated Day 1',
+                blocks: {
+                  create: [
+                    {
+                      position: 0,
+                      blockType: BLOCK_TYPE.LOCATION,
+                      title: 'Updated Beach Resort',
+                      description: 'Check in at the updated beach resort',
+                      startTime: new Date('2025-03-11T14:00:00Z'),
+                      endTime: new Date('2025-03-11T15:00:00Z'),
+                      location: 'Updated Beach Resort',
+                      price: 600000,
+                      photoUrl: 'updated_resort.jpg',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+        include: {
+          sections: {
+            include: {
+              blocks: true,
+            },
+          },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+          user: {
+            select: {
+              firstName: true,
+              id: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
+        },
+      })
+      expect(result).toEqual(duplicatedItinerary)
+    })
+
+    it('should duplicate an itinerary with default fields succesfully', async () => {
+      // Arrange
+      const existingItinerary = {
+        id: 'itinerary-123',
+        userId: 'different-userid',
+        title: 'Beach Trip',
+        isPublished: true,
+        description: 'An relaxing beach vacation',
+        startDate: new Date('2025-03-11'),
+        endDate: new Date('2025-03-16'),
+        coverImage: 'beach2.jpg',
+        tags: [],
+        sections: [
+          {
+            sectionNumber: 1,
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                position: 0,
+              },
+            ],
+          },
+          {
+            sectionNumber: 2,
+            blocks: [],
+          },
+        ],
+      }
+
+      const duplicatedItineraryDto: CreateItineraryDto = {
+        title: existingItinerary.title + ' (Copy)',
+        description: existingItinerary.description,
+        startDate: existingItinerary.startDate,
+        endDate: existingItinerary.endDate,
+        coverImage: existingItinerary.coverImage,
+        tags: [],
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Hari ke-1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Updated Beach Resort',
+                description: 'Check in at the updated beach resort',
+                position: 0,
+                startTime: null,
+                endTime: null,
+                price: 0,
+              },
+            ],
+          },
+          {
+            sectionNumber: 2,
+            title: 'Hari ke-2',
+            blocks: [],
+          },
+        ],
+      }
+
+      const duplicatedItinerary = {
+        id: 'itinerary-789',
+        userId: mockUser.id,
+        title: duplicatedItineraryDto.title,
+        description: duplicatedItineraryDto.description,
+        coverImage: duplicatedItineraryDto.coverImage,
+        startDate: duplicatedItineraryDto.startDate,
+        endDate: duplicatedItineraryDto.endDate,
+        isPublished: false,
+        isCompleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        sections: [
+          {
+            id: 'section-1',
+            itineraryId: 'itinerary-789',
+            sectionNumber: 1,
+            title: 'Updated Day 1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            blocks: [
+              {
+                id: 'block-1',
+                sectionId: 'section-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Hari ke-1',
+                description: 'Check in at the updated beach resort',
+                startTime: null,
+                endTime: null,
+                price: 0,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ],
+          },
+          {
+            id: 'section-2',
+            itineraryId: 'itinerary-789',
+            sectionNumber: 2,
+            title: 'Hari ke-2',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            blocks: [],
+          },
+        ],
+        tags: [],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        existingItinerary
+      )
+      mockPrismaService.itinerary.create.mockResolvedValue(duplicatedItinerary)
+
+      // Act
+      const result = await service.duplicateItinerary('itinerary-123', mockUser)
+
+      // Assert
+      expect(mockPrismaService.$transaction).toHaveBeenCalled()
+      expect(mockPrismaService.itinerary.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUser.id,
+          title: duplicatedItinerary.title,
+          description: duplicatedItinerary.description,
+          coverImage: duplicatedItinerary.coverImage,
+          startDate: new Date(duplicatedItinerary.startDate),
+          endDate: new Date(duplicatedItinerary.endDate),
+          sections: {
+            create: [
+              {
+                sectionNumber: 1,
+                title: 'Hari ke-1',
+                blocks: {
+                  create: [
+                    {
+                      position: 0,
+                      blockType: BLOCK_TYPE.LOCATION,
+                      title: 'Updated Beach Resort',
+                      description: 'Check in at the updated beach resort',
+                      startTime: null,
+                      endTime: null,
+                      price: 0,
+                      location: undefined,
+                      photoUrl: undefined,
+                    },
+                  ],
+                },
+              },
+              {
+                sectionNumber: 2,
+                title: 'Hari ke-2',
+                blocks: {
+                  create: [],
+                },
+              },
+            ],
+          },
+          tags: undefined,
+        },
+        include: {
+          sections: {
+            include: {
+              blocks: true,
+            },
+          },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+          user: {
+            select: {
+              firstName: true,
+              id: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
+        },
+      })
+      expect(result).toEqual(duplicatedItinerary)
+    })
+
+    it('should throw NotFoundException if itinerary does not exist', async () => {
+      // Arrange
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      // Act & Assert
+      await expect(
+        service.duplicateItinerary('non-existent-id', mockUser)
+      ).rejects.toThrow(NotFoundException)
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+    })
+
+    it('should throw ForbiddenException if user does not own the itinerary and the itinerary is not public', async () => {
+      // Arrange
+      const existingItinerary = {
+        id: 'itinerary-123',
+        userId: 'another-user-id',
+        title: 'Beach Trip',
+        description: 'A relaxing beach vacation',
+        isPublished: false,
+        startDate: new Date('2025-03-10'),
+        endDate: new Date('2025-03-15'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Hari ke-1', // Default title
+            blocks: [], // Empty blocks
+          },
+        ],
+        pendingInvites: [],
+        access: [],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        existingItinerary
+      )
+
+      // Act & Assert
+      await expect(
+        service.duplicateItinerary('itinerary-123', mockUser)
+      ).rejects.toThrow(ForbiddenException)
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('duplicateContingency', () => {
+    it('should duplicate an itinerary contingency', async () => {
+      // Arrange
+      const existingContingencyPlan = {
+        id: 'contingency-plan-123',
+        itineraryId: 'itinerary-123',
+        title: 'Plan B', // Service determines this based on contingencyCount
+        description: 'Backup plan',
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1001,
+            title: 'Section 1',
+            blocks: [
+              {
+                id: 'block-1',
+                position: 0,
+                blockType: 'LOCATION',
+                title: 'Block 1',
+                description: 'Block 1 Description',
+                startTime: new Date('2025-03-10T14:00:00Z'),
+                endTime: new Date('2025-03-10T15:00:00Z'),
+                location: 'Location 1',
+                price: 100,
+                photoUrl: 'photo1.jpg',
+                routeToNext: null,
+                routeFromPrevious: null,
+              },
+            ],
+          },
+        ],
+      }
+
+      const duplicatedContingencyDto: CreateContingencyPlanDto = {
+        title: existingContingencyPlan.title,
+        description: existingContingencyPlan.description,
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Section 1',
+            blocks: [
+              {
+                blockType: 'LOCATION',
+                title: 'Block 1',
+                description: 'Block 1 Description',
+                startTime: new Date('2025-03-10T14:00:00Z'),
+                endTime: new Date('2025-03-10T15:00:00Z'),
+                location: 'Location 1',
+                price: 100,
+                photoUrl: 'photo1.jpg',
+                position: 0,
+                routeToNext: {
+                  sourceBlockId: 'source-block-1',
+                  destinationBlockId: 'destination-block-1',
+                  distance: 5000,
+                  duration: 900,
+                  polyline: 'abc123',
+                  transportMode: TRANSPORT_MODE.DRIVE,
+                },
+              },
+            ],
+          },
+        ],
+      }
+
+      const mockItinerary = {
+        id: 'itinerary-123',
+        isPublished: true,
+      }
+
+      const mockOtherItinerary = {
+        id: 'itinerary-789',
+        userId: mockUser.id,
+      }
+
+      const contingencyCount = 0
+
+      const duplicatedContingencyPlan = {
+        id: 'contingency-plan-123',
+        itineraryId: 'itinerary-789',
+        title: 'Plan B', // Service determines this based on contingencyCount
+        description: 'Backup plan',
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1001, // Modified by the service (sectionNumber + (contingencyCount + 1) * 1000)
+            title: 'Section 1',
+            blocks: [
+              {
+                id: 'block-1',
+                position: 0,
+                blockType: 'LOCATION',
+                title: 'Block 1',
+                description: 'Block 1 Description',
+                startTime: new Date('2025-03-10T14:00:00Z'),
+                endTime: new Date('2025-03-10T15:00:00Z'),
+                location: 'Location 1',
+                price: 100,
+                photoUrl: 'photo1.jpg',
+                routeToNext: null,
+                routeFromPrevious: null,
+              },
+            ],
+          },
+        ],
+      }
+
+      // Expected result with mapped section numbers
+      const expectedResult = {
+        ...duplicatedContingencyPlan,
+        sections: [
+          {
+            ...duplicatedContingencyPlan.sections[0],
+            sectionNumber: 1, // Mapped back to original (sectionNumber % 1000)
+          },
+        ],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValueOnce(
+        mockItinerary
+      )
+      mockPrismaService.itinerary.findUnique.mockResolvedValueOnce(
+        mockOtherItinerary
+      )
+      mockPrismaService.contingencyPlan.findUnique.mockResolvedValue(
+        existingContingencyPlan
+      )
+      mockPrismaService.contingencyPlan.count.mockResolvedValue(
+        contingencyCount
+      )
+      mockPrismaService.contingencyPlan.create.mockResolvedValue(
+        duplicatedContingencyPlan
+      )
+      mockPrismaService.route.create.mockResolvedValue({
+        id: 'route-1',
+        sourceBlockId: 'block-1',
+        destinationBlockId: 'block-2',
+        distance: 5000,
+        duration: 900,
+        polyline: 'abc123',
+        transportMode: TRANSPORT_MODE.DRIVE,
+      })
+
+      // Act
+      const result = await service.duplicateContingency(
+        'itinerary-789',
+        'itinerary-123',
+        'contingency-plan-123',
+        mockUser
+      )
+
+      // Assert
+      expect(mockPrismaService.$transaction).toHaveBeenCalled()
+      expect(mockPrismaService.contingencyPlan.create).toHaveBeenCalledWith({
+        data: {
+          itineraryId: mockOtherItinerary.id,
+          title: 'Plan B', // Determined by CONTINGENCY_TITLE[contingencyCount]
+          description: duplicatedContingencyDto.description,
+          sections: {
+            create: [
+              {
+                sectionNumber: 1001, // 1 + (0 + 1) * 1000
+                title: 'Section 1',
+                itinerary: {
+                  connect: { id: mockOtherItinerary.id },
+                },
+                blocks: {
+                  create: [
+                    {
+                      position: 0,
+                      blockType: 'LOCATION',
+                      title: 'Block 1',
+                      description: 'Block 1 Description',
+                      startTime: new Date('2025-03-10T14:00:00Z'),
+                      endTime: new Date('2025-03-10T15:00:00Z'),
+                      location: 'Location 1',
+                      price: 100,
+                      photoUrl: 'photo1.jpg',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+        include: {
+          sections: {
+            include: {
+              blocks: {
+                include: {
+                  routeToNext: true,
+                  routeFromPrevious: true,
+                },
+              },
+            },
+          },
+        },
+      })
+
+      expect(result).toEqual(expectedResult)
+    })
+
+    it('should throw NotFoundException if contingency does not exist', async () => {
+      // Arrange
+      const existingItinerary = {
+        id: 'itinerary-123',
+        userId: 'another-user-id',
+        title: 'Beach Trip',
+        description: 'A relaxing beach vacation',
+        isPublished: true,
+        startDate: new Date('2025-03-10'),
+        endDate: new Date('2025-03-15'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Hari ke-1', // Default title
+            blocks: [], // Empty blocks
+          },
+        ],
+        pendingInvites: [],
+        access: [],
+      }
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        existingItinerary
+      )
+      mockPrismaService.contingencyPlan.findUnique.mockResolvedValue(null)
+
+      // Act & Assert
+      await expect(
+        service.duplicateContingency(
+          'itinerary-345',
+          'itn-123',
+          'non-existant-contingency',
+          mockUser
+        )
+      ).rejects.toThrow(NotFoundException)
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+    })
+
+    it('should throw NotFoundException if itinerary does not exist', async () => {
+      // Arrange
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+      mockPrismaService.contingencyPlan.findUnique.mockResolvedValue(null)
+
+      // Act & Assert
+      await expect(
+        service.duplicateContingency(
+          'itinerary-345',
+          'non-existent-id',
+          '123',
+          mockUser
+        )
+      ).rejects.toThrow(NotFoundException)
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+    })
+
+    it('should throw ForbiddenException if user does not own the itinerary and the itinerary is not public', async () => {
+      // Arrange
+      const existingItinerary = {
+        id: 'itinerary-123',
+        userId: 'another-user-id',
+        title: 'Beach Trip',
+        description: 'A relaxing beach vacation',
+        isPublished: false,
+        startDate: new Date('2025-03-10'),
+        endDate: new Date('2025-03-15'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Hari ke-1', // Default title
+            blocks: [], // Empty blocks
+          },
+        ],
+        pendingInvites: [],
+        access: [],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(
+        existingItinerary
+      )
+      mockPrismaService.contingencyPlan.findUnique.mockResolvedValue(
+        'something'
+      )
+
+      // Act & Assert
+      await expect(
+        service.duplicateContingency(
+          'itinerary-345',
+          'itinerary-123',
+          '123',
+          mockUser
+        )
+      ).rejects.toThrow(ForbiddenException)
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('findTrendingItineraries', () => {
+    it('should return trending itineraries ordered by most likes', async () => {
+      // Arrange
+      const mockItineraries = [
+        {
+          id: 'itinerary-1',
+          title: 'Popular Trip',
+          description: 'A very popular itinerary',
+          coverImage: 'popular.jpg',
+          likes: [{ id: 'like-1' }, { id: 'like-2' }, { id: 'like-3' }],
+          user: {
+            firstName: 'John',
+            lastName: 'Doe',
+            photoProfile: 'profile.jpg',
+          },
+        },
+        {
+          id: 'itinerary-2',
+          title: 'Less Popular Trip',
+          description: 'A less popular itinerary',
+          coverImage: 'less-popular.jpg',
+          likes: [{ id: 'like-4' }],
+          user: {
+            firstName: 'Jane',
+            lastName: 'Smith',
+            photoProfile: 'profile2.jpg',
+          },
+        },
+      ]
+
+      mockPrismaService.itinerary.findMany.mockResolvedValue(mockItineraries)
+
+      // Act
+      const result = await service.findTrendingItineraries()
+
+      // Assert
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
+        where: {
+          isPublished: true,
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          coverImage: true,
+          startDate: true,
+          endDate: true,
+          likes: true,
+          user: {
+            select: {
+              photoProfile: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+        orderBy: {
+          likes: {
+            _count: 'desc',
+          },
+        },
+        take: 10,
+      })
+
+      expect(result).toHaveLength(2)
+
+      // Verify the likes array is replaced with a count
+      expect(result[0].likesCount).toBe(3)
+      expect(result[1].likesCount).toBe(1)
+
+      // Verify the expected structure
+      expect(result[0]).toEqual({
+        id: 'itinerary-1',
+        title: 'Popular Trip',
+        description: 'A very popular itinerary',
+        coverImage: 'popular.jpg',
+        likesCount: 3,
+        user: {
+          firstName: 'John',
+          lastName: 'Doe',
+          photoProfile: 'profile.jpg',
+        },
+      })
+    })
+
+    it('should return empty array when no trending itineraries exist', async () => {
+      // Arrange
+      mockPrismaService.itinerary.findMany.mockResolvedValue([])
+
+      // Act
+      const result = await service.findTrendingItineraries()
+
+      // Assert
+      expect(result).toEqual([])
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalled()
+    })
+
+    it('should handle itineraries with no likes', async () => {
+      // Arrange
+      const mockItineraries = [
+        {
+          id: 'itinerary-1',
+          title: 'No Likes Trip',
+          description: 'An itinerary with no likes',
+          coverImage: 'no-likes.jpg',
+          likes: [],
+          user: {
+            firstName: 'John',
+            lastName: 'Doe',
+            photoProfile: 'profile.jpg',
+          },
+        },
+      ]
+
+      mockPrismaService.itinerary.findMany.mockResolvedValue(mockItineraries)
+
+      // Act
+      const result = await service.findTrendingItineraries()
+
+      // Assert
+      expect(result[0].likesCount).toBe(0)
+    })
+  })
+
+  describe('saveItinerary', () => {
+    it('should save a public itinerary for the user', async () => {
+      const itineraryId = 'itn-123'
+      const mockItinerary = {
+        id: 'itn-123',
+        userId: 'some other user',
+        isPublished: true,
+      }
+
+      const expectedLikeResult = {
+        id: 'itnlike-1',
+        itineraryId: 'itn-123',
+        userId: mockUser.id,
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+      mockPrismaService.itineraryLike.findUnique.mockResolvedValue(null)
+      mockPrismaService.itineraryLike.create.mockResolvedValue(
+        expectedLikeResult
+      )
+
+      const result = await service.saveItinerary(itineraryId, mockUser)
+
+      expect(mockMeilisearchService.addOrUpdateItinerary).toHaveBeenCalledWith(
+        mockItinerary
+      )
+      expect(mockPrismaService.itineraryLike.create).toHaveBeenCalledWith({
+        data: {
+          itineraryId: itineraryId,
+          userId: mockUser.id,
+        },
+      })
+      expect(result).toEqual(expectedLikeResult)
+    })
+
+    it('should throw NotFoundException if itinerary does not exist', async () => {
+      const itineraryId = 'itn-123'
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.saveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(NotFoundException)
+    })
+
+    it('should throw ForbiddenException if user doesnt have access to itinerary', async () => {
+      const itineraryId = 'itn-123'
+      const mockItinerary = {
+        id: 'itn-123',
+        userId: 'some other user',
+        isPublished: false,
+        access: [],
+      }
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+
+      await expect(
+        service.saveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(ForbiddenException)
+    })
+
+    it('should throw BadRequestException if user owns the itinerary its trying to save', async () => {
+      const itineraryId = 'itn-123'
+      const mockItinerary = {
+        id: 'itn-123',
+        userId: mockUser.id,
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+      mockPrismaService.itineraryLike.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.saveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(BadRequestException)
+    })
+
+    it('should throw BadRequestException if user already saved the itinerary', async () => {
+      const itineraryId = 'itn-123'
+      const mockItinerary = {
+        id: 'itn-123',
+        userId: 'some other user',
+        isPublished: true,
+        access: [],
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+      mockPrismaService.itineraryLike.findUnique.mockResolvedValue('something')
+
+      await expect(
+        service.saveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  describe('unsaveItinerary', () => {
+    it('should unsave the itinerary for the user', async () => {
+      const itineraryId = 'itn-123'
+      const mockItinerary = {
+        id: 'itn-123',
+        userId: 'some other user',
+        isPublished: true,
+      }
+
+      const existingLike = {
+        id: 'itnlike-1',
+        itineraryId: 'itn-123',
+        userId: mockUser.id,
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+      mockPrismaService.itineraryLike.findUnique.mockResolvedValue(existingLike)
+
+      await service.unsaveItinerary(itineraryId, mockUser)
+
+      expect(mockMeilisearchService.addOrUpdateItinerary).toHaveBeenCalledWith(
+        mockItinerary
+      )
+      expect(mockPrismaService.itineraryLike.delete).toHaveBeenCalledWith({
+        where: { itineraryId_userId: { itineraryId, userId: mockUser.id } },
+      })
+    })
+
+    it('should throw NotFoundException if itinerary does not exist', async () => {
+      const itineraryId = 'itn-123'
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.unsaveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(NotFoundException)
+    })
+
+    it('should throw BadRequestException if user owns the itinerary its trying to unsave', async () => {
+      const itineraryId = 'itn-123'
+      const mockItinerary = {
+        id: 'itn-123',
+        userId: mockUser.id,
+      }
+
+      const existingLike = {
+        id: 'itnlike-1',
+        itineraryId: 'itn-123',
+        userId: mockUser.id,
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+      mockPrismaService.itineraryLike.findUnique.mockResolvedValue(existingLike)
+
+      await expect(
+        service.unsaveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(BadRequestException)
+    })
+
+    it('should throw BadRequestException if user does not have the itinerary saved', async () => {
+      const itineraryId = 'itn-123'
+      const mockItinerary = {
+        id: 'itn-123',
+        userId: 'some other user',
+        isPublished: true,
+      }
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockItinerary)
+      mockPrismaService.itineraryLike.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.unsaveItinerary(itineraryId, mockUser)
+      ).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  describe('batchCheckUserSavedItinerary', () => {
+    it('should check saved status of public itinerary ids for the user', async () => {
+      const itineraryIds = ['itn-123', 'itn-456', 'itn-789']
+      const expectedBatchSaveCheckResult = {
+        'itn-123': true,
+        'itn-456': false,
+        'itn-789': false,
+      }
+
+      const expectedLikeFetchResult = [
+        {
+          id: 'like-123',
+          itineraryId: 'itn-123',
+          userId: mockUser.id,
+        },
+      ]
+
+      mockPrismaService.itineraryLike.findMany.mockResolvedValue(
+        expectedLikeFetchResult
+      )
+
+      const result = await service.batchCheckUserSavedItinerary(
+        itineraryIds,
+        mockUser
+      )
+      expect(mockPrismaService.itineraryLike.findMany).toHaveBeenCalledWith({
+        where: { itineraryId: { in: itineraryIds }, userId: mockUser.id },
+      })
+      expect(result).toEqual(expectedBatchSaveCheckResult)
+    })
+
+    it('should still return even if user has not liked any itinerary on the list', async () => {
+      const itineraryIds = ['itn-123', 'itn-456', 'itn-789']
+      const expectedBatchSaveCheckResult = {
+        'itn-123': false,
+        'itn-456': false,
+        'itn-789': false,
+      }
+
+      const expectedLikeFetchResult = []
+
+      mockPrismaService.itineraryLike.findMany.mockResolvedValue(
+        expectedLikeFetchResult
+      )
+
+      const result = await service.batchCheckUserSavedItinerary(
+        itineraryIds,
+        mockUser
+      )
+      expect(mockPrismaService.itineraryLike.findMany).toHaveBeenCalledWith({
+        where: { itineraryId: { in: itineraryIds }, userId: mockUser.id },
+      })
+      expect(result).toEqual(expectedBatchSaveCheckResult)
+    })
+
+    it('should return empty array if the list is empty', async () => {
+      const itineraryIds = []
+      const expectedBatchSaveCheckResult = {}
+
+      const expectedLikeFetchResult = []
+
+      mockPrismaService.itineraryLike.findMany.mockResolvedValue(
+        expectedLikeFetchResult
+      )
+
+      const result = await service.batchCheckUserSavedItinerary(
+        itineraryIds,
+        mockUser
+      )
+      expect(mockPrismaService.itineraryLike.findMany).toHaveBeenCalledWith({
+        where: { itineraryId: { in: itineraryIds }, userId: mockUser.id },
+      })
+      expect(result).toEqual(expectedBatchSaveCheckResult)
+    })
+  })
+
+  describe('findItinerariesByLatestTags', () => {
+    it("should find itineraries by tags from user's latest itinerary", async () => {
+      // Arrange
+      const mockUser = { id: 'user-123', email: 'test@example.com' } as any
+      const mockLatestItinerary = {
+        id: 'itinerary-latest',
+        userId: mockUser.id,
+        title: 'Latest Trip',
+      }
+
+      const mockLatestTags = [
+        { tag: { id: 'tag1', name: 'Beach' } },
+        { tag: { id: 'tag2', name: 'Summer' } },
+        { tag: { id: 'tag3', name: 'Family' } },
+      ]
+
+      const mockSearchResults = {
+        hits: [
+          {
+            id: 'itinerary-1',
+            title: 'Beach Vacation',
+            tags: [{ tag: { id: 'tag1', name: 'Beach' } }],
+          },
+          {
+            id: 'itinerary-2',
+            title: 'Summer Holiday',
+            tags: [{ tag: { id: 'tag2', name: 'Summer' } }],
+          },
+        ],
+        estimatedTotalHits: 2,
+      }
+
+      mockPrismaService.itinerary.findFirst.mockResolvedValue(
+        mockLatestItinerary
+      )
+      mockPrismaService.itineraryTag.findMany.mockResolvedValue(mockLatestTags)
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Act
+      const result = await service.findItinerariesByLatestTags(mockUser)
+
+      // Assert
+      expect(mockPrismaService.itinerary.findFirst).toHaveBeenCalledWith({
+        where: { userId: mockUser.id },
+        orderBy: { updatedAt: 'desc' },
+      })
+
+      expect(mockPrismaService.itineraryTag.findMany).toHaveBeenCalledWith({
+        where: { itineraryId: mockLatestItinerary.id },
+        select: {
+          tag: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        take: 3,
+      })
+
+      expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
+        '',
+        {
+          limit: 8,
+          filter: `tags.tag.id IN ["tag1","tag2","tag3"]`,
+        }
+      )
+
+      expect(result).toEqual(mockSearchResults.hits)
+    })
+
+    it('should return empty array when user has no itineraries', async () => {
+      // Arrange
+      const mockUser = { id: 'user-new', email: 'newuser@example.com' } as any
+
+      // User has no itineraries
+      mockPrismaService.itinerary.findFirst.mockResolvedValue(null)
+
+      // Act
+      const result = await service.findItinerariesByLatestTags(mockUser)
+
+      // Assert
+      expect(mockPrismaService.itinerary.findFirst).toHaveBeenCalledWith({
+        where: { userId: mockUser.id },
+        orderBy: { updatedAt: 'desc' },
+      })
+
+      // Tag.findMany should not be called since there are no itineraries
+      expect(mockPrismaService.tag.findMany).not.toHaveBeenCalled()
+
+      // Should return empty array
+      expect(result).toEqual([])
+    })
+
+    it('should return empty array when latest itinerary has no tags', async () => {
+      // Arrange
+      const mockUser = { id: 'user-123', email: 'test@example.com' } as any
+      const mockLatestItinerary = {
+        id: 'itinerary-latest-no-tags',
+        userId: mockUser.id,
+        title: 'Latest Trip Without Tags',
+      }
+
+      // Latest itinerary has no tags
+      mockPrismaService.itinerary.findFirst.mockResolvedValue(
+        mockLatestItinerary
+      )
+      mockPrismaService.itineraryTag.findMany.mockResolvedValue([])
+
+      // Mocking search result for the case where no tag filters are applied
+      const mockSearchResults = {
+        hits: [],
+        estimatedTotalHits: 0,
+      }
+      mockMeilisearchService.searchItineraries.mockResolvedValue(
+        mockSearchResults
+      )
+
+      // Act
+      const result = await service.findItinerariesByLatestTags(mockUser)
+
+      // Assert
+      expect(mockPrismaService.itinerary.findFirst).toHaveBeenCalledWith({
+        where: { userId: mockUser.id },
+        orderBy: { updatedAt: 'desc' },
+      })
+
+      expect(mockPrismaService.itineraryTag.findMany).toHaveBeenCalledWith({
+        where: { itineraryId: mockLatestItinerary.id },
+        select: {
+          tag: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        take: 3,
+      })
+
+      // Tag.findMany should not be called since the implementation doesn't call it
+      expect(mockPrismaService.tag.findMany).not.toHaveBeenCalled()
+
+      // Should return empty array
+      expect(result).toEqual([])
+    })
+
+    it('should return empty array when latestTags is null', async () => {
+      // Arrange
+      const mockUser = { id: 'user-123', email: 'test@example.com' } as any
+      const mockLatestItinerary = {
+        id: 'itinerary-latest',
+        userId: mockUser.id,
+        title: 'Latest Trip',
+      }
+
+      // Mock the prisma service to return null for latestTags
+      mockPrismaService.itinerary.findFirst.mockResolvedValue(
+        mockLatestItinerary
+      )
+      mockPrismaService.itineraryTag.findMany.mockResolvedValue(null)
+
+      // Act
+      const result = await service.findItinerariesByLatestTags(mockUser)
+
+      // Assert
+      expect(mockPrismaService.itinerary.findFirst).toHaveBeenCalledWith({
+        where: { userId: mockUser.id },
+        orderBy: { updatedAt: 'desc' },
+      })
+
+      expect(mockPrismaService.itineraryTag.findMany).toHaveBeenCalledWith({
+        where: { itineraryId: mockLatestItinerary.id },
+        select: {
+          tag: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        take: 3,
+      })
+
+      // Tag.findMany should not be called
+      expect(mockPrismaService.tag.findMany).not.toHaveBeenCalled()
+
+      // Should return empty array when latestTags is null
+      expect(result).toEqual([])
+
+      // Meilisearch should not be called
+      expect(mockMeilisearchService.searchItineraries).not.toHaveBeenCalled()
     })
   })
 })

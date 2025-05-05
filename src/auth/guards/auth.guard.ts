@@ -8,6 +8,7 @@ import { Reflector } from '@nestjs/core'
 import { JwtService, TokenExpiredError } from '@nestjs/jwt'
 import { Request } from 'express'
 import { IS_PUBLIC_KEY } from 'src/common/decorators/public.decorator'
+import { IS_SEMI_PUBLIC_KEY } from 'src/common/decorators/semiPublic.decorator'
 import { PrismaService } from 'src/prisma/prisma.service'
 
 @Injectable()
@@ -24,6 +25,11 @@ export class AuthGuard implements CanActivate {
       context.getClass(),
     ])
 
+    const isSemiPublic = this.reflector.getAllAndOverride<boolean>(
+      IS_SEMI_PUBLIC_KEY,
+      [context.getHandler(), context.getClass()]
+    )
+
     if (isPublic) return true
     const request = context.switchToHttp().getRequest()
 
@@ -36,7 +42,12 @@ export class AuthGuard implements CanActivate {
     const rawToken = isLaunching
       ? request.cookies.accessToken
       : this.extractTokenFromHeader(request)
+
+    // If no token provided, still allow access
     if (!rawToken) {
+      if (isSemiPublic) {
+        return true
+      }
       throw new UnauthorizedException('token not provided')
     }
 
