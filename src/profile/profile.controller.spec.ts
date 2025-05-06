@@ -11,6 +11,7 @@ describe('ProfileController', () => {
     findOne: jest.fn(),
     getListItineraries: jest.fn(),
     getListItineraryLikes: jest.fn(),
+    updateProfile: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -179,6 +180,79 @@ describe('ProfileController', () => {
           itineraryLikes: [],
         },
       })
+    })
+  })
+  describe('updateProfile', () => {
+    it('should update a profile when called with valid ID and data', async () => {
+      const id = 'user-123'
+      const updateProfileDto = {
+        firstName: 'Updated',
+        lastName: 'Name',
+        phoneNumber: '087654321098',
+        birthDate: new Date('1990-01-01'),
+      }
+
+      const updatedProfile = {
+        id,
+        ...updateProfileDto,
+        updatedAt: new Date(),
+        createdAt: new Date(),
+        photoProfile: 'profile.png',
+        referralCode: 'ABCD1234',
+        isEmailConfirmed: true,
+        referredById: 'referred-user-123',
+        loyaltyPoints: 1000,
+      }
+
+      mockProfileService.updateProfile.mockResolvedValue(updatedProfile)
+
+      const result = await controller.updateProfile(id, updateProfileDto)
+
+      expect(result).toEqual({
+        meta: {
+          message: 'Profile updated successfully',
+          statusCode: HttpStatus.OK,
+        },
+        data: {
+          updatedProfile,
+        },
+      })
+      expect(mockProfileService.updateProfile).toHaveBeenCalledWith(
+        id,
+        updateProfileDto
+      )
+    })
+
+    it('should update only the fields provided in the DTO', async () => {
+      const id = 'user-123'
+      const updateProfileDto = {
+        firstName: 'Updated',
+      }
+
+      const updatedProfile = {
+        id,
+        firstName: 'Updated',
+        lastName: 'Doe',
+        phoneNumber: '081234123412',
+        updatedAt: new Date(),
+        createdAt: new Date(),
+        photoProfile: 'profile.png',
+        referralCode: 'ABCD1234',
+        isEmailConfirmed: true,
+        referredById: 'referred-user-123',
+        loyaltyPoints: 1000,
+        birthDate: new Date(),
+      }
+
+      mockProfileService.updateProfile.mockResolvedValue(updatedProfile)
+
+      const result = await controller.updateProfile(id, updateProfileDto)
+
+      expect(result.data.updatedProfile).toEqual(updatedProfile)
+      expect(mockProfileService.updateProfile).toHaveBeenCalledWith(
+        id,
+        updateProfileDto
+      )
     })
   })
 })

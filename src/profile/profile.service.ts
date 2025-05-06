@@ -143,4 +143,8 @@ export class ProfileService {
       }
     })
   }
+
+  async updateProfile(id: string, data: any) {
+    return null
+  }
 }

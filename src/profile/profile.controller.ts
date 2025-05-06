@@ -1,7 +1,16 @@
-import { Controller, Get, HttpCode, HttpStatus, Param } from '@nestjs/common'
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+} from '@nestjs/common'
 import { ProfileService } from './profile.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { Public } from 'src/common/decorators/public.decorator'
+import { UpdateProfileDTO } from './update-profile.dto'
 
 @Controller('profile')
 export class ProfileController {
@@ -24,6 +33,15 @@ export class ProfileController {
         profile,
       }
     )
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Patch(':id')
+  async updateProfile(
+    @Param('id') id: string,
+    @Body() updateProfileDto: UpdateProfileDTO
+  ) {
+    return null
   }
 
   @Public()
