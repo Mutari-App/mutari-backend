@@ -41,7 +41,19 @@ export class ProfileController {
     @Param('id') id: string,
     @Body() updateProfileDto: UpdateProfileDTO
   ) {
-    return null
+    const updatedProfile = await this.profileService.updateProfile(
+      id,
+      updateProfileDto
+    )
+    return this.responseUtil.response(
+      {
+        message: 'Profile updated successfully',
+        statusCode: HttpStatus.OK,
+      },
+      {
+        updatedProfile,
+      }
+    )
   }
 
   @Public()
