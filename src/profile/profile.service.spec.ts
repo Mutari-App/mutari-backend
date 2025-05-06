@@ -10,6 +10,7 @@ describe('ProfileService', () => {
   const mockPrismaService = {
     user: {
       findUnique: jest.fn(),
+      update: jest.fn(),
     },
     itinerary: {
       findMany: jest.fn(),
@@ -417,6 +418,67 @@ describe('ProfileService', () => {
       // Assert
       expect(result[0].totalDestinations).toBe(0)
       expect(result[0].totalLikes).toBe(2)
+    })
+  })
+
+  describe('updateProfile', () => {
+    it('should update user profile with valid data', async () => {
+      // Arrange
+      const userId = 'user123'
+      const updateData = {
+        firstName: 'Jane',
+        lastName: 'Smith',
+        photoProfile: 'new-avatar.jpg',
+      }
+
+      const mockUpdatedUser = {
+        id: userId,
+        firstName: 'Jane',
+        lastName: 'Smith',
+        photoProfile: 'new-avatar.jpg',
+        email: 'jane@example.com',
+      }
+
+      mockPrismaService.user.update.mockResolvedValue(mockUpdatedUser)
+
+      // Act
+      const result = await service.updateProfile(userId, updateData)
+
+      // Assert
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: updateData,
+      })
+      expect(result).toEqual(mockUpdatedUser)
+    })
+
+    it('should only update specified fields', async () => {
+      // Arrange
+      const userId = 'user123'
+      const updateData = {
+        firstName: 'John',
+        photoProfile: 'profile.jpg',
+      }
+
+      const mockUpdatedUser = {
+        id: userId,
+        firstName: 'John',
+        lastName: 'Doe', // unchanged
+        photoProfile: 'profile.jpg',
+        email: 'john@example.com',
+      }
+
+      mockPrismaService.user.update.mockResolvedValue(mockUpdatedUser)
+
+      // Act
+      const result = await service.updateProfile(userId, updateData)
+
+      // Assert
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: updateData,
+      })
+      expect(result).toEqual(mockUpdatedUser)
     })
   })
 })
