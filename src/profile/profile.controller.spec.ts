@@ -209,7 +209,6 @@ describe('ProfileController', () => {
       const updateProfileDto = {
         firstName: 'Updated',
         lastName: 'Name',
-        phoneNumber: '087654321098',
         birthDate: '1990-01-01',
       }
 
@@ -315,7 +314,7 @@ describe('ProfileController', () => {
   describe('changeEmailVerification', () => {
     it('should call verifyEmailChange service with correct parameters', async () => {
       const changeEmailVerificationDTO = {
-        code: '123456',
+        code: 'ABCD1234',
       }
 
       mockProfileService.verifyEmailChange.mockResolvedValue(undefined)
@@ -333,7 +332,7 @@ describe('ProfileController', () => {
 
     it('should return success response when email change verification is successful', async () => {
       const changeEmailVerificationDTO = {
-        code: '123456',
+        code: 'ABCD1234',
       }
 
       mockProfileService.verifyEmailChange.mockResolvedValue(undefined)
