@@ -1096,4 +1096,48 @@ describe('ProfileService', () => {
       expect(mockPrismaService.user.update).not.toHaveBeenCalled()
     })
   })
+
+  describe('updatePhotoProfile', () => {
+    it('should successfully update user photo profile', async () => {
+      // Arrange
+      const userId = 'user123'
+      const photoProfileUrl = 'https://example.com/photos/new-avatar.jpg'
+
+      const mockUpdatedUser = {
+        id: userId,
+        firstName: 'John',
+        lastName: 'Doe',
+        photoProfile: photoProfileUrl,
+        email: 'john@example.com',
+        isEmailConfirmed: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        birthDate: new Date('1990-01-01'),
+      }
+
+      mockPrismaService.user.update.mockResolvedValue(mockUpdatedUser)
+
+      // Act
+      const result = await service.updatePhotoProfile(userId, photoProfileUrl)
+
+      // Assert
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { photoProfile: photoProfileUrl },
+        select: {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          email: true,
+          isEmailConfirmed: true,
+          firstName: true,
+          lastName: true,
+          photoProfile: true,
+          birthDate: true,
+        },
+      })
+      expect(result).toEqual(mockUpdatedUser)
+      expect(result.photoProfile).toEqual(photoProfileUrl)
+    })
+  })
 })
