@@ -4,10 +4,12 @@ import { PrismaService } from 'src/prisma/prisma.service'
 import { BadRequestException, NotFoundException } from '@nestjs/common'
 import { EmailService } from 'src/email/email.service'
 import { VerificationCodeUtil } from 'src/common/utils/verification-code.util'
+import { User } from '@prisma/client'
 
 describe('ProfileService', () => {
   let service: ProfileService
   let prismaService: PrismaService
+  let emailService: EmailService
 
   const mockPrismaService = {
     user: {
@@ -22,6 +24,15 @@ describe('ProfileService', () => {
     },
   }
 
+  const mockEmailService = {
+    sendEmail: jest.fn(),
+  }
+
+  const mockVerificationCodeUtil = {
+    generate: jest.fn(),
+    verify: jest.fn(),
+  }
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -32,22 +43,18 @@ describe('ProfileService', () => {
         },
         {
           provide: EmailService,
-          useValue: {
-            sendEmail: jest.fn(),
-          },
+          useValue: mockEmailService,
         },
         {
           provide: VerificationCodeUtil,
-          useValue: {
-            generate: jest.fn(),
-            verify: jest.fn(),
-          },
+          useValue: mockVerificationCodeUtil,
         },
       ],
     }).compile()
 
     service = module.get<ProfileService>(ProfileService)
     prismaService = module.get<PrismaService>(PrismaService)
+    emailService = module.get<EmailService>(EmailService)
     jest.clearAllMocks()
   })
 
@@ -520,6 +527,88 @@ describe('ProfileService', () => {
         },
       })
       expect(result).toEqual(mockUpdatedUser)
+    })
+  })
+
+  describe('sendVerificationCode', () => {
+    it('should successfully generate and send verification code', async () => {
+      // Arrange
+      const mockUpdateUser = {
+        id: 'user123',
+        email: 'current@example.com',
+        firstName: 'John',
+      } as User
+      const newEmail = 'new@example.com'
+
+      // Mock PrismaService
+      mockPrismaService.user.findUnique.mockResolvedValue(null) // No existing user with this email
+
+      // Mock VerificationCodeUtil
+      const mockVerificationCode = {
+        id: 'code123',
+        uniqueCode: '123456',
+        userId: mockUpdateUser.id,
+        expiresAt: new Date(Date.now() + 3600000),
+      }
+      mockVerificationCodeUtil.generate.mockResolvedValue(mockVerificationCode)
+
+      // Act
+      await service.sendVerificationCode(mockUpdateUser, newEmail)
+
+      // Assert
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { email: newEmail },
+      })
+      expect(emailService.sendEmail).toHaveBeenCalledWith(
+        newEmail,
+        'Verifikasi Perubahan Email - Mutari',
+        expect.any(String)
+      )
+    })
+
+    it('should throw BadRequestException if email is the same as current email', async () => {
+      // Arrange
+      const user = {
+        id: 'user123',
+        email: 'current@example.com',
+        firstName: 'John',
+      } as User
+
+      // Act & Assert
+      await expect(
+        service.sendVerificationCode(user, user.email)
+      ).rejects.toThrow(
+        new BadRequestException('Email is the same as current email')
+      )
+
+      // Verify that no other methods were called
+      expect(mockPrismaService.user.findUnique).not.toHaveBeenCalled()
+    })
+
+    it('should throw BadRequestException if email is already in use', async () => {
+      // Arrange
+      const user = {
+        id: 'user123',
+        email: 'current@example.com',
+        firstName: 'John',
+      } as User
+      const existingEmail = 'existing@example.com'
+
+      // Mock finding an existing user with the email
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'otherUser456',
+        email: existingEmail,
+      })
+
+      // Act & Assert
+      await expect(
+        service.sendVerificationCode(user, existingEmail)
+      ).rejects.toThrow(new BadRequestException('Email already in use'))
+
+      // Verify prisma was called correctly
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { email: existingEmail },
+      })
     })
   })
 })
