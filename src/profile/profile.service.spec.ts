@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common'
 import { EmailService } from 'src/email/email.service'
 import { User } from '@prisma/client'
+import * as bcrypt from 'bcryptjs'
 
 describe('ProfileService', () => {
   let service: ProfileService
@@ -885,6 +886,129 @@ describe('ProfileService', () => {
         user.id,
         code
       )
+      expect(mockPrismaService.user.update).not.toHaveBeenCalled()
+    })
+  })
+  describe('changePassword', () => {
+    it('should throw UnauthorizedException when old password is correct', async () => {
+      // Arrange
+      const userId = 'user123'
+      const changePasswordDto = {
+        oldPassword: 'oldPassword123',
+        newPassword: 'newPassword123',
+        confirmPassword: 'newPassword123',
+      }
+
+      const mockUser = {
+        id: userId,
+        password: 'hashed_old_password',
+      }
+
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser)
+
+      jest
+        .spyOn(bcrypt, 'compare')
+        .mockImplementation(() => Promise.resolve(false))
+
+      // Act & Assert
+      await expect(
+        service.changePassword(userId, changePasswordDto)
+      ).rejects.toThrow(new UnauthorizedException('Old password is incorrect'))
+
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { id: userId },
+      })
+
+      expect(mockPrismaService.user.update).not.toHaveBeenCalled()
+    })
+
+    it('should throw BadRequestException when new password and confirmation do not match', async () => {
+      // Arrange
+      const userId = 'user123'
+      const changePasswordDto = {
+        oldPassword: 'oldPassword123',
+        newPassword: 'newPassword123',
+        confirmPassword: 'differentPassword',
+      }
+
+      const mockUser = {
+        id: userId,
+        password: 'hashed_old_password',
+      }
+
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser)
+      jest
+        .spyOn(bcrypt, 'compare')
+        .mockImplementation(() => Promise.resolve(true))
+
+      // Act & Assert
+      await expect(
+        service.changePassword(userId, changePasswordDto)
+      ).rejects.toThrow(
+        new BadRequestException('New password and confirmation do not match')
+      )
+
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { id: userId },
+      })
+      expect(mockPrismaService.user.update).not.toHaveBeenCalled()
+    })
+
+    it('should successfully change password when all validations pass', async () => {
+      // Arrange
+      const userId = 'user123'
+      const changePasswordDto = {
+        oldPassword: 'oldPassword123',
+        newPassword: 'newPassword123',
+        confirmPassword: 'newPassword123',
+      }
+
+      const mockUser = {
+        id: userId,
+        password: 'hashed_old_password',
+      }
+
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser)
+      jest
+        .spyOn(bcrypt, 'compare')
+        .mockImplementation(() => Promise.resolve(true))
+      jest.spyOn(bcrypt, 'genSaltSync').mockImplementation(() => 'some_salt')
+      jest
+        .spyOn(bcrypt, 'hash')
+        .mockImplementation(() => Promise.resolve('new_hashed_password'))
+
+      // Act
+      await service.changePassword(userId, changePasswordDto)
+
+      // Assert
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { id: userId },
+      })
+
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { password: 'new_hashed_password' },
+      })
+    })
+
+    it('should handle user not found', async () => {
+      // Arrange
+      const userId = 'nonexistent-user'
+      const changePasswordDto = {
+        oldPassword: 'oldPassword123',
+        newPassword: 'newPassword123',
+        confirmPassword: 'newPassword123',
+      }
+
+      mockPrismaService.user.findUnique.mockResolvedValue(null)
+
+      // Act & Assert
+      await expect(
+        service.changePassword(userId, changePasswordDto)
+      ).rejects.toThrow()
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { id: userId },
+      })
       expect(mockPrismaService.user.update).not.toHaveBeenCalled()
     })
   })
