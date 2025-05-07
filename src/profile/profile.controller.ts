@@ -98,9 +98,9 @@ export class ProfileController {
   @Patch('password')
   async changePassword(
     @GetUser() user: User,
-    @Body() changePaswordDTO: ChangePasswordDto
+    @Body() changePasswordDto: ChangePasswordDto
   ) {
-    await this.profileService.changePassword(user.id, changePaswordDTO)
+    await this.profileService.changePassword(user.id, changePasswordDto)
     return this.responseUtil.response({
       message: 'Password changed successfully',
       statusCode: HttpStatus.OK,
