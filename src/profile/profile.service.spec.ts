@@ -624,7 +624,11 @@ describe('ProfileService', () => {
   })
 
   describe('_generateChangeEmailTicket', () => {
+    const originalDelay = process.env.PRE_REGISTER_TICKET_REQUEST_DELAY
     process.env.PRE_REGISTER_TICKET_REQUEST_DELAY = '5000'
+    afterAll(() => {
+      process.env.PRE_REGISTER_TICKET_REQUEST_DELAY = originalDelay
+    })
 
     it('should successfully generate a change email ticket', async () => {
       // Arrange
@@ -890,7 +894,7 @@ describe('ProfileService', () => {
     })
   })
   describe('changePassword', () => {
-    it('should throw UnauthorizedException when old password is correct', async () => {
+    it('should throw UnauthorizedException when old password is incorrect', async () => {
       // Arrange
       const userId = 'user123'
       const changePasswordDto = {
