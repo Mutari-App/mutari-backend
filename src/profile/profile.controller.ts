@@ -113,7 +113,19 @@ export class ProfileController {
     @GetUser() user: User,
     @Body('photoProfileUrl') photoProfileUrl: string
   ) {
-    return null
+    const updatedProfile = await this.profileService.updatePhotoProfile(
+      user.id,
+      photoProfileUrl
+    )
+    return this.responseUtil.response(
+      {
+        message: 'Profile photo updated successfully',
+        statusCode: HttpStatus.OK,
+      },
+      {
+        updatedProfile,
+      }
+    )
   }
 
   @Public()
