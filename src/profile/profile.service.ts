@@ -301,7 +301,7 @@ export class ProfileService {
   }
 
   async verifyEmailChange(user: User, code: string) {
-    const newEmail = await this._verifyChangeEmailTicket(user.id, code)
+    const newEmail = await this._verifyChangeEmailTicket(code, user.id)
 
     await this.prisma.user.update({
       where: { id: user.id },
