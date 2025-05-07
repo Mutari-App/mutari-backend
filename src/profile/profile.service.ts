@@ -293,6 +293,18 @@ export class ProfileService {
       throw new UnauthorizedException('Invalid verification')
     }
 
+    // Check if the ticket has expired
+    const now = new Date().getTime()
+    const ticketCreatedAt = new Date(ticket.createdAt).getTime()
+    const timeDiff = now - ticketCreatedAt
+    const expiresIn = Number(
+      process.env.PRE_REGISTER_TICKET_EXPIRES_IN || 300000
+    )
+
+    if (timeDiff > expiresIn) {
+      throw new BadRequestException('Verification code has expired')
+    }
+
     await this.prisma.changeEmailTicket.deleteMany({
       where: {
         userId: userId,
