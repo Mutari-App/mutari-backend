@@ -83,7 +83,14 @@ export class ProfileController {
     @GetUser() user: User,
     @Body() changeEmailVerificationDTO: EmailChangeVerificationDto
   ) {
-    return null
+    await this.profileService.verifyEmailChange(
+      user,
+      changeEmailVerificationDTO.code
+    )
+    return this.responseUtil.response({
+      message: 'Email changed successfully',
+      statusCode: HttpStatus.OK,
+    })
   }
 
   @Public()
