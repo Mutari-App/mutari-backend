@@ -745,6 +745,11 @@ describe('ProfileService', () => {
   })
 
   describe('_verifyChangeEmailTicket', () => {
+    const originalDelay = process.env.PRE_REGISTER_TICKET_EXPIRES_IN
+    process.env.PRE_REGISTER_TICKET_EXPIRES_IN = '30000'
+    afterAll(() => {
+      process.env.PRE_REGISTER_TICKET_EXPIRES_IN = originalDelay
+    })
     it('should successfully verify a valid ticket', async () => {
       // Arrange
       const verificationCode = 'VALID123'
@@ -829,6 +834,49 @@ describe('ProfileService', () => {
         service._verifyChangeEmailTicket(verificationCode, userId)
       ).rejects.toThrow(UnauthorizedException)
 
+      expect(
+        mockPrismaService.changeEmailTicket.deleteMany
+      ).not.toHaveBeenCalled()
+    })
+
+    it('should throw BadRequestException when ticket has expired', async () => {
+      // Arrange
+      const verificationCode = 'EXPIRED123'
+      const userId = 'user123'
+      const expiresIn = 300000 // 5 minutes in milliseconds
+
+      // Create a date that's older than the expiration time
+      const now = new Date()
+      const oldDate = new Date(now.getTime() - expiresIn - 60000) // 1 minute past expiration
+
+      const mockTicket = {
+        id: 'ticket123',
+        uniqueCode: verificationCode,
+        newEmail: 'new@example.com',
+        createdAt: oldDate,
+        user: {
+          id: userId,
+        },
+      }
+
+      mockPrismaService.changeEmailTicket.findUnique.mockResolvedValue(
+        mockTicket
+      )
+
+      // Act & Assert
+      await expect(
+        service._verifyChangeEmailTicket(verificationCode, userId)
+      ).rejects.toThrow(
+        new BadRequestException('Verification code has expired')
+      )
+
+      // Verify prisma was called correctly
+      expect(
+        mockPrismaService.changeEmailTicket.findUnique
+      ).toHaveBeenCalledWith({
+        where: { uniqueCode: verificationCode },
+        include: { user: true },
+      })
       expect(
         mockPrismaService.changeEmailTicket.deleteMany
       ).not.toHaveBeenCalled()
