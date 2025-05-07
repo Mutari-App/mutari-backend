@@ -199,7 +199,7 @@ export class ProfileService {
       throw new BadRequestException('Email already in use')
     }
 
-    const verificationCode = await this._generateChangeEmailTicket(
+    const changeEmailTicket = await this._generateChangeEmailTicket(
       user.id,
       email
     )
@@ -208,7 +208,7 @@ export class ProfileService {
       'Verifikasi Perubahan Email - Mutari',
       emailChangeVerificationTemplate(
         user.firstName,
-        verificationCode.uniqueCode
+        changeEmailTicket.uniqueCode
       )
     )
   }
