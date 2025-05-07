@@ -38,11 +38,6 @@ describe('ProfileService', () => {
     sendEmail: jest.fn(),
   }
 
-  const mockVerificationCodeUtil = {
-    generate: jest.fn(),
-    verify: jest.fn(),
-  }
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
