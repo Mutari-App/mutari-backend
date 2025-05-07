@@ -100,7 +100,11 @@ export class ProfileController {
     @GetUser() user: User,
     @Body() changePaswordDTO: ChangePasswordDto
   ) {
-    return null
+    await this.profileService.changePassword(user.id, changePaswordDTO)
+    return this.responseUtil.response({
+      message: 'Password changed successfully',
+      statusCode: HttpStatus.OK,
+    })
   }
 
   @Public()
