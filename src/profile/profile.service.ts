@@ -10,6 +10,8 @@ import { UpdateProfileDTO } from './dto/update-profile.dto'
 import { EmailService } from 'src/email/email.service'
 import { emailChangeVerificationTemplate } from './change-email.template'
 import { customAlphabet } from 'nanoid'
+import { ChangePasswordDto } from './dto/change-password.dto'
+import * as bcrypt from 'bcryptjs'
 
 @Injectable()
 export class ProfileService {
@@ -305,5 +307,9 @@ export class ProfileService {
       where: { id: user.id },
       data: { email: newEmail },
     })
+  }
+
+  async changePassword(userId: string, data: ChangePasswordDto) {
+    return null
   }
 }

@@ -15,6 +15,7 @@ describe('ProfileController', () => {
     updateProfile: jest.fn(),
     sendVerificationCode: jest.fn(),
     verifyEmailChange: jest.fn(),
+    changePassword: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -345,6 +346,50 @@ describe('ProfileController', () => {
       expect(result).toEqual({
         meta: {
           message: 'Email changed successfully',
+          statusCode: HttpStatus.OK,
+        },
+        data: undefined,
+      })
+    })
+  })
+
+  describe('changePassword', () => {
+    beforeEach(() => {
+      mockProfileService.changePassword = jest.fn()
+    })
+
+    it('should call changePassword service with correct parameters', async () => {
+      const changePasswordDto = {
+        oldPassword: 'currentPassword123',
+        newPassword: 'newPassword123',
+        confirmPassword: 'newPassword123',
+      }
+
+      await controller.changePassword(mockUser, changePasswordDto)
+
+      expect(mockProfileService.changePassword).toHaveBeenCalledWith(
+        mockUser.id,
+        changePasswordDto
+      )
+    })
+
+    it('should return success response when password change is successful', async () => {
+      const changePasswordDto = {
+        oldPassword: 'currentPassword123',
+        newPassword: 'newPassword123',
+        confirmPassword: 'newPassword123',
+      }
+
+      mockProfileService.changePassword.mockResolvedValue(undefined)
+
+      const result = await controller.changePassword(
+        mockUser,
+        changePasswordDto
+      )
+
+      expect(result).toEqual({
+        meta: {
+          message: 'Password changed successfully',
           statusCode: HttpStatus.OK,
         },
         data: undefined,
