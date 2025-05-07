@@ -1011,5 +1011,37 @@ describe('ProfileService', () => {
       })
       expect(mockPrismaService.user.update).not.toHaveBeenCalled()
     })
+
+    it('should throw BadRequestException when new password is same as old password', async () => {
+      // Arrange
+      const userId = 'user123'
+      const changePasswordDto = {
+        oldPassword: 'samePassword123',
+        newPassword: 'samePassword123', // Same as oldPassword
+        confirmPassword: 'samePassword123',
+      }
+
+      const mockUser = {
+        id: userId,
+        password: 'hashed_old_password',
+      }
+
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser)
+      jest
+        .spyOn(bcrypt, 'compare')
+        .mockImplementation(() => Promise.resolve(true))
+
+      // Act & Assert
+      await expect(
+        service.changePassword(userId, changePasswordDto)
+      ).rejects.toThrow(
+        new BadRequestException('New password cannot be the same as old')
+      )
+
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { id: userId },
+      })
+      expect(mockPrismaService.user.update).not.toHaveBeenCalled()
+    })
   })
 })
