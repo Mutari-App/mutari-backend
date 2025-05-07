@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common'
 import { BLOCK_TYPE, User } from '@prisma/client'
 import { PrismaService } from 'src/prisma/prisma.service'
-import { UpdateProfileDTO } from './update-profile.dto'
+import { UpdateProfileDTO } from './dto/update-profile.dto'
 import * as bcrypt from 'bcryptjs'
 import { EmailService } from 'src/email/email.service'
 import { VerificationCodeUtil } from 'src/common/utils/verification-code.util'
@@ -179,5 +179,9 @@ export class ProfileService {
     })
 
     return updatedUser
+  }
+
+  async sendVerificationCode(id: string, email: string) {
+    return null
   }
 }

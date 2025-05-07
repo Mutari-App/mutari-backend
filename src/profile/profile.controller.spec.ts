@@ -13,10 +13,28 @@ describe('ProfileController', () => {
     getListItineraries: jest.fn(),
     getListItineraryLikes: jest.fn(),
     updateProfile: jest.fn(),
+    sendVerificationCode: jest.fn(),
   }
 
   const mockResponseUtil = {
     response: jest.fn((meta, data) => ({ meta, data })),
+  }
+
+  const mockUser: User = {
+    id: 'user-123',
+    updatedAt: new Date(),
+    createdAt: new Date(),
+    firstName: 'John',
+    lastName: 'Doe',
+    email: 'johndoe@example.com',
+    phoneNumber: '081234123412',
+    password: 'password-123',
+    photoProfile: 'profile.png',
+    referralCode: 'ABCD1234',
+    isEmailConfirmed: true,
+    referredById: 'referred-user-123',
+    loyaltyPoints: 1000,
+    birthDate: new Date(),
   }
 
   beforeEach(async () => {
@@ -184,23 +202,6 @@ describe('ProfileController', () => {
     })
   })
   describe('updateProfile', () => {
-    const user: User = {
-      id: 'user-123',
-      updatedAt: new Date(),
-      createdAt: new Date(),
-      firstName: 'John',
-      lastName: 'Doe',
-      email: 'johndoe@example.com',
-      phoneNumber: '081234123412',
-      password: 'password-123',
-      photoProfile: 'profile.png',
-      referralCode: 'ABCD1234',
-      isEmailConfirmed: true,
-      referredById: 'referred-user-123',
-      loyaltyPoints: 1000,
-      birthDate: new Date(),
-    }
-
     it('should update a profile when called with valid ID and data', async () => {
       const id = 'user-123'
       const updateProfileDto = {
@@ -224,7 +225,7 @@ describe('ProfileController', () => {
 
       mockProfileService.updateProfile.mockResolvedValue(updatedProfile)
 
-      const result = await controller.updateProfile(user, updateProfileDto)
+      const result = await controller.updateProfile(mockUser, updateProfileDto)
 
       expect(result).toEqual({
         meta: {
@@ -236,7 +237,7 @@ describe('ProfileController', () => {
         },
       })
       expect(mockProfileService.updateProfile).toHaveBeenCalledWith(
-        user.id,
+        mockUser.id,
         updateProfileDto
       )
     })
@@ -263,13 +264,49 @@ describe('ProfileController', () => {
 
       mockProfileService.updateProfile.mockResolvedValue(updatedProfile)
 
-      const result = await controller.updateProfile(user, updateProfileDto)
+      const result = await controller.updateProfile(mockUser, updateProfileDto)
 
       expect(result.data.updatedProfile).toEqual(updatedProfile)
       expect(mockProfileService.updateProfile).toHaveBeenCalledWith(
-        user.id,
+        mockUser.id,
         updateProfileDto
       )
+    })
+  })
+
+  describe('requestChangeEmail', () => {
+    it('should call sendVerificationCode service with correct parameters', async () => {
+      const requestEmailChangeDTO = {
+        email: 'newemail@example.com',
+      }
+
+      await controller.requestChangeEmail(mockUser, requestEmailChangeDTO)
+
+      expect(mockProfileService.sendVerificationCode).toHaveBeenCalledWith(
+        mockUser.id,
+        requestEmailChangeDTO.email
+      )
+    })
+
+    it('should return success response when email change request is successful', async () => {
+      const requestEmailChangeDTO = {
+        email: 'newemail@example.com',
+      }
+
+      mockProfileService.sendVerificationCode.mockResolvedValue(undefined)
+
+      const result = await controller.requestChangeEmail(
+        mockUser,
+        requestEmailChangeDTO
+      )
+
+      expect(result).toEqual({
+        meta: {
+          message: 'Verification code sent to your email',
+          statusCode: HttpStatus.OK,
+        },
+        data: undefined,
+      })
     })
   })
 })

@@ -6,13 +6,15 @@ import {
   HttpStatus,
   Param,
   Patch,
+  Post,
 } from '@nestjs/common'
 import { ProfileService } from './profile.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { Public } from 'src/common/decorators/public.decorator'
-import { UpdateProfileDTO } from './update-profile.dto'
+import { UpdateProfileDTO } from './dto/update-profile.dto'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { User } from '@prisma/client'
+import { RequestChangeEmailDto } from './dto/request-email-change.dto'
 
 @Controller('profile')
 export class ProfileController {
@@ -56,6 +58,15 @@ export class ProfileController {
         updatedProfile,
       }
     )
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('email/request-change')
+  async requestChangeEmail(
+    @GetUser() user: User,
+    @Body() requestEmailChangeDTO: RequestChangeEmailDto
+  ) {
+    return null
   }
 
   @Public()
