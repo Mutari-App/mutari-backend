@@ -327,6 +327,9 @@ export class ProfileService {
         'New password and confirmation do not match'
       )
 
+    if (data.newPassword === data.oldPassword)
+      throw new BadRequestException('New password cannot be the same as old')
+
     const saltOrRounds = bcrypt.genSaltSync(10)
     const hashedPassword = await bcrypt.hash(data.newPassword, saltOrRounds)
 
