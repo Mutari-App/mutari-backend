@@ -829,4 +829,63 @@ describe('ProfileService', () => {
       ).not.toHaveBeenCalled()
     })
   })
+  describe('verifyEmailChange', () => {
+    it('should successfully change user email after verification', async () => {
+      // Arrange
+      const user = {
+        id: 'user123',
+        email: 'old@example.com',
+        firstName: 'John',
+      } as User
+      const code = 'VALID123'
+      const newEmail = 'new@example.com'
+
+      // Mock _verifyChangeEmailTicket to return the new email
+      jest
+        .spyOn(service, '_verifyChangeEmailTicket')
+        .mockResolvedValue(newEmail)
+      mockPrismaService.user.update.mockResolvedValue({
+        ...user,
+        email: newEmail,
+      })
+
+      // Act
+      await service.verifyEmailChange(user, code)
+
+      // Assert
+      expect(service._verifyChangeEmailTicket).toHaveBeenCalledWith(
+        user.id,
+        code
+      )
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: user.id },
+        data: { email: newEmail },
+      })
+    })
+
+    it('should propagate errors from _verifyChangeEmailTicket', async () => {
+      // Arrange
+      const user = {
+        id: 'user123',
+        email: 'old@example.com',
+        firstName: 'John',
+      } as User
+      const code = 'INVALID123'
+
+      // Mock _verifyChangeEmailTicket to throw an error
+      jest
+        .spyOn(service, '_verifyChangeEmailTicket')
+        .mockRejectedValue(new NotFoundException('Verification code not found'))
+
+      // Act & Assert
+      await expect(service.verifyEmailChange(user, code)).rejects.toThrow(
+        NotFoundException
+      )
+      expect(service._verifyChangeEmailTicket).toHaveBeenCalledWith(
+        user.id,
+        code
+      )
+      expect(mockPrismaService.user.update).not.toHaveBeenCalled()
+    })
+  })
 })
