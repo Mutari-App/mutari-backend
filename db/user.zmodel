@@ -3,34 +3,42 @@ import 'tour'
 import 'itinerary'
 
 model User extends Base {
-    firstName        String
-    lastName         String?
-    email            String            @unique
-    phoneNumber      String?
-    password         String?
-    photoProfile     String?
-    referralCode     String?           @unique
-    isEmailConfirmed Boolean           @default(false)
-    referredById     String?
-    loyaltyPoints    Int               @default(0)
-    birthDate        DateTime?         @db.Date()
+    firstName          String
+    lastName           String?
+    email              String              @unique
+    phoneNumber        String?
+    password           String?
+    photoProfile       String?
+    referralCode       String?             @unique
+    isEmailConfirmed   Boolean             @default(false)
+    referredById       String?
+    loyaltyPoints      Int                 @default(0)
+    birthDate          DateTime?           @db.Date()
 
-    referredBy       User?             @relation("Referral", fields: [referredById], references: [id]) // Relasi ke user lain
-    referrals        User[]            @relation("Referral")
-    tickets          Ticket[]
-    tokens           Token[]
-    refreshTokens    RefreshToken[]
-    itineraries      Itinerary[]
-    itineraryAccess  ItineraryAccess[]
-    itineraryLikes   ItineraryLike[]
-    tourTickets      TourTicket[]
-    itineraryViews ItineraryView[]
+    referredBy         User?               @relation("Referral", fields: [referredById], references: [id]) // Relasi ke user lain
+    referrals          User[]              @relation("Referral")
+    tickets            Ticket[]
+    changeEmailTickets ChangeEmailTicket[]
+    tokens             Token[]
+    refreshTokens      RefreshToken[]
+    itineraries        Itinerary[]
+    itineraryAccess    ItineraryAccess[]
+    itineraryLikes     ItineraryLike[]
+    tourTickets        TourTicket[]
+    itineraryViews     ItineraryView[]
 }
 
 model Ticket extends Base {
     userId     String
     user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
     uniqueCode String? @unique()
+}
+
+model ChangeEmailTicket extends Base {
+    userId     String
+    user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    uniqueCode String? @unique()
+    newEmail   String
 }
 
 model Token extends Base {
