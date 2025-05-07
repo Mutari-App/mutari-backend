@@ -214,19 +214,20 @@ export class ProfileService {
   }
 
   async _generateChangeEmailTicket(userId: string, newEmail: string) {
-    const existedTickets = await this.prisma.changeEmailTicket.findMany({
-      where: {
-        userId: userId,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
+    const existedChangeEmailTickets =
+      await this.prisma.changeEmailTicket.findMany({
+        where: {
+          userId: userId,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      })
 
-    const latestExistedTicket = existedTickets[0]
+    const latestExistedChangeEmailTicket = existedChangeEmailTickets[0]
 
-    if (latestExistedTicket) {
-      const createdAt = new Date(latestExistedTicket.createdAt)
+    if (latestExistedChangeEmailTicket) {
+      const createdAt = new Date(latestExistedChangeEmailTicket.createdAt)
       const timeDiff = new Date().getTime() - createdAt.getTime()
       const REQUEST_DELAY = Number(
         process.env.PRE_REGISTER_TICKET_REQUEST_DELAY || 300000
@@ -238,8 +239,9 @@ export class ProfileService {
         )
     }
 
-    if (existedTickets.length >= 5) {
-      const lastExistedTicket = existedTickets[existedTickets.length - 1]
+    if (existedChangeEmailTickets.length >= 5) {
+      const lastExistedTicket =
+        existedChangeEmailTickets[existedChangeEmailTickets.length - 1]
       await this.prisma.changeEmailTicket.delete({
         where: {
           id: lastExistedTicket.id,
