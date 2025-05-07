@@ -283,7 +283,7 @@ describe('ProfileController', () => {
       await controller.requestChangeEmail(mockUser, requestEmailChangeDTO)
 
       expect(mockProfileService.sendVerificationCode).toHaveBeenCalledWith(
-        mockUser.id,
+        mockUser,
         requestEmailChangeDTO.email
       )
     })

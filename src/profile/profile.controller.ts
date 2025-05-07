@@ -67,7 +67,7 @@ export class ProfileController {
     @Body() requestEmailChangeDTO: RequestChangeEmailDto
   ) {
     await this.profileService.sendVerificationCode(
-      user.id,
+      user,
       requestEmailChangeDTO.email
     )
     return this.responseUtil.response({

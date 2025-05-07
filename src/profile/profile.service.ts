@@ -181,7 +181,7 @@ export class ProfileService {
     return updatedUser
   }
 
-  async sendVerificationCode(id: string, email: string) {
+  async sendVerificationCode(user: User, email: string) {
     return null
   }
 }
