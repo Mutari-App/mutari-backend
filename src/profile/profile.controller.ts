@@ -66,7 +66,14 @@ export class ProfileController {
     @GetUser() user: User,
     @Body() requestEmailChangeDTO: RequestChangeEmailDto
   ) {
-    return null
+    await this.profileService.sendVerificationCode(
+      user.id,
+      requestEmailChangeDTO.email
+    )
+    return this.responseUtil.response({
+      message: 'Verification code sent to your email',
+      statusCode: HttpStatus.OK,
+    })
   }
 
   @Public()
