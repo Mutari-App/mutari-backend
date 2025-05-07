@@ -3,14 +3,21 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
-import { BLOCK_TYPE } from '@prisma/client'
+import { BLOCK_TYPE, User } from '@prisma/client'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { UpdateProfileDTO } from './update-profile.dto'
 import * as bcrypt from 'bcryptjs'
+import { EmailService } from 'src/email/email.service'
+import { VerificationCodeUtil } from 'src/common/utils/verification-code.util'
+import { emailChangeVerificationTemplate } from './change-email.template'
 
 @Injectable()
 export class ProfileService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+    private readonly verificationCodeUtil: VerificationCodeUtil
+  ) {}
 
   async findOne(id: string) {
     const user = await this.prisma.user.findUnique({
@@ -151,23 +158,12 @@ export class ProfileService {
   }
 
   async updateProfile(id: string, data: UpdateProfileDTO) {
-    if (data.password) {
-      if (data.password !== data.confirmPassword) {
-        throw new BadRequestException(
-          'Password does not match with confirm password'
-        )
-      }
-      const saltOrRounds = bcrypt.genSaltSync(10)
-      data.password = await bcrypt.hash(data.password, saltOrRounds)
-    }
-
     const updatedUser = await this.prisma.user.update({
       where: { id },
       data: {
         firstName: data.firstName,
         lastName: data.lastName,
         birthDate: data.birthDate,
-        password: data.password,
       },
       select: {
         id: true,
