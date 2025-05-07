@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common'
 import { BLOCK_TYPE } from '@prisma/client'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { UpdateProfileDTO } from './update-profile.dto'
@@ -146,9 +150,29 @@ export class ProfileService {
   }
 
   async updateProfile(id: string, data: UpdateProfileDTO) {
+    if (data.password && data.password != data.confirmPassword) {
+      throw new BadRequestException('Password does not match')
+    }
+
     const updatedUser = await this.prisma.user.update({
       where: { id },
-      data,
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        birthDate: data.birthDate,
+        password: data.password,
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        email: true,
+        isEmailConfirmed: true,
+        firstName: true,
+        lastName: true,
+        photoProfile: true,
+        birthDate: true,
+      },
     })
 
     return updatedUser
