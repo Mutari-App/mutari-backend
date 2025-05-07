@@ -1,9 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { ProfileService } from './profile.service'
 import { PrismaService } from 'src/prisma/prisma.service'
-import { BadRequestException, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common'
 import { EmailService } from 'src/email/email.service'
-import { VerificationCodeUtil } from 'src/common/utils/verification-code.util'
 import { User } from '@prisma/client'
 
 describe('ProfileService', () => {
@@ -21,6 +24,13 @@ describe('ProfileService', () => {
     },
     itineraryLike: {
       findMany: jest.fn(),
+    },
+    changeEmailTicket: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      deleteMany: jest.fn(),
+      delete: jest.fn(),
     },
   }
 
@@ -44,10 +54,6 @@ describe('ProfileService', () => {
         {
           provide: EmailService,
           useValue: mockEmailService,
-        },
-        {
-          provide: VerificationCodeUtil,
-          useValue: mockVerificationCodeUtil,
         },
       ],
     }).compile()
@@ -540,17 +546,22 @@ describe('ProfileService', () => {
       } as User
       const newEmail = 'new@example.com'
 
+      // Mock the verification code generation
+      const mockVerificationCode = {
+        id: 'ticket123',
+        uniqueCode: 'ABC12345',
+        userId: mockUpdateUser.id,
+        newEmail,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      jest
+        .spyOn(service, '_generateChangeEmailTicket')
+        .mockResolvedValue(mockVerificationCode)
+
       // Mock PrismaService
       mockPrismaService.user.findUnique.mockResolvedValue(null) // No existing user with this email
-
-      // Mock VerificationCodeUtil
-      const mockVerificationCode = {
-        id: 'code123',
-        uniqueCode: '123456',
-        userId: mockUpdateUser.id,
-        expiresAt: new Date(Date.now() + 3600000),
-      }
-      mockVerificationCodeUtil.generate.mockResolvedValue(mockVerificationCode)
 
       // Act
       await service.sendVerificationCode(mockUpdateUser, newEmail)
@@ -559,6 +570,10 @@ describe('ProfileService', () => {
       expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
         where: { email: newEmail },
       })
+      expect(service._generateChangeEmailTicket).toHaveBeenCalledWith(
+        mockUpdateUser.id,
+        newEmail
+      )
       expect(emailService.sendEmail).toHaveBeenCalledWith(
         newEmail,
         'Verifikasi Perubahan Email - Mutari',
@@ -609,6 +624,214 @@ describe('ProfileService', () => {
       expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
         where: { email: existingEmail },
       })
+    })
+  })
+
+  describe('_generateChangeEmailTicket', () => {
+    process.env.PRE_REGISTER_TICKET_REQUEST_DELAY = '5000'
+
+    it('should successfully generate a change email ticket', async () => {
+      // Arrange
+      const userId = 'user123'
+      const newEmail = 'new@example.com'
+      const mockTicket = {
+        id: 'ticket123',
+        uniqueCode: 'ABC12345',
+        userId,
+        newEmail,
+        createdAt: new Date(),
+      }
+
+      // Mock the _generateVerificationCode method
+      jest
+        .spyOn(service, '_generateVerificationCode')
+        .mockReturnValue('ABC12345')
+
+      mockPrismaService.changeEmailTicket.findMany.mockResolvedValue([])
+      mockPrismaService.changeEmailTicket.findUnique.mockResolvedValue(null)
+      mockPrismaService.changeEmailTicket.create.mockResolvedValue(mockTicket)
+
+      // Act
+      const result = await service._generateChangeEmailTicket(userId, newEmail)
+
+      // Assert
+      expect(mockPrismaService.changeEmailTicket.findMany).toHaveBeenCalledWith(
+        {
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+        }
+      )
+      expect(service._generateVerificationCode).toHaveBeenCalled()
+      expect(mockPrismaService.changeEmailTicket.create).toHaveBeenCalledWith({
+        data: {
+          newEmail,
+          uniqueCode: 'ABC12345',
+          user: {
+            connect: { id: userId },
+          },
+        },
+      })
+      expect(result).toEqual(mockTicket)
+    })
+
+    it('should throw BadRequestException when requesting too soon', async () => {
+      // Arrange
+      const userId = 'user123'
+      const newEmail = 'new@example.com'
+      const now = new Date()
+      const recentDate = new Date(now.getTime() - 60000) // 1 minute ago
+
+      const mockTicket = {
+        id: 'ticket123',
+        uniqueCode: 'ABC12345',
+        userId,
+        newEmail,
+        createdAt: recentDate,
+      }
+
+      mockPrismaService.changeEmailTicket.findMany.mockResolvedValue([
+        mockTicket,
+      ])
+
+      // Mock environment variable
+      const originalEnv = process.env.PRE_REGISTER_TICKET_REQUEST_DELAY
+      process.env.PRE_REGISTER_TICKET_REQUEST_DELAY = '300000' // 5 minutes
+
+      // Act & Assert
+      await expect(
+        service._generateChangeEmailTicket(userId, newEmail)
+      ).rejects.toThrow(BadRequestException)
+
+      // Cleanup
+      process.env.PRE_REGISTER_TICKET_REQUEST_DELAY = originalEnv
+    })
+
+    it('should delete oldest ticket when there are 5 or more existing tickets', async () => {
+      process.env.PRE_REGISTER_TICKET_REQUEST_DELAY = '0'
+
+      // Arrange
+      const userId = 'user123'
+      const newEmail = 'new@example.com'
+
+      // Create 5 mock tickets with different dates
+      const mockTickets = Array.from({ length: 5 }, (_, i) => ({
+        id: `ticket${i}`,
+        uniqueCode: `CODE${i}`,
+        userId,
+        newEmail,
+        createdAt: new Date(Date.now() - i * 3600000), // each 1 hour older
+      }))
+
+      mockPrismaService.changeEmailTicket.findMany.mockResolvedValue(
+        mockTickets
+      )
+      mockPrismaService.changeEmailTicket.findUnique.mockResolvedValue(null)
+      mockPrismaService.changeEmailTicket.create.mockResolvedValue({
+        id: 'newTicket',
+        uniqueCode: 'ABC12345',
+        userId,
+        newEmail,
+        createdAt: new Date(),
+      })
+
+      // Act
+      await service._generateChangeEmailTicket(userId, newEmail)
+
+      // Assert
+      expect(mockPrismaService.changeEmailTicket.delete).toHaveBeenCalledWith({
+        where: { id: mockTickets[4].id },
+      })
+    })
+  })
+
+  describe('_verifyChangeEmailTicket', () => {
+    it('should successfully verify a valid ticket', async () => {
+      // Arrange
+      const verificationCode = 'VALID123'
+      const userId = 'user123'
+      const newEmail = 'new@example.com'
+
+      const mockTicket = {
+        id: 'ticket123',
+        uniqueCode: verificationCode,
+        newEmail,
+        user: {
+          id: userId,
+        },
+      }
+
+      mockPrismaService.changeEmailTicket.findUnique.mockResolvedValue(
+        mockTicket
+      )
+      mockPrismaService.changeEmailTicket.deleteMany.mockResolvedValue({
+        count: 1,
+      })
+
+      // Act
+      const result = await service._verifyChangeEmailTicket(
+        verificationCode,
+        userId
+      )
+
+      // Assert
+      expect(
+        mockPrismaService.changeEmailTicket.findUnique
+      ).toHaveBeenCalledWith({
+        where: { uniqueCode: verificationCode },
+        include: { user: true },
+      })
+      expect(
+        mockPrismaService.changeEmailTicket.deleteMany
+      ).toHaveBeenCalledWith({
+        where: { userId },
+      })
+      expect(result).toBe(newEmail)
+    })
+
+    it('should throw NotFoundException when ticket is not found', async () => {
+      // Arrange
+      const verificationCode = 'INVALID123'
+      const userId = 'user123'
+
+      mockPrismaService.changeEmailTicket.findUnique.mockResolvedValue(null)
+
+      // Act & Assert
+      await expect(
+        service._verifyChangeEmailTicket(verificationCode, userId)
+      ).rejects.toThrow(NotFoundException)
+
+      expect(
+        mockPrismaService.changeEmailTicket.deleteMany
+      ).not.toHaveBeenCalled()
+    })
+
+    it('should throw UnauthorizedException when ticket does not belong to the user', async () => {
+      // Arrange
+      const verificationCode = 'VALID123'
+      const userId = 'user123'
+      const wrongUserId = 'user456'
+
+      const mockTicket = {
+        id: 'ticket123',
+        uniqueCode: verificationCode,
+        newEmail: 'new@example.com',
+        user: {
+          id: wrongUserId, // Different from userId
+        },
+      }
+
+      mockPrismaService.changeEmailTicket.findUnique.mockResolvedValue(
+        mockTicket
+      )
+
+      // Act & Assert
+      await expect(
+        service._verifyChangeEmailTicket(verificationCode, userId)
+      ).rejects.toThrow(UnauthorizedException)
+
+      expect(
+        mockPrismaService.changeEmailTicket.deleteMany
+      ).not.toHaveBeenCalled()
     })
   })
 })
