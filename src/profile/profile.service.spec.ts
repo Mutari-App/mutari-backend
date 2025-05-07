@@ -448,6 +448,17 @@ describe('ProfileService', () => {
       expect(mockPrismaService.user.update).toHaveBeenCalledWith({
         where: { id: userId },
         data: updateData,
+        select: {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          email: true,
+          isEmailConfirmed: true,
+          firstName: true,
+          lastName: true,
+          photoProfile: true,
+          birthDate: true,
+        },
       })
       expect(result).toEqual(mockUpdatedUser)
     })
@@ -477,6 +488,17 @@ describe('ProfileService', () => {
       expect(mockPrismaService.user.update).toHaveBeenCalledWith({
         where: { id: userId },
         data: updateData,
+        select: {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          email: true,
+          isEmailConfirmed: true,
+          firstName: true,
+          lastName: true,
+          photoProfile: true,
+          birthDate: true,
+        },
       })
       expect(result).toEqual(mockUpdatedUser)
     })
