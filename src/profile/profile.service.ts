@@ -6,6 +6,7 @@ import {
 import { BLOCK_TYPE } from '@prisma/client'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { UpdateProfileDTO } from './update-profile.dto'
+import * as bcrypt from 'bcryptjs'
 
 @Injectable()
 export class ProfileService {
@@ -150,8 +151,14 @@ export class ProfileService {
   }
 
   async updateProfile(id: string, data: UpdateProfileDTO) {
-    if (data.password && data.password != data.confirmPassword) {
-      throw new BadRequestException('Password does not match')
+    if (data.password) {
+      if (data.password !== data.confirmPassword) {
+        throw new BadRequestException(
+          'Password does not match with confirm password'
+        )
+      }
+      const saltOrRounds = bcrypt.genSaltSync(10)
+      data.password = await bcrypt.hash(data.password, saltOrRounds)
     }
 
     const updatedUser = await this.prisma.user.update({

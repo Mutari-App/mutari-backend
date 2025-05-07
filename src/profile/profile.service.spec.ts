@@ -518,7 +518,7 @@ describe('ProfileService', () => {
 
       // Act & Assert
       await expect(service.updateProfile(userId, updateData)).rejects.toThrow(
-        new BadRequestException('Password does not match')
+        new BadRequestException('Password does not match with confirm password')
       )
       expect(mockPrismaService.user.update).not.toHaveBeenCalled()
     })
