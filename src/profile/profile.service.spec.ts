@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { ProfileService } from './profile.service'
 import { PrismaService } from 'src/prisma/prisma.service'
-import { NotFoundException } from '@nestjs/common'
+import { BadRequestException, NotFoundException } from '@nestjs/common'
 
 describe('ProfileService', () => {
   let service: ProfileService
@@ -447,7 +447,10 @@ describe('ProfileService', () => {
       // Assert
       expect(mockPrismaService.user.update).toHaveBeenCalledWith({
         where: { id: userId },
-        data: updateData,
+        data: {
+          firstName: mockUpdatedUser.firstName,
+          lastName: mockUpdatedUser.lastName,
+        },
         select: {
           id: true,
           createdAt: true,
@@ -468,7 +471,6 @@ describe('ProfileService', () => {
       const userId = 'user123'
       const updateData = {
         firstName: 'John',
-        photoProfile: 'profile.jpg',
       }
 
       const mockUpdatedUser = {
@@ -487,7 +489,9 @@ describe('ProfileService', () => {
       // Assert
       expect(mockPrismaService.user.update).toHaveBeenCalledWith({
         where: { id: userId },
-        data: updateData,
+        data: {
+          firstName: updateData.firstName,
+        },
         select: {
           id: true,
           createdAt: true,
@@ -499,6 +503,101 @@ describe('ProfileService', () => {
           photoProfile: true,
           birthDate: true,
         },
+      })
+      expect(result).toEqual(mockUpdatedUser)
+    })
+
+    it('should throw BadRequestException when password and confirmPassword do not match', async () => {
+      // Arrange
+      const userId = 'user123'
+      const updateData = {
+        firstName: 'John',
+        password: 'newPassword123',
+        confirmPassword: 'differentPassword',
+      }
+
+      // Act & Assert
+      await expect(service.updateProfile(userId, updateData)).rejects.toThrow(
+        new BadRequestException('Password does not match')
+      )
+      expect(mockPrismaService.user.update).not.toHaveBeenCalled()
+    })
+
+    it('should update user password when password and confirmPassword match', async () => {
+      // Arrange
+      const userId = 'user123'
+      const updateData = {
+        firstName: 'John',
+        password: 'newPassword123',
+        confirmPassword: 'newPassword123',
+      }
+
+      const mockUpdatedUser = {
+        id: userId,
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john@example.com',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isEmailConfirmed: true,
+        photoProfile: 'profile.jpg',
+        birthDate: new Date(),
+      }
+
+      mockPrismaService.user.update.mockResolvedValue(mockUpdatedUser)
+
+      // Act
+      const result = await service.updateProfile(userId, updateData)
+
+      // Assert
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: {
+          firstName: updateData.firstName,
+          lastName: undefined,
+          birthDate: undefined,
+          password: updateData.password,
+        },
+        select: expect.any(Object),
+      })
+      expect(result).toEqual(mockUpdatedUser)
+    })
+
+    it('should not update password when not provided in update data', async () => {
+      // Arrange
+      const userId = 'user123'
+      const updateData = {
+        firstName: 'John',
+        // No password or confirmPassword fields
+      }
+
+      const mockUpdatedUser = {
+        id: userId,
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john@example.com',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isEmailConfirmed: true,
+        photoProfile: 'profile.jpg',
+        birthDate: null,
+      }
+
+      mockPrismaService.user.update.mockResolvedValue(mockUpdatedUser)
+
+      // Act
+      const result = await service.updateProfile(userId, updateData)
+
+      // Assert
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: {
+          firstName: updateData.firstName,
+          lastName: undefined,
+          birthDate: undefined,
+          password: undefined,
+        },
+        select: expect.any(Object),
       })
       expect(result).toEqual(mockUpdatedUser)
     })
