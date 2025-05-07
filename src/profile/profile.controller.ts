@@ -15,6 +15,7 @@ import { UpdateProfileDTO } from './dto/update-profile.dto'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { User } from '@prisma/client'
 import { RequestChangeEmailDto } from './dto/request-email-change.dto'
+import { EmailChangeVerificationDto } from './dto/email-change-verification.dto'
 
 @Controller('profile')
 export class ProfileController {
@@ -74,6 +75,15 @@ export class ProfileController {
       message: 'Verification code sent to your email',
       statusCode: HttpStatus.OK,
     })
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('email/change-verification')
+  async changeEmailVerification(
+    @GetUser() user: User,
+    @Body() changeEmailVerificationDTO: EmailChangeVerificationDto
+  ) {
+    return null
   }
 
   @Public()

@@ -204,4 +204,8 @@ export class ProfileService {
       )
     )
   }
+
+  async verifyEmailChange(user: User, code: string) {
+    return null
+  }
 }

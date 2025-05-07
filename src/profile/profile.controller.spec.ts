@@ -14,6 +14,7 @@ describe('ProfileController', () => {
     getListItineraryLikes: jest.fn(),
     updateProfile: jest.fn(),
     sendVerificationCode: jest.fn(),
+    verifyEmailChange: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -303,6 +304,47 @@ describe('ProfileController', () => {
       expect(result).toEqual({
         meta: {
           message: 'Verification code sent to your email',
+          statusCode: HttpStatus.OK,
+        },
+        data: undefined,
+      })
+    })
+  })
+
+  describe('changeEmailVerification', () => {
+    it('should call verifyEmailChange service with correct parameters', async () => {
+      const changeEmailVerificationDTO = {
+        code: '123456',
+      }
+
+      mockProfileService.verifyEmailChange.mockResolvedValue(undefined)
+
+      await controller.changeEmailVerification(
+        mockUser,
+        changeEmailVerificationDTO
+      )
+
+      expect(mockProfileService.verifyEmailChange).toHaveBeenCalledWith(
+        mockUser,
+        changeEmailVerificationDTO.code
+      )
+    })
+
+    it('should return success response when email change verification is successful', async () => {
+      const changeEmailVerificationDTO = {
+        code: '123456',
+      }
+
+      mockProfileService.verifyEmailChange.mockResolvedValue(undefined)
+
+      const result = await controller.changeEmailVerification(
+        mockUser,
+        changeEmailVerificationDTO
+      )
+
+      expect(result).toEqual({
+        meta: {
+          message: 'Email changed successfully',
           statusCode: HttpStatus.OK,
         },
         data: undefined,
