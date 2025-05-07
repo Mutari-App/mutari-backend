@@ -11,6 +11,8 @@ import { ProfileService } from './profile.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { Public } from 'src/common/decorators/public.decorator'
 import { UpdateProfileDTO } from './update-profile.dto'
+import { GetUser } from 'src/common/decorators/getUser.decorator'
+import { User } from '@prisma/client'
 
 @Controller('profile')
 export class ProfileController {
@@ -36,13 +38,13 @@ export class ProfileController {
   }
 
   @HttpCode(HttpStatus.OK)
-  @Patch(':id')
+  @Patch()
   async updateProfile(
-    @Param('id') id: string,
+    @GetUser() user: User,
     @Body() updateProfileDto: UpdateProfileDTO
   ) {
     const updatedProfile = await this.profileService.updateProfile(
-      id,
+      user.id,
       updateProfileDto
     )
     return this.responseUtil.response(

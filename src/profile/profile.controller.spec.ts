@@ -3,6 +3,7 @@ import { ProfileController } from './profile.controller'
 import { ProfileService } from './profile.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { HttpStatus } from '@nestjs/common'
+import { User } from '@prisma/client'
 
 describe('ProfileController', () => {
   let controller: ProfileController
@@ -183,6 +184,23 @@ describe('ProfileController', () => {
     })
   })
   describe('updateProfile', () => {
+    const user: User = {
+      id: 'user-123',
+      updatedAt: new Date(),
+      createdAt: new Date(),
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'johndoe@example.com',
+      phoneNumber: '081234123412',
+      password: 'password-123',
+      photoProfile: 'profile.png',
+      referralCode: 'ABCD1234',
+      isEmailConfirmed: true,
+      referredById: 'referred-user-123',
+      loyaltyPoints: 1000,
+      birthDate: new Date(),
+    }
+
     it('should update a profile when called with valid ID and data', async () => {
       const id = 'user-123'
       const updateProfileDto = {
@@ -206,7 +224,7 @@ describe('ProfileController', () => {
 
       mockProfileService.updateProfile.mockResolvedValue(updatedProfile)
 
-      const result = await controller.updateProfile(id, updateProfileDto)
+      const result = await controller.updateProfile(user, updateProfileDto)
 
       expect(result).toEqual({
         meta: {
@@ -218,19 +236,18 @@ describe('ProfileController', () => {
         },
       })
       expect(mockProfileService.updateProfile).toHaveBeenCalledWith(
-        id,
+        user.id,
         updateProfileDto
       )
     })
 
     it('should update only the fields provided in the DTO', async () => {
-      const id = 'user-123'
       const updateProfileDto = {
         firstName: 'Updated',
       }
 
       const updatedProfile = {
-        id,
+        id: 'user-123',
         firstName: 'Updated',
         lastName: 'Doe',
         phoneNumber: '081234123412',
@@ -246,11 +263,11 @@ describe('ProfileController', () => {
 
       mockProfileService.updateProfile.mockResolvedValue(updatedProfile)
 
-      const result = await controller.updateProfile(id, updateProfileDto)
+      const result = await controller.updateProfile(user, updateProfileDto)
 
       expect(result.data.updatedProfile).toEqual(updatedProfile)
       expect(mockProfileService.updateProfile).toHaveBeenCalledWith(
-        id,
+        user.id,
         updateProfileDto
       )
     })
