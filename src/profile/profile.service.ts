@@ -168,7 +168,7 @@ export class ProfileService {
       data: {
         firstName: data.firstName,
         lastName: data.lastName,
-        birthDate: data.birthDate,
+        birthDate: new Date(data.birthDate),
       },
       select: {
         id: true,
