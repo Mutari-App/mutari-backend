@@ -855,8 +855,8 @@ describe('ProfileService', () => {
 
       // Assert
       expect(service._verifyChangeEmailTicket).toHaveBeenCalledWith(
-        user.id,
-        code
+        code,
+        user.id
       )
       expect(mockPrismaService.user.update).toHaveBeenCalledWith({
         where: { id: user.id },
@@ -883,8 +883,8 @@ describe('ProfileService', () => {
         NotFoundException
       )
       expect(service._verifyChangeEmailTicket).toHaveBeenCalledWith(
-        user.id,
-        code
+        code,
+        user.id
       )
       expect(mockPrismaService.user.update).not.toHaveBeenCalled()
     })
