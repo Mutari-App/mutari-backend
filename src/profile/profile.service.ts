@@ -182,6 +182,26 @@ export class ProfileService {
   }
 
   async sendVerificationCode(user: User, email: string) {
-    return null
+    if (user.email === email) {
+      throw new BadRequestException('Email is the same as current email')
+    }
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    })
+
+    if (existingUser) {
+      throw new BadRequestException('Email already in use')
+    }
+
+    const verificationCode = await this.verificationCodeUtil.generate(user.id)
+    await this.emailService.sendEmail(
+      email,
+      'Verifikasi Perubahan Email - Mutari',
+      emailChangeVerificationTemplate(
+        user.firstName,
+        verificationCode.uniqueCode
+      )
+    )
   }
 }
