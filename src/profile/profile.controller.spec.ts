@@ -16,6 +16,7 @@ describe('ProfileController', () => {
     sendVerificationCode: jest.fn(),
     verifyEmailChange: jest.fn(),
     changePassword: jest.fn(),
+    updatePhotoProfile: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -393,6 +394,53 @@ describe('ProfileController', () => {
         },
         data: undefined,
       })
+    })
+  })
+
+  describe('updatePhotoProfile', () => {
+    beforeEach(() => {
+      mockProfileService.updatePhotoProfile = jest.fn()
+    })
+
+    it('should update photo profile when called with valid URL', async () => {
+      const photoProfileUrl = 'https://example.com/new-profile.jpg'
+      const updatedProfile = {
+        ...mockUser,
+        photoProfile: photoProfileUrl,
+        updatedAt: new Date(),
+      }
+
+      mockProfileService.updatePhotoProfile.mockResolvedValue(updatedProfile)
+
+      const result = await controller.updatePhotoProfile(
+        mockUser,
+        photoProfileUrl
+      )
+
+      expect(result).toEqual({
+        meta: {
+          message: 'Profile photo updated successfully',
+          statusCode: HttpStatus.OK,
+        },
+        data: {
+          updatedProfile,
+        },
+      })
+      expect(mockProfileService.updatePhotoProfile).toHaveBeenCalledWith(
+        mockUser.id,
+        photoProfileUrl
+      )
+    })
+
+    it('should call updatePhotoProfile service with correct parameters', async () => {
+      const photoProfileUrl = 'https://example.com/profile-picture.png'
+
+      await controller.updatePhotoProfile(mockUser, photoProfileUrl)
+
+      expect(mockProfileService.updatePhotoProfile).toHaveBeenCalledWith(
+        mockUser.id,
+        photoProfileUrl
+      )
     })
   })
 })

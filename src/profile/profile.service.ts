@@ -352,4 +352,8 @@ export class ProfileService {
       data: { password: hashedPassword },
     })
   }
+
+  async updatePhotoProfile(userId: string, photoProfileUrl: string) {
+    return null
+  }
 }

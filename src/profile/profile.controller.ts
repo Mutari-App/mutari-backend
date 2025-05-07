@@ -107,6 +107,15 @@ export class ProfileController {
     })
   }
 
+  @HttpCode(HttpStatus.OK)
+  @Patch('photo-profile')
+  async updatePhotoProfile(
+    @GetUser() user: User,
+    @Body('photoProfileUrl') photoProfileUrl: string
+  ) {
+    return null
+  }
+
   @Public()
   @HttpCode(HttpStatus.OK)
   @Get(':id/itineraries')
