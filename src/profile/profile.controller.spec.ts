@@ -207,7 +207,7 @@ describe('ProfileController', () => {
         firstName: 'Updated',
         lastName: 'Name',
         phoneNumber: '087654321098',
-        birthDate: new Date('1990-01-01'),
+        birthDate: '1990-01-01',
       }
 
       const updatedProfile = {
