@@ -310,6 +310,29 @@ export class ProfileService {
   }
 
   async changePassword(userId: string, data: ChangePasswordDto) {
-    return null
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    })
+
+    const isPasswordValid = await bcrypt.compare(
+      data.oldPassword,
+      user.password
+    )
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Old password is incorrect')
+    }
+
+    if (data.newPassword !== data.confirmPassword)
+      throw new BadRequestException(
+        'New password and confirmation do not match'
+      )
+
+    const saltOrRounds = bcrypt.genSaltSync(10)
+    const hashedPassword = await bcrypt.hash(data.newPassword, saltOrRounds)
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword },
+    })
   }
 }
