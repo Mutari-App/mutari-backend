@@ -6,18 +6,20 @@ import {
 import { BLOCK_TYPE, User } from '@prisma/client'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { UpdateProfileDTO } from './dto/update-profile.dto'
-import * as bcrypt from 'bcryptjs'
 import { EmailService } from 'src/email/email.service'
-import { VerificationCodeUtil } from 'src/common/utils/verification-code.util'
 import { emailChangeVerificationTemplate } from './change-email.template'
+import { customAlphabet } from 'nanoid'
 
 @Injectable()
 export class ProfileService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly emailService: EmailService,
-    private readonly verificationCodeUtil: VerificationCodeUtil
+    private readonly emailService: EmailService
   ) {}
+
+  _generateVerificationCode() {
+    return customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 8)()
+  }
 
   async findOne(id: string) {
     const user = await this.prisma.user.findUnique({
@@ -194,7 +196,10 @@ export class ProfileService {
       throw new BadRequestException('Email already in use')
     }
 
-    const verificationCode = await this.verificationCodeUtil.generate(user.id)
+    const verificationCode = await this._generateChangeEmailTicket(
+      user.id,
+      email
+    )
     await this.emailService.sendEmail(
       email,
       'Verifikasi Perubahan Email - Mutari',
@@ -203,6 +208,14 @@ export class ProfileService {
         verificationCode.uniqueCode
       )
     )
+  }
+
+  async _generateChangeEmailTicket(userId: string, newEmail: string) {
+    return null
+  }
+
+  async _verifyChangeEmailTicket(verificationCode: string, userId: string) {
+    return null
   }
 
   async verifyEmailChange(user: User, code: string) {
