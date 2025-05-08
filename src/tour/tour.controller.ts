@@ -32,11 +32,11 @@ export class TourController {
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateTourDto: UpdateTourDto) {
-    return this.tourService.update(+id, updateTourDto)
+    return this.tourService.update(id, updateTourDto)
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.tourService.remove(+id)
+    return this.tourService.remove(id)
   }
 }

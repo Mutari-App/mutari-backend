@@ -5,9 +5,7 @@ import { PrismaService } from 'src/prisma/prisma.service'
 
 @Injectable()
 export class TourService {
-  constructor(
-    private readonly prisma: PrismaService
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   create(createTourDto: CreateTourDto) {
     return 'This action adds a new tour'
@@ -21,11 +19,11 @@ export class TourService {
     return `This action returns a #${id} tour`
   }
 
-  update(id: number, updateTourDto: UpdateTourDto) {
+  update(id: string, updateTourDto: UpdateTourDto) {
     return `This action updates a #${id} tour`
   }
 
-  remove(id: number) {
+  remove(id: string) {
     return `This action removes a #${id} tour`
   }
 }

@@ -21,7 +21,7 @@ import { MapModule } from './map/map.module'
 import { GeminiModule } from './gemini/gemini.module'
 import { UmamiModule } from './umami/umami.module'
 import { MeilisearchModule } from './meilisearch/meilisearch.module'
-import { TourModule } from './tour/tour.module';
+import { TourModule } from './tour/tour.module'
 
 @Module({
   imports: [

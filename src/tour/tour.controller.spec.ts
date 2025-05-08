@@ -59,8 +59,8 @@ describe('TourController', () => {
   describe('findOne', () => {
     it('should return a single tour', () => {
       const id = '1'
-      expect(controller.findOne(id)).toEqual({ id: 1, title: 'Test tour' })
-      expect(service.findOne).toHaveBeenCalledWith(1)
+      expect(controller.findOne(id)).toEqual({ id: '1', title: 'Test tour' })
+      expect(service.findOne).toHaveBeenCalledWith('1')
     })
   })
 
@@ -69,18 +69,18 @@ describe('TourController', () => {
       const id = '1'
       const updateTourDto: UpdateTourDto = { title: 'Updated Tour' }
       expect(controller.update(id, updateTourDto)).toEqual({
-        id: 1,
+        id: '1',
         ...updateTourDto,
       })
-      expect(service.update).toHaveBeenCalledWith(1, updateTourDto)
+      expect(service.update).toHaveBeenCalledWith('1', updateTourDto)
     })
   })
 
   describe('remove', () => {
     it('should remove a tour', () => {
       const id = '1'
-      expect(controller.remove(id)).toEqual({ id: 1, deleted: true })
-      expect(service.remove).toHaveBeenCalledWith(1)
+      expect(controller.remove(id)).toEqual({ id: '1', deleted: true })
+      expect(service.remove).toHaveBeenCalledWith('1')
     })
   })
 })
