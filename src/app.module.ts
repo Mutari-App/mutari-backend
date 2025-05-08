@@ -17,11 +17,11 @@ import { ProfileModule } from './profile/profile.module'
 import { ItineraryModule } from './itinerary/itinerary.module'
 import { NotificationModule } from './notification/notification.module'
 import { PaymentModule } from './payment/payment.module'
-import { TicketModule } from './ticket/ticket.module'
 import { MapModule } from './map/map.module'
 import { GeminiModule } from './gemini/gemini.module'
 import { UmamiModule } from './umami/umami.module'
 import { MeilisearchModule } from './meilisearch/meilisearch.module'
+import { TourModule } from './tour/tour.module'
 
 @Module({
   imports: [
@@ -38,11 +38,11 @@ import { MeilisearchModule } from './meilisearch/meilisearch.module'
     ItineraryModule,
     NotificationModule,
     PaymentModule,
-    TicketModule,
     MapModule,
     GeminiModule,
     UmamiModule,
     MeilisearchModule,
+    TourModule,
   ],
   controllers: [AppController],
   providers: [
