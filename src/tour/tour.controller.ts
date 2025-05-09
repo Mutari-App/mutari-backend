@@ -10,33 +10,30 @@ import {
 import { TourService } from './tour.service'
 import { CreateTourDto } from './dto/create-tour.dto'
 import { UpdateTourDto } from './dto/update-tour.dto'
+import { ResponseUtil } from 'src/common/utils/response.util'
+import { HttpStatus } from '@nestjs/common/enums/http-status.enum'
+import { Public } from 'src/common/decorators/public.decorator'
 
 @Controller('tour')
 export class TourController {
-  constructor(private readonly tourService: TourService) {}
+  constructor(
+    private readonly tourService: TourService,
+    private readonly responseUtil: ResponseUtil
+  ) {}
 
-  @Post()
-  create(@Body() createTourDto: CreateTourDto) {
-    return this.tourService.create(createTourDto)
-  }
-
-  @Get()
-  findAll() {
-    return this.tourService.findAll()
-  }
-
+  @Public()
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.tourService.findOne(id)
-  }
+  async findOne(@Param('id') id: string) {
+    const tour = await this.tourService.findOne(id)
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTourDto: UpdateTourDto) {
-    return this.tourService.update(id, updateTourDto)
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.tourService.remove(id)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Tour fetched successfully.',
+      },
+      {
+        data: tour,
+      }
+    )
   }
 }
