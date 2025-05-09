@@ -10,11 +10,7 @@ describe('TourService', () => {
 
   const mockPrismaService = {
     tour: {
-      findMany: jest.fn().mockResolvedValue([{ id: '1', title: 'Mock Tour' }]),
-      create: jest.fn(),
       findUnique: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
     },
     itinerary: {
       findUnique: jest.fn(),
@@ -104,7 +100,9 @@ describe('TourService', () => {
     it('should throw NotFoundException if tour not found', async () => {
       prisma.tour.findUnique = jest.fn().mockResolvedValue(null)
 
-      await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException)
+      await expect(service.findOne('nonexistent')).rejects.toThrow(
+        NotFoundException
+      )
     })
 
     it('should return tour with null itinerary if itinerary not found', async () => {
