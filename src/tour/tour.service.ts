@@ -1,29 +1,35 @@
-import { Injectable } from '@nestjs/common'
-import { CreateTourDto } from './dto/create-tour.dto'
-import { UpdateTourDto } from './dto/update-tour.dto'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from 'src/prisma/prisma.service'
 
 @Injectable()
 export class TourService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(createTourDto: CreateTourDto) {
-    return 'This action adds a new tour'
-  }
+  async findOne(id: string) {
+    const tour = await this.prisma.tour.findUnique({
+      where: { id },
+    })
 
-  findAll() {
-    return `This action returns all tour`
-  }
+    if (!tour) {
+      throw new NotFoundException(`Tour with ID ${id} not found`)
+    }
 
-  findOne(id: string) {
-    return `This action returns a #${id} tour`
-  }
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: tour.itineraryId },
+      include: {
+        sections: {
+          include: {
+            blocks: true,
+          },
+        },
+      },
+    })
 
-  update(id: string, updateTourDto: UpdateTourDto) {
-    return `This action updates a #${id} tour`
-  }
+    const result = {
+      ...tour,
+      itinerary: itinerary ? { ...itinerary } : null,
+    }
 
-  remove(id: string) {
-    return `This action removes a #${id} tour`
+    return result
   }
 }
