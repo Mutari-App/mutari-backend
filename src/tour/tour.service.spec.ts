@@ -155,12 +155,19 @@ describe('TourService', () => {
         'asc'
       )
 
-      // Updated the expected filter to match the actual implementation
       expect(mockMeilisearchService.searchTours).toHaveBeenCalledWith('paris', {
         limit: 10,
         offset: 10,
-        filter:
-          'location = "Paris, France" AND pricePerTicket >= 50 AND pricePerTicket <= 150 AND duration >= 4 AND durationType = "HOUR" AND availableTickets > 0',
+        filter: [
+          [
+            'location = "Paris, France"',
+            'pricePerTicket >= 50',
+            'pricePerTicket <= 150',
+            'duration >= 4',
+            'durationType = "HOUR"',
+            'availableTickets > 0',
+          ],
+        ],
         sort: ['pricePerTicket:asc'],
       })
     })
@@ -189,7 +196,7 @@ describe('TourService', () => {
       expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
         '',
         expect.objectContaining({
-          filter: 'duration >= 2',
+          filter: [['duration >= 2']],
         })
       )
 
@@ -198,7 +205,7 @@ describe('TourService', () => {
       expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
         '',
         expect.objectContaining({
-          filter: 'duration <= 5',
+          filter: [['duration <= 5']],
         })
       )
 
@@ -207,7 +214,29 @@ describe('TourService', () => {
       expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
         '',
         expect.objectContaining({
-          filter: 'duration >= 2 AND duration <= 5',
+          filter: [['duration >= 2', 'duration <= 5']],
+        })
+      )
+    })
+
+    // Additional test for single filter
+    it('should handle a single filter correctly', async () => {
+      await service.searchTours('', 1, 10, { location: 'Tokyo, Japan' })
+      expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
+        '',
+        expect.objectContaining({
+          filter: [['location = "Tokyo, Japan"']],
+        })
+      )
+    })
+
+    // Additional test for empty filters
+    it('should handle no filters correctly', async () => {
+      await service.searchTours('', 1, 10, {})
+      expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
+        '',
+        expect.objectContaining({
+          filter: undefined,
         })
       )
     })
