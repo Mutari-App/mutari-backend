@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { User } from '@prisma/client'
 
@@ -8,6 +8,14 @@ export class TourService {
 
   async createTourView(tourId: string, user: User) {
     const userId = user.id
+
+    const tourExists = await this.prisma.tour.findUnique({
+      where: { id: tourId },
+    })
+
+    if (!tourExists) {
+      throw new NotFoundException('Tour not found')
+    }
 
     const userViews = await this.prisma.tourView.findMany({
       where: { userId },
