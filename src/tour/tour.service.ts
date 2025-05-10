@@ -81,8 +81,9 @@ export class TourService {
       filterConditions.push(`availableTickets > 0`)
     }
 
-    const filterString =
-      filterConditions.length > 0 ? filterConditions.join(' AND ') : undefined
+    const filterString = filterConditions.length
+      ? [[...filterConditions]]
+      : undefined
 
     const searchOptions = {
       limit,
