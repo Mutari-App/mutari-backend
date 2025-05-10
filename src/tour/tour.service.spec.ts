@@ -3,13 +3,39 @@ import { TourService } from './tour.service'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { CreateTourDto } from './dto/create-tour.dto'
 import { UpdateTourDto } from './dto/update-tour.dto'
+import { User } from '@prisma/client'
 
 describe('TourService', () => {
   let service: TourService
+  let prismaService: PrismaService
+
+  const mockUser: User = {
+    id: 'user-123',
+    firstName: 'John',
+    lastName: 'Doe',
+    birthDate: new Date(),
+    email: 'john@example.com',
+    phoneNumber: '123456789',
+    password: 'hashedpassword',
+    photoProfile: null,
+    referralCode: null,
+    isEmailConfirmed: false,
+    referredById: null,
+    loyaltyPoints: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
 
   const mockPrismaService = {
     tour: {
       findMany: jest.fn().mockResolvedValue([{ id: '1', title: 'Mock Tour' }]),
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    tourView: {
+      findMany: jest.fn(),
       create: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
@@ -29,46 +55,156 @@ describe('TourService', () => {
     }).compile()
 
     service = module.get<TourService>(TourService)
+    prismaService = module.get<PrismaService>(PrismaService)
+
+    service = module.get<TourService>(TourService)
+    jest.clearAllMocks()
   })
 
   it('should be defined', () => {
     expect(service).toBeDefined()
   })
 
-  describe('create', () => {
-    it('should return a string indicating a new tour was added', () => {
-      const createTourDto: CreateTourDto = {}
-      expect(service.create(createTourDto)).toBe('This action adds a new tour')
-    })
-  })
+  describe('getTourView', () => {
+    it('should return list of tour views ordered by viewedAt desc', async () => {
+      const user = { id: 'user123' }
 
-  describe('findAll', () => {
-    it('should return a string indicating all tours are returned', () => {
-      expect(service.findAll()).toBe('This action returns all tour')
-    })
-  })
+      const now = new Date()
 
-  describe('findOne', () => {
-    it('should return a string with the tour id', () => {
-      const id = '1'
-      expect(service.findOne(id)).toBe(`This action returns a #${id} tour`)
-    })
-  })
+      const expectedResultFromDb = [
+        {
+          tourId: 'a',
+          viewedAt: now,
+          tour: {
+            id: 'a',
+            title: 'Sample tour A',
+            description: null,
+            coverImage: '',
+            createdAt: now,
+            userId: 'user1',
+          },
+        },
+        {
+          tourId: 'b',
+          viewedAt: now,
+          tour: {
+            id: 'b',
+            title: 'Sample tour B',
+            description: null,
+            coverImage: '',
+            createdAt: now,
+            userId: 'user1',
+          },
+        },
+      ]
 
-  describe('update', () => {
-    it('should return a string with the updated tour id', () => {
-      const id = '1'
-      const updateTourDto: UpdateTourDto = {}
-      expect(service.update(id, updateTourDto)).toBe(
-        `This action updates a #${id} tour`
+      mockPrismaService.tourView.findMany.mockResolvedValue(
+        expectedResultFromDb
       )
+
+      const result = await service.getTourView(user as any)
+
+      expect(mockPrismaService.tourView.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: user.id },
+          orderBy: { viewedAt: 'desc' },
+          include: expect.objectContaining({
+            tour: true,
+          }),
+        })
+      )
+
+      expect(result).toEqual([
+        {
+          tourId: 'a',
+          viewedAt: now,
+          tour: {
+            id: 'a',
+            title: 'Sample tour A',
+            description: null,
+            coverImage: '',
+            createdAt: now,
+            userId: 'user1',
+          },
+        },
+        {
+          tourId: 'b',
+          viewedAt: now,
+          tour: {
+            id: 'b',
+            title: 'Sample tour B',
+            description: null,
+            coverImage: '',
+            createdAt: now,
+            userId: 'user1',
+          },
+        },
+      ])
     })
   })
 
-  describe('remove', () => {
-    it('should return a string with the removed tour id', () => {
-      const id = '1'
-      expect(service.remove(id)).toBe(`This action removes a #${id} tour`)
+  describe('createTourView', () => {
+    it('should update viewedAt if tour already viewed', async () => {
+      const tours = [{ tourId: 'tour-1' }]
+      const tourViews = [{ tourId: 'tour-1', userId: 'user-123' }]
+      mockPrismaService.tour.findMany.mockResolvedValue(tours)
+      mockPrismaService.tourView.findMany.mockResolvedValue(tourViews)
+
+      await service.createTourView('tour-1', mockUser)
+
+      expect(mockPrismaService.tourView.update).toHaveBeenCalledWith({
+        where: {
+          userId_tourId: {
+            userId: 'user-123',
+            tourId: 'tour-1',
+          },
+        },
+        data: { viewedAt: expect.any(Date) },
+      })
+    })
+
+    it('should delete oldest view if already 10 and add new', async () => {
+      const userViews = Array.from({ length: 10 }).map((_, i) => ({
+        id: `view-${i}`,
+        tourId: `it-${i}`,
+      }))
+
+      mockPrismaService.tourView.findMany.mockResolvedValue(userViews)
+      mockPrismaService.tourView.create.mockResolvedValue({})
+
+      await service.createTourView('new-tour', mockUser)
+
+      expect(mockPrismaService.tourView.delete).toHaveBeenCalledWith({
+        where: { id: 'view-9' }, // assumed last in list is oldest
+      })
+      expect(mockPrismaService.tourView.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'user-123',
+          tourId: 'new-tour',
+          viewedAt: expect.any(Date),
+        },
+      })
+    })
+
+    it('should just create view if less than 10 views', async () => {
+      const userViews = Array.from({ length: 5 }).map((_, i) => ({
+        id: `view-${i}`,
+        tourId: `tour-${i}`,
+      }))
+
+      mockPrismaService.tourView.findMany.mockResolvedValue(userViews)
+      mockPrismaService.tourView.create.mockResolvedValue({})
+
+      await service.createTourView('it-100', mockUser)
+
+      expect(mockPrismaService.tourView.delete).not.toHaveBeenCalled()
+      expect(mockPrismaService.tourView.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'user-123',
+          tourId: 'it-100',
+          viewedAt: expect.any(Date),
+        },
+      })
     })
   })
 })
