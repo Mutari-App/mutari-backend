@@ -14,9 +14,6 @@ export class TourService {
       orderBy: { viewedAt: 'desc' },
     })
 
-    // console.log('itineraryExists', itineraryExists)
-    console.log('userViews', userViews)
-    console.log('tourId', tourId)
     const itineraryExists = userViews.some((view) => view.tourId === tourId)
 
     if (itineraryExists) {
