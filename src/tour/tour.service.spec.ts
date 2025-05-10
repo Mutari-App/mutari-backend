@@ -4,6 +4,7 @@ import { PrismaService } from 'src/prisma/prisma.service'
 import { CreateTourDto } from './dto/create-tour.dto'
 import { UpdateTourDto } from './dto/update-tour.dto'
 import { User } from '@prisma/client'
+import { NotFoundException } from '@nestjs/common'
 
 describe('TourService', () => {
   let service: TourService
@@ -148,6 +149,7 @@ describe('TourService', () => {
       const tours = [{ tourId: 'tour-1' }]
       const tourViews = [{ tourId: 'tour-1', userId: 'user-123' }]
       mockPrismaService.tour.findMany.mockResolvedValue(tours)
+      mockPrismaService.tour.findUnique.mockResolvedValue(tours[0])
       mockPrismaService.tourView.findMany.mockResolvedValue(tourViews)
 
       await service.createTourView('tour-1', mockUser)
@@ -163,13 +165,34 @@ describe('TourService', () => {
       })
     })
 
+    it('should throw NotFoundException if tour doesnt exist', async () => {
+      const tours = [{ tourId: 'tour-1' }]
+      const tourViews = [{ tourId: 'tour-1', userId: 'user-123' }]
+      mockPrismaService.tour.findMany.mockResolvedValue(tours)
+      mockPrismaService.tour.findUnique.mockResolvedValue(null)
+      mockPrismaService.tourView.findMany.mockResolvedValue(tourViews)
+
+      await expect(
+        service.createTourView('not-existing-tour', mockUser)
+      ).rejects.toBeInstanceOf(NotFoundException)
+
+      expect(mockPrismaService.tour.findUnique).toHaveBeenCalledWith({
+        where: { id: 'not-existing-tour' },
+      })
+      expect(mockPrismaService.tourView.update).not.toHaveBeenCalled()
+      expect(mockPrismaService.tourView.create).not.toHaveBeenCalled()
+      expect(mockPrismaService.tourView.delete).not.toHaveBeenCalled()
+    })
+
     it('should delete oldest view if already 10 and add new', async () => {
       const userViews = Array.from({ length: 10 }).map((_, i) => ({
         id: `view-${i}`,
         tourId: `it-${i}`,
       }))
+      const tours = [{ tourId: 'tour-1' }]
 
       mockPrismaService.tourView.findMany.mockResolvedValue(userViews)
+      mockPrismaService.tour.findUnique.mockResolvedValue(tours[0])
       mockPrismaService.tourView.create.mockResolvedValue({})
 
       await service.createTourView('new-tour', mockUser)
@@ -191,9 +214,11 @@ describe('TourService', () => {
         id: `view-${i}`,
         tourId: `tour-${i}`,
       }))
+      const tours = [{ tourId: 'tour-1' }]
 
       mockPrismaService.tourView.findMany.mockResolvedValue(userViews)
       mockPrismaService.tourView.create.mockResolvedValue({})
+      mockPrismaService.tour.findUnique.mockResolvedValue(tours[0])
 
       await service.createTourView('it-100', mockUser)
 
