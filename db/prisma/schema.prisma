@@ -111,21 +111,22 @@ model RefreshToken {
 }
 
 model Tour {
-  updatedAt      DateTime       @updatedAt() @db.Timestamptz()
-  createdAt      DateTime       @default(now()) @db.Timestamptz()
-  id             String         @id() @unique() @default(uuid())
-  title          String
-  coverImage     String?
-  maxCapacity    Int
-  description    String?
-  location       String
-  pricePerTicket Decimal
-  duration       Int
-  durationType   DURATION_TYPE
-  itineraryId    String
-  itinerary      Itinerary      @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  includes       TourIncludes[]
-  tickets        TourTicket[]
+  updatedAt        DateTime       @updatedAt() @db.Timestamptz()
+  createdAt        DateTime       @default(now()) @db.Timestamptz()
+  id               String         @id() @unique() @default(uuid())
+  title            String
+  coverImage       String?
+  maxCapacity      Int
+  description      String?
+  location         String
+  pricePerTicket   Decimal
+  duration         Int
+  durationType     DURATION_TYPE
+  availableTickets Int            @default(0)
+  itineraryId      String
+  itinerary        Itinerary      @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  includes         TourIncludes[]
+  tickets          TourTicket[]
 }
 
 model TourIncludes {
