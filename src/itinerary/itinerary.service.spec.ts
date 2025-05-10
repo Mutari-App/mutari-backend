@@ -4793,7 +4793,7 @@ describe('ItineraryService', () => {
             photoProfile: null,
           },
           tags: [],
-          daysCount: 2,
+          daysCount: 3,
           likes: 10,
         },
         {
@@ -4808,7 +4808,7 @@ describe('ItineraryService', () => {
             photoProfile: null,
           },
           tags: [],
-          daysCount: 2,
+          daysCount: 3,
           likes: 5,
         },
       ])
