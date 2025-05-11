@@ -17,6 +17,9 @@ describe('ProfileService', () => {
     itineraryLike: {
       findMany: jest.fn(),
     },
+    tourTicket: {
+      findMany: jest.fn(),
+    },
   }
 
   beforeEach(async () => {
@@ -31,7 +34,6 @@ describe('ProfileService', () => {
     }).compile()
 
     service = module.get<ProfileService>(ProfileService)
-    prismaService = module.get<PrismaService>(PrismaService)
     jest.clearAllMocks()
   })
 
@@ -417,6 +419,141 @@ describe('ProfileService', () => {
       // Assert
       expect(result[0].totalDestinations).toBe(0)
       expect(result[0].totalLikes).toBe(2)
+    })
+  })
+
+  describe('getTransactionHistory', () => {
+    it('should return a list of transactions for a user', async () => {
+      // Arrange
+      const userId = 'user123'
+      const mockTransactions = [
+        {
+          id: 'transaction1',
+          tourId: 'tour1',
+          userId,
+          quantity: 2,
+          paymentStatus: 'PAID',
+          totalPrice: 500000,
+          createdAt: new Date('2023-05-15'),
+          tour: {
+            title: 'Bali Adventure',
+            location: 'Bali, Indonesia',
+          },
+          guests: [
+            { id: 'guest1', name: 'John Doe', email: 'john@example.com' },
+            { id: 'guest2', name: 'Jane Doe', email: 'jane@example.com' },
+          ],
+        },
+        {
+          id: 'transaction2',
+          tourId: 'tour2',
+          userId,
+          quantity: 1,
+          paymentStatus: 'PENDING',
+          totalPrice: 350000,
+          createdAt: new Date('2023-04-20'),
+          tour: {
+            title: 'Yogyakarta Cultural Tour',
+            location: 'Yogyakarta, Indonesia',
+          },
+          guests: [
+            { id: 'guest3', name: 'Bob Smith', email: 'bob@example.com' },
+          ],
+        },
+      ]
+
+      // Add the missing mock implementation for tourTicket.findMany
+      mockPrismaService.tourTicket = {
+        findMany: jest.fn().mockResolvedValue(mockTransactions),
+      }
+
+      // Act
+      const result = await service.getTransactionHistory(userId)
+
+      // Assert
+      expect(mockPrismaService.tourTicket.findMany).toHaveBeenCalledWith({
+        where: { userId },
+        include: {
+          tour: {
+            select: {
+              title: true,
+              location: true,
+            },
+          },
+          guests: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      expect(result).toHaveLength(2)
+      expect(result[0]).toEqual(
+        expect.objectContaining({
+          id: 'transaction1',
+          tourId: 'tour1',
+          quantity: 2,
+          paymentStatus: 'PAID',
+          totalPrice: 500000,
+          tour: {
+            title: 'Bali Adventure',
+            location: 'Bali, Indonesia',
+          },
+        })
+      )
+      expect(result[0].guests).toHaveLength(2)
+      expect(result[1].guests).toHaveLength(1)
+    })
+
+    it('should return an empty array when user has no transactions', async () => {
+      // Arrange
+      const userId = 'user-no-transactions'
+      mockPrismaService.tourTicket.findMany.mockResolvedValue([])
+
+      // Act
+      const result = await service.getTransactionHistory(userId)
+
+      // Assert
+      expect(mockPrismaService.tourTicket.findMany).toHaveBeenCalledWith({
+        where: { userId },
+        include: expect.any(Object),
+        orderBy: { createdAt: 'desc' },
+      })
+      expect(result).toEqual([])
+    })
+
+    it('should include all transaction fields in the result', async () => {
+      // Arrange
+      const userId = 'user123'
+      const mockTransaction = {
+        id: 'transaction3',
+        tourId: 'tour3',
+        userId,
+        quantity: 3,
+        paymentStatus: 'PAID',
+        totalPrice: 750000,
+        createdAt: new Date('2023-06-10'),
+        tour: {
+          title: 'Jakarta City Tour',
+          location: 'Jakarta, Indonesia',
+        },
+        guests: [],
+      }
+
+      mockPrismaService.tourTicket.findMany.mockResolvedValue([mockTransaction])
+
+      // Act
+      const result = await service.getTransactionHistory(userId)
+
+      // Assert
+      expect(result[0]).toEqual(mockTransaction)
+      // Verify all important fields are present
+      expect(result[0]).toHaveProperty('id')
+      expect(result[0]).toHaveProperty('tourId')
+      expect(result[0]).toHaveProperty('quantity')
+      expect(result[0]).toHaveProperty('paymentStatus')
+      expect(result[0]).toHaveProperty('totalPrice')
+      expect(result[0]).toHaveProperty('createdAt')
+      expect(result[0]).toHaveProperty('tour')
+      expect(result[0]).toHaveProperty('guests')
     })
   })
 })
