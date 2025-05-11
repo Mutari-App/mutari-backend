@@ -56,30 +56,32 @@ enum TRANSPORT_MODE {
 }
 
 model User {
-  updatedAt        DateTime          @updatedAt() @db.Timestamptz()
-  createdAt        DateTime          @default(now()) @db.Timestamptz()
-  id               String            @id() @unique() @default(uuid())
-  firstName        String
-  lastName         String?
-  email            String            @unique()
-  phoneNumber      String?
-  password         String?
-  photoProfile     String?
-  referralCode     String?           @unique()
-  isEmailConfirmed Boolean           @default(false)
-  referredById     String?
-  loyaltyPoints    Int               @default(0)
-  birthDate        DateTime?         @db.Date()
-  referredBy       User?             @relation("Referral", fields: [referredById], references: [id])
-  referrals        User[]            @relation("Referral")
-  tickets          Ticket[]
-  tokens           Token[]
-  refreshTokens    RefreshToken[]
-  itineraries      Itinerary[]
-  itineraryAccess  ItineraryAccess[]
-  itineraryLikes   ItineraryLike[]
-  tourTickets      TourTicket[]
-  itineraryViews   ItineraryView[]
+  updatedAt          DateTime            @updatedAt() @db.Timestamptz()
+  createdAt          DateTime            @default(now()) @db.Timestamptz()
+  id                 String              @id() @unique() @default(uuid())
+  firstName          String
+  lastName           String?
+  email              String              @unique()
+  phoneNumber        String?
+  password           String?
+  photoProfile       String?
+  referralCode       String?             @unique()
+  isEmailConfirmed   Boolean             @default(false)
+  referredById       String?
+  loyaltyPoints      Int                 @default(0)
+  birthDate          DateTime?           @db.Date()
+  referredBy         User?               @relation("Referral", fields: [referredById], references: [id])
+  referrals          User[]              @relation("Referral")
+  tickets            Ticket[]
+  changeEmailTickets ChangeEmailTicket[]
+  tokens             Token[]
+  refreshTokens      RefreshToken[]
+  itineraries        Itinerary[]
+  itineraryAccess    ItineraryAccess[]
+  itineraryLikes     ItineraryLike[]
+  tourTickets        TourTicket[]
+  itineraryViews     ItineraryView[]
+  TourViews          TourView[]
 }
 
 model Ticket {
@@ -89,6 +91,16 @@ model Ticket {
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   uniqueCode String?  @unique()
+}
+
+model ChangeEmailTicket {
+  updatedAt  DateTime @updatedAt() @db.Timestamptz()
+  createdAt  DateTime @default(now()) @db.Timestamptz()
+  id         String   @id() @unique() @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  uniqueCode String?  @unique()
+  newEmail   String
 }
 
 model Token {
@@ -126,6 +138,7 @@ model Tour {
   itinerary      Itinerary      @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
   includes       TourIncludes[]
   tickets        TourTicket[]
+  views          TourView[]
 }
 
 model TourIncludes {
@@ -160,6 +173,20 @@ model TourTicketGuest {
   phoneNumber  String
   email        String
   tourTicket   TourTicket @relation(fields: [tourTicketId], references: [id], onDelete: Cascade)
+}
+
+model TourView {
+  updatedAt DateTime @updatedAt() @db.Timestamptz()
+  createdAt DateTime @default(now()) @db.Timestamptz()
+  id        String   @id() @unique() @default(uuid())
+  userId    String
+  tourId    String
+  viewedAt  DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tour      Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tourId])
+  @@index([userId, viewedAt])
 }
 
 model Itinerary {
