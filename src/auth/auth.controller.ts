@@ -21,6 +21,7 @@ import { VerifyRegistrationDTO } from './dto/verify-registration.dto'
 import { CreateUserDTO } from './dto/create-user.dto'
 import { PreRegistGuard } from './guards/pre-regist.guard'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
+import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
 
 @UseGuards(PreRegistGuard)
 @Controller('auth')
@@ -132,5 +133,15 @@ export class AuthController {
         user,
       }
     )
+  }
+
+  @Public()
+  @Post('requestPasswordReset')
+  async requestPasswordReset(@Body() data: RequestPasswordResetDTO) {
+    await this.authService.sendPasswordResetVerification(data)
+    return this.responseUtil.response({
+      statusCode: HttpStatus.OK,
+      message: 'Sent verification code to email',
+    })
   }
 }
