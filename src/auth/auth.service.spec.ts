@@ -20,6 +20,7 @@ import { DeepMockProxy, mockDeep } from 'jest-mock-extended'
 import { PrismaClient, Ticket, User } from '@prisma/client'
 import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
 import { resetPasswordTemplate } from './templates/reset-pw-template'
+import { VerifyPasswordResetDTO } from './dto/verify-pw-reset.dto'
 
 describe('AuthService', () => {
   let service: AuthService
@@ -565,6 +566,40 @@ describe('AuthService', () => {
           email: 'test@example.com',
         } as RequestPasswordResetDTO)
       ).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  describe('verifyPasswordReset', () => {
+    it('should throw NotFoundException if verification code is not found', async () => {
+      prisma.ticket.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.verifyPasswordReset({
+          verificationCode: 'code',
+          email: 'test@example.com',
+        } as VerifyPasswordResetDTO)
+      ).rejects.toThrow(NotFoundException)
+    })
+
+    it('should throw UnauthorizedException if emails do not match', async () => {
+      prisma.ticket.findUnique.mockResolvedValue({
+        uniqueCode: 'verification-code',
+        updatedAt: undefined,
+        createdAt: undefined,
+        id: '',
+        user: {
+          email: 'wrong@example.com',
+          firstName: 'Jane',
+          updatedAt: undefined,
+        } as any,
+      } as any)
+
+      await expect(
+        service.verifyPasswordReset({
+          verificationCode: 'code',
+          email: 'test@example.com',
+        } as VerifyPasswordResetDTO)
+      ).rejects.toThrow(UnauthorizedException)
     })
   })
 })
