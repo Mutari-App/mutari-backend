@@ -1689,15 +1689,10 @@ export class ItineraryService {
           photoProfile: itinerary.user.photoProfile ?? null,
         },
         tags: itinerary.tags ?? [],
-        daysCount: Math.max(
-          1,
-          Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-        ),
+        daysCount: Math.max(1, Math.ceil(end.getDate() - start.getDate() + 1)),
         likes: itinerary._count.likes ?? 0,
       }
     })
-
-    console.log('format views', formattedViews)
 
     return formattedViews
   }

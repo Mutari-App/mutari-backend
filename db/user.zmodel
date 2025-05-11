@@ -14,7 +14,6 @@ model User extends Base {
     referredById       String?
     loyaltyPoints      Int                 @default(0)
     birthDate          DateTime?           @db.Date()
-
     referredBy         User?               @relation("Referral", fields: [referredById], references: [id]) // Relasi ke user lain
     referrals          User[]              @relation("Referral")
     tickets            Ticket[]
@@ -26,6 +25,7 @@ model User extends Base {
     itineraryLikes     ItineraryLike[]
     tourTickets        TourTicket[]
     itineraryViews     ItineraryView[]
+    TourViews          TourView[]
 }
 
 model Ticket extends Base {
