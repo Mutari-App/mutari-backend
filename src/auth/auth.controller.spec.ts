@@ -11,6 +11,7 @@ import { RegisterDTO } from './dto/register.dto'
 import { VerifyRegistrationDTO } from './dto/verify-registration.dto'
 import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
 import { VerifyPasswordResetDTO } from './dto/verify-pw-reset.dto'
+import { PasswordResetDTO } from './dto/pw-reset.dto'
 
 describe('AuthController', () => {
   let controller: AuthController
@@ -34,6 +35,7 @@ describe('AuthController', () => {
             register: jest.fn(),
             sendPasswordResetVerification: jest.fn(),
             verifyPasswordReset: jest.fn(),
+            resetPassword: jest.fn(),
           },
         },
         {
@@ -327,6 +329,26 @@ describe('AuthController', () => {
       expect(result).toEqual({
         statusCode: 200,
         message: 'Verification successful',
+        success: true,
+      })
+    })
+  })
+
+  describe('resetPassword', () => {
+    it('should call authService.resetPassword with correct data', async () => {
+      const dto: PasswordResetDTO = {
+        email: 'john.doe@example.com',
+        password: 'password',
+        confirmPassword: 'password',
+        verificationCode: 'code',
+      }
+      jest.spyOn(service, 'resetPassword').mockResolvedValue(undefined)
+
+      const result = await controller.resetPassword(dto)
+      expect(service.resetPassword).toHaveBeenCalledWith(dto)
+      expect(result).toEqual({
+        statusCode: 200,
+        message: 'Password reset successfully',
         success: true,
       })
     })
