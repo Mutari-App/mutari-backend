@@ -20,6 +20,7 @@ import { Cron, CronExpression } from '@nestjs/schedule'
 import { LoginDTO } from './dto/login.dto'
 import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
 import { resetPasswordTemplate } from './templates/reset-pw-template'
+import { VerifyPasswordResetDTO } from './dto/verify-pw-reset.dto'
 
 @Injectable()
 export class AuthService {
@@ -327,5 +328,24 @@ export class AuthService {
       'Please reset your password',
       resetPasswordTemplate(verificationCode.uniqueCode)
     )
+  }
+
+  async verifyPasswordReset(data: VerifyPasswordResetDTO) {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: {
+        uniqueCode: data.verificationCode,
+      },
+      include: {
+        user: true,
+      },
+    })
+
+    if (!ticket) {
+      throw new NotFoundException('Verification code not found')
+    }
+
+    if (ticket.user.email !== data.email) {
+      throw new UnauthorizedException('Invalid verification')
+    }
   }
 }
