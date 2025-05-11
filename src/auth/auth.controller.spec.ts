@@ -9,6 +9,7 @@ import { COOKIE_CONFIG } from './constant'
 import { CreateUserDTO } from './dto/create-user.dto'
 import { RegisterDTO } from './dto/register.dto'
 import { VerifyRegistrationDTO } from './dto/verify-registration.dto'
+import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
 
 describe('AuthController', () => {
   let controller: AuthController
@@ -30,6 +31,7 @@ describe('AuthController', () => {
             sendVerification: jest.fn(),
             verify: jest.fn(),
             register: jest.fn(),
+            sendPasswordResetVerification: jest.fn(),
           },
         },
         {
@@ -286,6 +288,25 @@ describe('AuthController', () => {
         statusCode: 200,
         message: 'User fetched successfully.',
         user: mockUser,
+        success: true,
+      })
+    })
+  })
+
+  describe('requestPasswordReset', () => {
+    it('should call authService.sendPasswordResetVerification with correct data', async () => {
+      const dto: RequestPasswordResetDTO = {
+        email: 'john.doe@example.com',
+      }
+      jest
+        .spyOn(service, 'sendPasswordResetVerification')
+        .mockResolvedValue(undefined)
+
+      const result = await controller.requestPasswordReset(dto)
+      expect(service.sendPasswordResetVerification).toHaveBeenCalledWith(dto)
+      expect(result).toEqual({
+        statusCode: 200,
+        message: 'Sent verification code to email',
         success: true,
       })
     })
