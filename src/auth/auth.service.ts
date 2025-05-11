@@ -18,6 +18,8 @@ import * as bcrypt from 'bcryptjs'
 import { JwtService } from '@nestjs/jwt'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { LoginDTO } from './dto/login.dto'
+import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
+import { resetPasswordTemplate } from './templates/reset-pw-template'
 
 @Injectable()
 export class AuthService {
@@ -300,6 +302,30 @@ export class AuthService {
       data.email,
       'Register Successful!',
       newUserRegistrationTemplate(data.firstName)
+    )
+  }
+
+  async sendPasswordResetVerification(data: RequestPasswordResetDTO) {
+    let user = await this.prisma.user.findUnique({
+      where: {
+        email: data.email,
+        isEmailConfirmed: true,
+      },
+    })
+
+    if (!user) {
+      throw new BadRequestException('Email address is invalid')
+    }
+
+    const verificationCode = await this._generateUniqueVerificationCode(
+      this.prisma,
+      user
+    )
+
+    await this.emailService.sendEmail(
+      data.email,
+      'Please reset your password',
+      resetPasswordTemplate(verificationCode.uniqueCode)
     )
   }
 }
