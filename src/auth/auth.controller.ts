@@ -23,6 +23,7 @@ import { PreRegistGuard } from './guards/pre-regist.guard'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
 import { VerifyPasswordResetDTO } from './dto/verify-pw-reset.dto'
+import { PasswordResetDTO } from './dto/pw-reset.dto'
 
 @UseGuards(PreRegistGuard)
 @Controller('auth')
@@ -153,6 +154,16 @@ export class AuthController {
     return this.responseUtil.response({
       statusCode: HttpStatus.OK,
       message: 'Verification successful',
+    })
+  }
+
+  @Public()
+  @Post('resetPassword')
+  async resetPassword(@Body() data: PasswordResetDTO) {
+    await this.authService.resetPassword(data)
+    return this.responseUtil.response({
+      statusCode: HttpStatus.OK,
+      message: 'Password reset successfully',
     })
   }
 }
