@@ -18,6 +18,8 @@ import { newUserRegistrationTemplate } from './templates/new-user-registration.t
 import { verificationCodeTemplate } from './templates/verification-code.template'
 import { DeepMockProxy, mockDeep } from 'jest-mock-extended'
 import { PrismaClient, Ticket, User } from '@prisma/client'
+import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
+import { resetPasswordTemplate } from './templates/reset-pw-template'
 
 describe('AuthService', () => {
   let service: AuthService
@@ -522,6 +524,47 @@ describe('AuthService', () => {
         'Register Successful!',
         newUserRegistrationTemplate('John')
       )
+    })
+  })
+
+  describe('sendPasswordResetVerification', () => {
+    it('should send password reset verification email if user exists and has email registered', async () => {
+      const user = {
+        id: 'user-id',
+        firstName: 'John',
+        email: 'test@example.com',
+        isEmailConfirmed: true,
+      } as User
+
+      prisma.user.findUnique.mockResolvedValue(user)
+      prisma.ticket.findMany.mockResolvedValue([])
+      prisma.ticket.create.mockResolvedValue({
+        uniqueCode: 'verification-code',
+        updatedAt: undefined,
+        createdAt: undefined,
+        id: '',
+        userId: '',
+      })
+
+      await service.sendPasswordResetVerification({
+        email: 'test@example.com',
+      } as RequestPasswordResetDTO)
+
+      expect(emailService.sendEmail).toHaveBeenCalledWith(
+        'test@example.com',
+        'Please reset your password',
+        resetPasswordTemplate('verification-code')
+      )
+    })
+
+    it('should throw BadRequestException if user does not exist', async () => {
+      prisma.user.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.sendPasswordResetVerification({
+          email: 'test@example.com',
+        } as RequestPasswordResetDTO)
+      ).rejects.toThrow(BadRequestException)
     })
   })
 })
