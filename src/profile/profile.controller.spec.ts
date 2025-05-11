@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { ProfileController } from './profile.controller'
 import { ProfileService } from './profile.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
-import { HttpStatus } from '@nestjs/common'
+import { HttpStatus, NotFoundException } from '@nestjs/common'
 
 describe('ProfileController', () => {
   let controller: ProfileController
@@ -11,6 +11,7 @@ describe('ProfileController', () => {
     findOne: jest.fn(),
     getListItineraries: jest.fn(),
     getListItineraryLikes: jest.fn(),
+    getTransactionHistory: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -179,6 +180,108 @@ describe('ProfileController', () => {
           itineraryLikes: [],
         },
       })
+    })
+  })
+  describe('getTransactionHistory', () => {
+    it('should return transaction history when getTransactionHistory is called with a valid ID', async () => {
+      // Arrange
+      const userId = 'user-123'
+      const expectedTransactions = [
+        {
+          id: 'transaction-1',
+          tourId: 'tour-1',
+          userId,
+          quantity: 2,
+          paymentStatus: 'PAID',
+          totalPrice: 500000,
+          createdAt: new Date(),
+          tour: {
+            title: 'Bali Adventure',
+            location: 'Bali, Indonesia',
+          },
+          guests: [
+            { id: 'guest-1', name: 'John Doe', email: 'john@example.com' },
+            { id: 'guest-2', name: 'Jane Doe', email: 'jane@example.com' },
+          ],
+        },
+        {
+          id: 'transaction-2',
+          tourId: 'tour-2',
+          userId,
+          quantity: 1,
+          paymentStatus: 'PENDING',
+          totalPrice: 300000,
+          createdAt: new Date(),
+          tour: {
+            title: 'Jakarta City Tour',
+            location: 'Jakarta, Indonesia',
+          },
+          guests: [
+            { id: 'guest-3', name: 'Bob Smith', email: 'bob@example.com' },
+          ],
+        },
+      ]
+
+      mockProfileService.getTransactionHistory.mockResolvedValue(
+        expectedTransactions
+      )
+
+      // Act
+      const result = await controller.getTransactionHistory(userId)
+
+      // Assert
+      expect(result).toEqual({
+        meta: {
+          message: 'Transaction history fetched successfully',
+          statusCode: HttpStatus.OK,
+        },
+        data: {
+          transactions: expectedTransactions,
+        },
+      })
+      expect(mockProfileService.getTransactionHistory).toHaveBeenCalledWith(
+        userId
+      )
+    })
+
+    it('should return empty array when user has no transactions', async () => {
+      // Arrange
+      const userId = 'user-123'
+      mockProfileService.getTransactionHistory.mockResolvedValue([])
+
+      // Act
+      const result = await controller.getTransactionHistory(userId)
+
+      // Assert
+      expect(result).toEqual({
+        meta: {
+          message: 'Transaction history fetched successfully',
+          statusCode: HttpStatus.OK,
+        },
+        data: {
+          transactions: [],
+        },
+      })
+      expect(mockProfileService.getTransactionHistory).toHaveBeenCalledWith(
+        userId
+      )
+    })
+
+    it('should handle NotFoundException if service throws it', async () => {
+      // Arrange
+      const userId = 'non-existent-user'
+      const errorMessage = 'User not found'
+      mockProfileService.getTransactionHistory.mockRejectedValue(
+        new NotFoundException(errorMessage)
+      )
+
+      // Act and Assert
+      await expect(controller.getTransactionHistory(userId)).rejects.toThrow(
+        NotFoundException
+      )
+      expect(mockProfileService.getTransactionHistory).toHaveBeenCalledWith(
+        userId
+      )
     })
   })
 })
