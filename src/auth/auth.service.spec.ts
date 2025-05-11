@@ -21,6 +21,8 @@ import { PrismaClient, Ticket, User } from '@prisma/client'
 import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
 import { resetPasswordTemplate } from './templates/reset-pw-template'
 import { VerifyPasswordResetDTO } from './dto/verify-pw-reset.dto'
+import { PasswordResetDTO } from './dto/pw-reset.dto'
+import { successPasswordResetTemplate } from './templates/success-pw-reset-template'
 
 describe('AuthService', () => {
   let service: AuthService
@@ -600,6 +602,101 @@ describe('AuthService', () => {
           email: 'test@example.com',
         } as VerifyPasswordResetDTO)
       ).rejects.toThrow(UnauthorizedException)
+    })
+  })
+
+  describe('resetPassword', () => {
+    it('should update user password and send success password reset email if verification is successful', async () => {
+      jest.spyOn(service, 'verifyPasswordReset').mockResolvedValue(undefined)
+      prisma.user.findUnique.mockResolvedValue({
+        email: 'test@example.com',
+        firstName: 'John',
+        id: 'USER-ID',
+        isEmailConfirmed: true,
+      } as User)
+      prisma.user.update.mockResolvedValue({
+        email: 'test@example.com',
+        firstName: 'John',
+        updatedAt: undefined,
+        createdAt: undefined,
+        id: '',
+        lastName: '',
+        phoneNumber: '',
+        password: 'hashedPassword',
+        photoProfile: '',
+        birthDate: undefined,
+        referralCode: '',
+        isEmailConfirmed: false,
+        referredById: '',
+        loyaltyPoints: 0,
+      })
+
+      jest
+        .spyOn(bcrypt, 'hash')
+        .mockImplementation(() => Promise.resolve('hashedPassword'))
+
+      await service.resetPassword({
+        email: 'test@example.com',
+        password: 'pass',
+        confirmPassword: 'pass',
+      } as PasswordResetDTO)
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+        data: { password: 'hashedPassword' },
+      })
+
+      expect(prisma.ticket.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'USER-ID' },
+      })
+
+      expect(emailService.sendEmail).toHaveBeenCalledWith(
+        'test@example.com',
+        'Your password has been reset',
+        successPasswordResetTemplate()
+      )
+    })
+
+    it('should throw BadRequestException if passwords do not match', async () => {
+      jest.spyOn(service, 'verifyPasswordReset').mockResolvedValue(undefined)
+      await expect(
+        service.resetPassword({
+          email: 'test@example.com',
+          password: 'pass',
+          confirmPassword: 'wrong',
+        } as PasswordResetDTO)
+      ).rejects.toThrow(BadRequestException)
+    })
+
+    it('should throw NotFoundException if user is not found', async () => {
+      jest.spyOn(service, 'verifyPasswordReset').mockResolvedValue(undefined)
+      prisma.user.findUnique.mockResolvedValue(null)
+      await expect(
+        service.resetPassword({
+          email: 'none@example.com',
+          password: 'pass',
+          confirmPassword: 'pass',
+        } as PasswordResetDTO)
+      ).rejects.toThrow(NotFoundException)
+    })
+
+    it("should throw BadRequestException if user's email is not registered", async () => {
+      const user = {
+        id: 'user-id',
+        firstName: 'John',
+        email: 'test@example.com',
+        isEmailConfirmed: false,
+      } as User
+
+      prisma.user.findUnique.mockResolvedValue(user)
+
+      await expect(
+        service.resetPassword({
+          email: 'none@example.com',
+          password: 'pass',
+          confirmPassword: 'pass',
+        } as PasswordResetDTO)
+      ).rejects.toThrow(NotFoundException)
     })
   })
 })
