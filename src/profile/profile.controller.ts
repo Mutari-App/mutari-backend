@@ -57,4 +57,18 @@ export class ProfileController {
       }
     )
   }
+
+  @Get(':userId/transactions')
+  async getTransactionHistory(@Param('id') userId: string) {
+    const transactions = await this.profileService.getTransactionHistory(userId)
+    return this.responseUtil.response(
+      {
+        message: 'Transaction history fetched successfully',
+        statusCode: HttpStatus.OK,
+      },
+      {
+        transactions,
+      }
+    )
+  }
 }
