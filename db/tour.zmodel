@@ -12,6 +12,7 @@ model Tour extends Base {
   pricePerTicket Decimal
   duration      Int
   durationType  DURATION_TYPE
+  availableTickets Int         @default(0)
   itineraryId   String
   
   itinerary     Itinerary      @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
