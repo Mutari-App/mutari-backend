@@ -25,9 +25,14 @@ export class TourService {
       },
     })
 
+    const includes = await this.prisma.tourIncludes.findMany({
+      where: { tourId: id },
+    })
+
     const result = {
       ...tour,
       itinerary: itinerary ? { ...itinerary } : null,
+      includes,
     }
 
     return result
