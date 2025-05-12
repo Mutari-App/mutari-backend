@@ -2,7 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { ProfileController } from './profile.controller'
 import { ProfileService } from './profile.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
-import { HttpStatus } from '@nestjs/common'
+import { HttpStatus, NotFoundException } from '@nestjs/common'
+import { User } from '@prisma/client'
 
 describe('ProfileController', () => {
   let controller: ProfileController
@@ -11,10 +12,33 @@ describe('ProfileController', () => {
     findOne: jest.fn(),
     getListItineraries: jest.fn(),
     getListItineraryLikes: jest.fn(),
+    updateProfile: jest.fn(),
+    sendVerificationCode: jest.fn(),
+    verifyEmailChange: jest.fn(),
+    changePassword: jest.fn(),
+    updatePhotoProfile: jest.fn(),
+    getTransactionHistory: jest.fn(),
   }
 
   const mockResponseUtil = {
     response: jest.fn((meta, data) => ({ meta, data })),
+  }
+
+  const mockUser: User = {
+    id: 'user-123',
+    updatedAt: new Date(),
+    createdAt: new Date(),
+    firstName: 'John',
+    lastName: 'Doe',
+    email: 'johndoe@example.com',
+    phoneNumber: '081234123412',
+    password: 'password-123',
+    photoProfile: 'profile.png',
+    referralCode: 'ABCD1234',
+    isEmailConfirmed: true,
+    referredById: 'referred-user-123',
+    loyaltyPoints: 1000,
+    birthDate: new Date(),
   }
 
   beforeEach(async () => {
@@ -179,6 +203,347 @@ describe('ProfileController', () => {
           itineraryLikes: [],
         },
       })
+    })
+  })
+  describe('updateProfile', () => {
+    it('should update a profile when called with valid ID and data', async () => {
+      const id = 'user-123'
+      const updateProfileDto = {
+        firstName: 'Updated',
+        lastName: 'Name',
+        birthDate: '1990-01-01',
+      }
+
+      const updatedProfile = {
+        id,
+        ...updateProfileDto,
+        updatedAt: new Date(),
+        createdAt: new Date(),
+        photoProfile: 'profile.png',
+        referralCode: 'ABCD1234',
+        isEmailConfirmed: true,
+        referredById: 'referred-user-123',
+        loyaltyPoints: 1000,
+      }
+
+      mockProfileService.updateProfile.mockResolvedValue(updatedProfile)
+
+      const result = await controller.updateProfile(mockUser, updateProfileDto)
+
+      expect(result).toEqual({
+        meta: {
+          message: 'Profile updated successfully',
+          statusCode: HttpStatus.OK,
+        },
+        data: {
+          updatedProfile,
+        },
+      })
+      expect(mockProfileService.updateProfile).toHaveBeenCalledWith(
+        mockUser.id,
+        updateProfileDto
+      )
+    })
+
+    it('should update only the fields provided in the DTO', async () => {
+      const updateProfileDto = {
+        firstName: 'Updated',
+      }
+
+      const updatedProfile = {
+        id: 'user-123',
+        firstName: 'Updated',
+        lastName: 'Doe',
+        phoneNumber: '081234123412',
+        updatedAt: new Date(),
+        createdAt: new Date(),
+        photoProfile: 'profile.png',
+        referralCode: 'ABCD1234',
+        isEmailConfirmed: true,
+        referredById: 'referred-user-123',
+        loyaltyPoints: 1000,
+        birthDate: new Date(),
+      }
+
+      mockProfileService.updateProfile.mockResolvedValue(updatedProfile)
+
+      const result = await controller.updateProfile(mockUser, updateProfileDto)
+
+      expect(result.data.updatedProfile).toEqual(updatedProfile)
+      expect(mockProfileService.updateProfile).toHaveBeenCalledWith(
+        mockUser.id,
+        updateProfileDto
+      )
+    })
+  })
+
+  describe('requestChangeEmail', () => {
+    it('should call sendVerificationCode service with correct parameters', async () => {
+      const requestEmailChangeDTO = {
+        email: 'newemail@example.com',
+      }
+
+      await controller.requestChangeEmail(mockUser, requestEmailChangeDTO)
+
+      expect(mockProfileService.sendVerificationCode).toHaveBeenCalledWith(
+        mockUser,
+        requestEmailChangeDTO.email
+      )
+    })
+
+    it('should return success response when email change request is successful', async () => {
+      const requestEmailChangeDTO = {
+        email: 'newemail@example.com',
+      }
+
+      mockProfileService.sendVerificationCode.mockResolvedValue(undefined)
+
+      const result = await controller.requestChangeEmail(
+        mockUser,
+        requestEmailChangeDTO
+      )
+
+      expect(result).toEqual({
+        meta: {
+          message: 'Verification code sent to your email',
+          statusCode: HttpStatus.OK,
+        },
+        data: undefined,
+      })
+    })
+  })
+
+  describe('changeEmailVerification', () => {
+    it('should call verifyEmailChange service with correct parameters', async () => {
+      const changeEmailVerificationDTO = {
+        code: 'ABCD1234',
+      }
+
+      mockProfileService.verifyEmailChange.mockResolvedValue(undefined)
+
+      await controller.changeEmailVerification(
+        mockUser,
+        changeEmailVerificationDTO
+      )
+
+      expect(mockProfileService.verifyEmailChange).toHaveBeenCalledWith(
+        mockUser,
+        changeEmailVerificationDTO.code
+      )
+    })
+
+    it('should return success response when email change verification is successful', async () => {
+      const changeEmailVerificationDTO = {
+        code: 'ABCD1234',
+      }
+
+      mockProfileService.verifyEmailChange.mockResolvedValue(undefined)
+
+      const result = await controller.changeEmailVerification(
+        mockUser,
+        changeEmailVerificationDTO
+      )
+
+      expect(result).toEqual({
+        meta: {
+          message: 'Email changed successfully',
+          statusCode: HttpStatus.OK,
+        },
+        data: undefined,
+      })
+    })
+  })
+
+  describe('changePassword', () => {
+    beforeEach(() => {
+      mockProfileService.changePassword = jest.fn()
+    })
+
+    it('should call changePassword service with correct parameters', async () => {
+      const changePasswordDto = {
+        oldPassword: 'currentPassword123',
+        newPassword: 'newPassword123',
+        confirmPassword: 'newPassword123',
+      }
+
+      await controller.changePassword(mockUser, changePasswordDto)
+
+      expect(mockProfileService.changePassword).toHaveBeenCalledWith(
+        mockUser.id,
+        changePasswordDto
+      )
+    })
+
+    it('should return success response when password change is successful', async () => {
+      const changePasswordDto = {
+        oldPassword: 'currentPassword123',
+        newPassword: 'newPassword123',
+        confirmPassword: 'newPassword123',
+      }
+
+      mockProfileService.changePassword.mockResolvedValue(undefined)
+
+      const result = await controller.changePassword(
+        mockUser,
+        changePasswordDto
+      )
+
+      expect(result).toEqual({
+        meta: {
+          message: 'Password changed successfully',
+          statusCode: HttpStatus.OK,
+        },
+        data: undefined,
+      })
+    })
+  })
+
+  describe('updatePhotoProfile', () => {
+    beforeEach(() => {
+      mockProfileService.updatePhotoProfile = jest.fn()
+    })
+
+    it('should update photo profile when called with valid URL', async () => {
+      const photoProfileUrl = 'https://example.com/new-profile.jpg'
+      const updatedProfile = {
+        ...mockUser,
+        photoProfile: photoProfileUrl,
+        updatedAt: new Date(),
+      }
+
+      mockProfileService.updatePhotoProfile.mockResolvedValue(updatedProfile)
+
+      const result = await controller.updatePhotoProfile(
+        mockUser,
+        photoProfileUrl
+      )
+
+      expect(result).toEqual({
+        meta: {
+          message: 'Profile photo updated successfully',
+          statusCode: HttpStatus.OK,
+        },
+        data: {
+          updatedProfile,
+        },
+      })
+      expect(mockProfileService.updatePhotoProfile).toHaveBeenCalledWith(
+        mockUser.id,
+        photoProfileUrl
+      )
+    })
+
+    it('should call updatePhotoProfile service with correct parameters', async () => {
+      const photoProfileUrl = 'https://example.com/profile-picture.png'
+
+      await controller.updatePhotoProfile(mockUser, photoProfileUrl)
+
+      expect(mockProfileService.updatePhotoProfile).toHaveBeenCalledWith(
+        mockUser.id,
+        photoProfileUrl
+      )
+    })
+  })
+  describe('getTransactionHistory', () => {
+    it('should return transaction history when getTransactionHistory is called with a valid ID', async () => {
+      // Arrange
+      const userId = 'user-123'
+      const expectedTransactions = [
+        {
+          id: 'transaction-1',
+          tourId: 'tour-1',
+          userId,
+          quantity: 2,
+          paymentStatus: 'PAID',
+          totalPrice: 500000,
+          createdAt: new Date(),
+          tour: {
+            title: 'Bali Adventure',
+            location: 'Bali, Indonesia',
+          },
+          guests: [
+            { id: 'guest-1', name: 'John Doe', email: 'john@example.com' },
+            { id: 'guest-2', name: 'Jane Doe', email: 'jane@example.com' },
+          ],
+        },
+        {
+          id: 'transaction-2',
+          tourId: 'tour-2',
+          userId,
+          quantity: 1,
+          paymentStatus: 'PENDING',
+          totalPrice: 300000,
+          createdAt: new Date(),
+          tour: {
+            title: 'Jakarta City Tour',
+            location: 'Jakarta, Indonesia',
+          },
+          guests: [
+            { id: 'guest-3', name: 'Bob Smith', email: 'bob@example.com' },
+          ],
+        },
+      ]
+
+      mockProfileService.getTransactionHistory.mockResolvedValue(
+        expectedTransactions
+      )
+
+      // Act
+      const result = await controller.getTransactionHistory(userId)
+
+      // Assert
+      expect(result).toEqual({
+        meta: {
+          message: 'Transaction history fetched successfully',
+          statusCode: HttpStatus.OK,
+        },
+        data: {
+          transactions: expectedTransactions,
+        },
+      })
+      expect(mockProfileService.getTransactionHistory).toHaveBeenCalledWith(
+        userId
+      )
+    })
+
+    it('should return empty array when user has no transactions', async () => {
+      // Arrange
+      const userId = 'user-123'
+      mockProfileService.getTransactionHistory.mockResolvedValue([])
+
+      // Act
+      const result = await controller.getTransactionHistory(userId)
+
+      // Assert
+      expect(result).toEqual({
+        meta: {
+          message: 'Transaction history fetched successfully',
+          statusCode: HttpStatus.OK,
+        },
+        data: {
+          transactions: [],
+        },
+      })
+      expect(mockProfileService.getTransactionHistory).toHaveBeenCalledWith(
+        userId
+      )
+    })
+
+    it('should handle NotFoundException if service throws it', async () => {
+      // Arrange
+      const userId = 'non-existent-user'
+      const errorMessage = 'User not found'
+      mockProfileService.getTransactionHistory.mockRejectedValue(
+        new NotFoundException(errorMessage)
+      )
+
+      // Act and Assert
+      await expect(controller.getTransactionHistory(userId)).rejects.toThrow(
+        NotFoundException
+      )
+      expect(mockProfileService.getTransactionHistory).toHaveBeenCalledWith(
+        userId
+      )
     })
   })
 })

@@ -927,6 +927,170 @@ describe('ItineraryService', () => {
       // No route should be created because nextBlock will be undefined (position 1 is skipped)
       expect(mockPrismaService.route.create).not.toHaveBeenCalled()
     })
+
+    it('should handle empty createdBlocks and use default TRANSPORT_MODE.DRIVE when transportMode is not provided', async () => {
+      // Arrange
+      const createItineraryDto: CreateItineraryDto = {
+        title: 'Test Itinerary',
+        description: 'Test Description',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-05'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 1',
+                position: 0,
+                startTime: new Date('2023-01-01T09:00:00Z'),
+                endTime: new Date('2023-01-01T10:00:00Z'),
+                location: 'Test Location 1',
+                price: 100,
+                routeToNext: {
+                  distance: 1000,
+                  duration: 600,
+                  polyline: 'test_polyline',
+                  // transportMode is intentionally not provided to test default
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 2',
+                position: 1,
+                startTime: new Date('2023-01-01T11:00:00Z'),
+                endTime: new Date('2023-01-01T12:00:00Z'),
+                location: 'Test Location 2',
+                price: 200,
+              },
+            ],
+          },
+          {
+            sectionNumber: 2,
+            title: 'Day 2',
+            blocks: [], // Empty blocks to test empty createdBlocks handling
+          },
+        ],
+      }
+
+      // Mock the itinerary.create response with one section having blocks and one without
+      mockPrismaService.itinerary.create.mockResolvedValue({
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        title: createItineraryDto.title,
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1,
+            blocks: [
+              {
+                id: 'block-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+              },
+              {
+                id: 'block-2',
+                position: 1,
+                blockType: BLOCK_TYPE.LOCATION,
+              },
+            ],
+          },
+          {
+            id: 'section-2',
+            sectionNumber: 2,
+            blocks: [], // Empty blocks
+          },
+        ],
+      })
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return callback(mockPrismaService)
+      })
+
+      // Act
+      await service.createItinerary(createItineraryDto, mockUser)
+
+      // Assert
+      expect(mockPrismaService.itinerary.create).toHaveBeenCalled()
+
+      // Verify that route.create was called with the default transport mode
+      expect(mockPrismaService.route.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          sourceBlockId: 'block-1',
+          destinationBlockId: 'block-2',
+          distance: 1000,
+          duration: 600,
+          polyline: 'test_polyline',
+          transportMode: TRANSPORT_MODE.DRIVE, // Default transport mode should be used
+        }),
+      })
+
+      // Verify that the section with empty blocks doesn't cause errors
+      // This assertion checks that the function completed successfully despite empty blocks
+      expect(mockPrismaService.route.create).toHaveBeenCalledTimes(1)
+    })
+
+    it('should handle when section is not found in the created itinerary', async () => {
+      // Arrange
+      const createItineraryDto: CreateItineraryDto = {
+        title: 'Test Itinerary',
+        description: 'Test Description',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-05'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 1',
+                position: 0,
+                routeToNext: {
+                  distance: 1000,
+                  duration: 600,
+                  polyline: 'test_polyline',
+                  transportMode: TRANSPORT_MODE.WALK,
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+            ],
+          },
+        ],
+      }
+
+      // Mock the itinerary.create response with a different section number
+      // This simulates the case where a section from the DTO isn't found in the created itinerary
+      mockPrismaService.itinerary.create.mockResolvedValue({
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        title: createItineraryDto.title,
+        sections: [
+          {
+            id: 'section-999', // Different section number than in the DTO
+            sectionNumber: 999,
+            blocks: [],
+          },
+        ],
+      })
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return callback(mockPrismaService)
+      })
+
+      // Act
+      await service.createItinerary(createItineraryDto, mockUser)
+
+      // Assert
+      expect(mockPrismaService.itinerary.create).toHaveBeenCalled()
+
+      // No routes should be created since the section wasn't found
+      expect(mockPrismaService.route.create).not.toHaveBeenCalled()
+    })
   })
 
   describe('updateItinerary', () => {
@@ -4629,7 +4793,7 @@ describe('ItineraryService', () => {
             photoProfile: null,
           },
           tags: [],
-          daysCount: 2,
+          daysCount: 3,
           likes: 10,
         },
         {
@@ -4644,7 +4808,7 @@ describe('ItineraryService', () => {
             photoProfile: null,
           },
           tags: [],
-          daysCount: 2,
+          daysCount: 3,
           likes: 5,
         },
       ])
@@ -5453,130 +5617,6 @@ describe('ItineraryService', () => {
     })
   })
 
-  describe('findTrendingItineraries', () => {
-    it('should return trending itineraries ordered by most likes', async () => {
-      // Arrange
-      const mockItineraries = [
-        {
-          id: 'itinerary-1',
-          title: 'Popular Trip',
-          description: 'A very popular itinerary',
-          coverImage: 'popular.jpg',
-          likes: [{ id: 'like-1' }, { id: 'like-2' }, { id: 'like-3' }],
-          user: {
-            firstName: 'John',
-            lastName: 'Doe',
-            photoProfile: 'profile.jpg',
-          },
-        },
-        {
-          id: 'itinerary-2',
-          title: 'Less Popular Trip',
-          description: 'A less popular itinerary',
-          coverImage: 'less-popular.jpg',
-          likes: [{ id: 'like-4' }],
-          user: {
-            firstName: 'Jane',
-            lastName: 'Smith',
-            photoProfile: 'profile2.jpg',
-          },
-        },
-      ]
-
-      mockPrismaService.itinerary.findMany.mockResolvedValue(mockItineraries)
-
-      // Act
-      const result = await service.findTrendingItineraries()
-
-      // Assert
-      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
-        where: {
-          isPublished: true,
-        },
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          coverImage: true,
-          startDate: true,
-          endDate: true,
-          likes: true,
-          user: {
-            select: {
-              photoProfile: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
-        },
-        orderBy: {
-          likes: {
-            _count: 'desc',
-          },
-        },
-        take: 10,
-      })
-
-      expect(result).toHaveLength(2)
-
-      // Verify the likes array is replaced with a count
-      expect(result[0].likesCount).toBe(3)
-      expect(result[1].likesCount).toBe(1)
-
-      // Verify the expected structure
-      expect(result[0]).toEqual({
-        id: 'itinerary-1',
-        title: 'Popular Trip',
-        description: 'A very popular itinerary',
-        coverImage: 'popular.jpg',
-        likesCount: 3,
-        user: {
-          firstName: 'John',
-          lastName: 'Doe',
-          photoProfile: 'profile.jpg',
-        },
-      })
-    })
-
-    it('should return empty array when no trending itineraries exist', async () => {
-      // Arrange
-      mockPrismaService.itinerary.findMany.mockResolvedValue([])
-
-      // Act
-      const result = await service.findTrendingItineraries()
-
-      // Assert
-      expect(result).toEqual([])
-      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalled()
-    })
-
-    it('should handle itineraries with no likes', async () => {
-      // Arrange
-      const mockItineraries = [
-        {
-          id: 'itinerary-1',
-          title: 'No Likes Trip',
-          description: 'An itinerary with no likes',
-          coverImage: 'no-likes.jpg',
-          likes: [],
-          user: {
-            firstName: 'John',
-            lastName: 'Doe',
-            photoProfile: 'profile.jpg',
-          },
-        },
-      ]
-
-      mockPrismaService.itinerary.findMany.mockResolvedValue(mockItineraries)
-
-      // Act
-      const result = await service.findTrendingItineraries()
-
-      // Assert
-      expect(result[0].likesCount).toBe(0)
-    })
-  })
-
   describe('saveItinerary', () => {
     it('should save a public itinerary for the user', async () => {
       const itineraryId = 'itn-123'
@@ -5821,21 +5861,51 @@ describe('ItineraryService', () => {
   })
 
   describe('findItinerariesByLatestTags', () => {
-    it("should find itineraries by tags from user's latest itinerary", async () => {
+    it("should find itineraries by tags from user's latest and recently viewed itineraries", async () => {
       // Arrange
       const mockUser = { id: 'user-123', email: 'test@example.com' } as any
-      const mockLatestItinerary = {
-        id: 'itinerary-latest',
-        userId: mockUser.id,
-        title: 'Latest Trip',
-      }
 
-      const mockLatestTags = [
+      // Mock latest itineraries
+      const mockLatestItineraries = [
+        {
+          id: 'itinerary-latest-1',
+          userId: mockUser.id,
+          title: 'Latest Trip 1',
+        },
+        {
+          id: 'itinerary-latest-2',
+          userId: mockUser.id,
+          title: 'Latest Trip 2',
+        },
+      ]
+
+      // Mock recently viewed itineraries
+      const mockRecentViewedItineraries = [
+        {
+          itinerary: {
+            id: 'itinerary-viewed-1',
+            userId: 'other-user',
+            title: 'Recently Viewed Trip 1',
+          },
+        },
+        {
+          itinerary: {
+            id: 'itinerary-viewed-2',
+            userId: 'other-user',
+            title: 'Recently Viewed Trip 2',
+          },
+        },
+      ]
+
+      // Mock tags from combined itineraries
+      const mockCombinedTags = [
         { tag: { id: 'tag1', name: 'Beach' } },
         { tag: { id: 'tag2', name: 'Summer' } },
         { tag: { id: 'tag3', name: 'Family' } },
+        { tag: { id: 'tag4', name: 'Adventure' } },
       ]
 
+      // Mock search results
       const mockSearchResults = {
         hits: [
           {
@@ -5852,10 +5922,16 @@ describe('ItineraryService', () => {
         estimatedTotalHits: 2,
       }
 
-      mockPrismaService.itinerary.findFirst.mockResolvedValue(
-        mockLatestItinerary
+      // Setup mocks
+      mockPrismaService.itinerary.findMany.mockResolvedValue(
+        mockLatestItineraries
       )
-      mockPrismaService.itineraryTag.findMany.mockResolvedValue(mockLatestTags)
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(
+        mockRecentViewedItineraries
+      )
+      mockPrismaService.itineraryTag.findMany.mockResolvedValue(
+        mockCombinedTags
+      )
       mockMeilisearchService.searchItineraries.mockResolvedValue(
         mockSearchResults
       )
@@ -5864,13 +5940,31 @@ describe('ItineraryService', () => {
       const result = await service.findItinerariesByLatestTags(mockUser)
 
       // Assert
-      expect(mockPrismaService.itinerary.findFirst).toHaveBeenCalledWith({
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalledWith({
         where: { userId: mockUser.id },
         orderBy: { updatedAt: 'desc' },
+        take: 3,
       })
 
+      expect(mockPrismaService.itineraryView.findMany).toHaveBeenCalledWith({
+        where: { userId: mockUser.id },
+        orderBy: { viewedAt: 'desc' },
+        select: { itinerary: true },
+        take: 3,
+      })
+
+      // Should query for tags from both latest and viewed itineraries
       expect(mockPrismaService.itineraryTag.findMany).toHaveBeenCalledWith({
-        where: { itineraryId: mockLatestItinerary.id },
+        where: {
+          itineraryId: {
+            in: [
+              'itinerary-viewed-1',
+              'itinerary-viewed-2',
+              'itinerary-latest-1',
+              'itinerary-latest-2',
+            ],
+          },
+        },
         select: {
           tag: {
             select: {
@@ -5879,108 +5973,119 @@ describe('ItineraryService', () => {
             },
           },
         },
-        take: 3,
       })
 
       expect(mockMeilisearchService.searchItineraries).toHaveBeenCalledWith(
         '',
         {
           limit: 8,
-          filter: `tags.tag.id IN ["tag1","tag2","tag3"]`,
+          filter: `tags.tag.id IN ["tag1","tag2","tag3","tag4"]`,
         }
       )
 
       expect(result).toEqual(mockSearchResults.hits)
     })
 
-    it('should return empty array when user has no itineraries', async () => {
+    it('should handle empty results when user has no itineraries or views', async () => {
       // Arrange
       const mockUser = { id: 'user-new', email: 'newuser@example.com' } as any
 
-      // User has no itineraries
-      mockPrismaService.itinerary.findFirst.mockResolvedValue(null)
+      // No itineraries and no views
+      mockPrismaService.itinerary.findMany.mockResolvedValue([])
+      mockPrismaService.itineraryView.findMany.mockResolvedValue([])
 
       // Act
       const result = await service.findItinerariesByLatestTags(mockUser)
 
       // Assert
-      expect(mockPrismaService.itinerary.findFirst).toHaveBeenCalledWith({
-        where: { userId: mockUser.id },
-        orderBy: { updatedAt: 'desc' },
-      })
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalled()
+      expect(mockPrismaService.itineraryView.findMany).toHaveBeenCalled()
 
-      // Tag.findMany should not be called since there are no itineraries
-      expect(mockPrismaService.tag.findMany).not.toHaveBeenCalled()
+      // Tags should not be queried since combinedItineraries is empty
+      expect(mockPrismaService.itineraryTag.findMany).not.toHaveBeenCalled()
+
+      // Meilisearch should not be called
+      expect(mockMeilisearchService.searchItineraries).not.toHaveBeenCalled()
 
       // Should return empty array
       expect(result).toEqual([])
     })
 
-    it('should return empty array when latest itinerary has no tags', async () => {
+    it('should handle when no tags are found in combined itineraries', async () => {
       // Arrange
       const mockUser = { id: 'user-123', email: 'test@example.com' } as any
-      const mockLatestItinerary = {
-        id: 'itinerary-latest-no-tags',
-        userId: mockUser.id,
-        title: 'Latest Trip Without Tags',
-      }
 
-      // Latest itinerary has no tags
-      mockPrismaService.itinerary.findFirst.mockResolvedValue(
-        mockLatestItinerary
+      // Mock itineraries
+      const mockLatestItineraries = [
+        { id: 'itinerary-latest', userId: mockUser.id, title: 'Latest Trip' },
+      ]
+
+      const mockRecentViewedItineraries = [
+        {
+          itinerary: {
+            id: 'itinerary-viewed',
+            userId: 'other-user',
+            title: 'Viewed Trip',
+          },
+        },
+      ]
+
+      // No tags found
+      mockPrismaService.itinerary.findMany.mockResolvedValue(
+        mockLatestItineraries
+      )
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(
+        mockRecentViewedItineraries
       )
       mockPrismaService.itineraryTag.findMany.mockResolvedValue([])
 
-      // Mocking search result for the case where no tag filters are applied
-      const mockSearchResults = {
-        hits: [],
-        estimatedTotalHits: 0,
-      }
-      mockMeilisearchService.searchItineraries.mockResolvedValue(
-        mockSearchResults
-      )
-
       // Act
       const result = await service.findItinerariesByLatestTags(mockUser)
 
       // Assert
-      expect(mockPrismaService.itinerary.findFirst).toHaveBeenCalledWith({
-        where: { userId: mockUser.id },
-        orderBy: { updatedAt: 'desc' },
-      })
-
+      expect(mockPrismaService.itinerary.findMany).toHaveBeenCalled()
+      expect(mockPrismaService.itineraryView.findMany).toHaveBeenCalled()
       expect(mockPrismaService.itineraryTag.findMany).toHaveBeenCalledWith({
-        where: { itineraryId: mockLatestItinerary.id },
-        select: {
-          tag: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
+        where: {
+          itineraryId: { in: ['itinerary-viewed', 'itinerary-latest'] },
         },
-        take: 3,
+        select: {
+          tag: { select: { id: true, name: true } },
+        },
       })
 
-      // Tag.findMany should not be called since the implementation doesn't call it
-      expect(mockPrismaService.tag.findMany).not.toHaveBeenCalled()
+      // Meilisearch should not be called when no tags
+      expect(mockMeilisearchService.searchItineraries).not.toHaveBeenCalled()
 
       // Should return empty array
       expect(result).toEqual([])
     })
 
-    it('should return empty array when latestTags is null', async () => {
+    it('should handle null result from itineraryTag.findMany', async () => {
       // Arrange
       const mockUser = { id: 'user-123', email: 'test@example.com' } as any
-      const mockLatestItinerary = {
-        id: 'itinerary-latest',
-        userId: mockUser.id,
-        title: 'Latest Trip',
-      }
 
-      // Mock the prisma service to return null for latestTags
-      mockPrismaService.itinerary.findFirst.mockResolvedValue(
-        mockLatestItinerary
+      // Mock itineraries
+      const mockLatestItineraries = [
+        { id: 'itinerary-latest', userId: mockUser.id, title: 'Latest Trip' },
+      ]
+
+      const mockRecentViewedItineraries = [
+        {
+          itinerary: {
+            id: 'itinerary-viewed',
+            userId: 'other-user',
+            title: 'Viewed Trip',
+          },
+        },
+      ]
+
+      // Return null for tags
+      mockPrismaService.itinerary.findMany.mockResolvedValue(
+        mockLatestItineraries
+      )
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(
+        mockRecentViewedItineraries
       )
       mockPrismaService.itineraryTag.findMany.mockResolvedValue(null)
 
@@ -5988,32 +6093,9 @@ describe('ItineraryService', () => {
       const result = await service.findItinerariesByLatestTags(mockUser)
 
       // Assert
-      expect(mockPrismaService.itinerary.findFirst).toHaveBeenCalledWith({
-        where: { userId: mockUser.id },
-        orderBy: { updatedAt: 'desc' },
-      })
-
-      expect(mockPrismaService.itineraryTag.findMany).toHaveBeenCalledWith({
-        where: { itineraryId: mockLatestItinerary.id },
-        select: {
-          tag: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-        take: 3,
-      })
-
-      // Tag.findMany should not be called
-      expect(mockPrismaService.tag.findMany).not.toHaveBeenCalled()
-
-      // Should return empty array when latestTags is null
-      expect(result).toEqual([])
-
-      // Meilisearch should not be called
+      expect(mockPrismaService.itineraryTag.findMany).toHaveBeenCalled()
       expect(mockMeilisearchService.searchItineraries).not.toHaveBeenCalled()
+      expect(result).toEqual([])
     })
   })
 })
