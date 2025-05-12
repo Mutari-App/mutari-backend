@@ -37,6 +37,36 @@ export interface IndexedItinerary {
   }>
 }
 
+// Adding interface for indexed tour data
+export interface IndexedTour {
+  id: string
+  title: string
+  coverImage: string | null
+  maxCapacity: number
+  description: string | null
+  location: string
+  pricePerTicket: number
+  duration: number
+  durationType: string
+  createdAt: string
+  availableTickets: number
+  includes: Array<{
+    icon: string
+    text: string
+  }>
+  itinerary: {
+    id: string
+    title: string
+    coverImage: string | null
+  }
+  user: {
+    id: string
+    firstName: string
+    lastName: string
+    photoProfile: string | null
+  }
+}
+
 @Injectable()
 export class MeilisearchService implements OnModuleInit {
   private readonly logger = new Logger(MeilisearchService.name)
@@ -53,13 +83,16 @@ export class MeilisearchService implements OnModuleInit {
   async setupIndexes() {
     // Create itineraries index if it doesn't exist
     const itinerariesIndex = 'itineraries'
+    const toursIndex = 'tours'
 
     const indexes = await this.meiliSearch.getIndexes()
-    const indexExists = indexes.results.some(
+
+    // Setup itineraries index
+    const itineraryIndexExists = indexes.results.some(
       (index) => index.uid === itinerariesIndex
     )
 
-    if (!indexExists) {
+    if (!itineraryIndexExists) {
       await this.meiliSearch.createIndex(itinerariesIndex, {
         primaryKey: 'id',
       })
@@ -84,6 +117,51 @@ export class MeilisearchService implements OnModuleInit {
         'likes',
       ],
       sortableAttributes: ['createdAt', 'likes', 'daysCount'],
+      rankingRules: [
+        'words',
+        'typo',
+        'proximity',
+        'attribute',
+        'sort',
+        'exactness',
+      ],
+    })
+
+    // Setup tours index
+    const tourIndexExists = indexes.results.some(
+      (index) => index.uid === toursIndex
+    )
+
+    if (!tourIndexExists) {
+      await this.meiliSearch.createIndex(toursIndex, {
+        primaryKey: 'id',
+      })
+      this.logger.log(`Created index: ${toursIndex}`)
+    }
+
+    await this.meiliSearch.index(toursIndex).updateSettings({
+      searchableAttributes: [
+        'title',
+        'description',
+        'location',
+        'itinerary.title',
+        'user.firstName',
+        'user.lastName',
+        'includes.text',
+      ],
+      filterableAttributes: [
+        'location',
+        'pricePerTicket',
+        'duration',
+        'durationType',
+        'availableTickets',
+      ],
+      sortableAttributes: [
+        'createdAt',
+        'pricePerTicket',
+        'duration',
+        'availableTickets',
+      ],
       rankingRules: [
         'words',
         'typo',
@@ -146,6 +224,39 @@ export class MeilisearchService implements OnModuleInit {
     }
   }
 
+  async syncTours() {
+    const tours = await this.prisma.tour.findMany({
+      include: {
+        includes: true,
+        tickets: true,
+        itinerary: {
+          select: {
+            id: true,
+            title: true,
+            coverImage: true,
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                photoProfile: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    const documentsToIndex = tours.map((tour) => this.formatTourForIndex(tour))
+
+    if (documentsToIndex.length > 0) {
+      await this.meiliSearch.index('tours').addDocuments(documentsToIndex)
+      this.logger.log(`Synced ${documentsToIndex.length} tours to Meilisearch`)
+    } else {
+      this.logger.log('No tours to sync')
+    }
+  }
+
   // Helper method to format an itinerary for the search index
   formatItineraryForIndex(itinerary: any): IndexedItinerary {
     if (!itinerary) {
@@ -202,6 +313,48 @@ export class MeilisearchService implements OnModuleInit {
     }
   }
 
+  // Helper method to format a tour for the search index
+  formatTourForIndex(tour: any): IndexedTour {
+    if (!tour) {
+      this.logger.error('Cannot format undefined tour for index')
+      return null
+    }
+
+    return {
+      id: tour.id,
+      title: tour.title,
+      coverImage: tour.coverImage ?? null,
+      maxCapacity: tour.maxCapacity,
+      description: tour.description ?? null,
+      location: tour.location,
+      pricePerTicket: parseFloat(tour.pricePerTicket.toString()),
+      duration: tour.duration,
+      durationType: tour.durationType,
+      createdAt:
+        tour.createdAt instanceof Date
+          ? tour.createdAt.toISOString()
+          : (tour.createdAt ?? new Date().toISOString()),
+      availableTickets: tour.availableTickets ?? 0,
+      includes: Array.isArray(tour.includes)
+        ? tour.includes.map((include) => ({
+            icon: include.icon,
+            text: include.text,
+          }))
+        : [],
+      itinerary: {
+        id: tour.itinerary.id,
+        title: tour.itinerary.title,
+        coverImage: tour.itinerary.coverImage ?? null,
+      },
+      user: {
+        id: tour.itinerary.user.id,
+        firstName: tour.itinerary.user.firstName,
+        lastName: tour.itinerary.user.lastName,
+        photoProfile: tour.itinerary.user.photoProfile ?? null,
+      },
+    }
+  }
+
   // Helper method to calculate days count from date range
   private calculateDaysCount(
     startDate: Date | string,
@@ -249,6 +402,10 @@ export class MeilisearchService implements OnModuleInit {
       .search(query, searchOptions)
   }
 
+  async searchTours(query: string, options?: any) {
+    return await this.meiliSearch.index('tours').search(query, options)
+  }
+
   async addOrUpdateItinerary(itinerary: any) {
     if (!itinerary) {
       this.logger.error('Cannot add/update undefined itinerary to search index')
@@ -269,6 +426,17 @@ export class MeilisearchService implements OnModuleInit {
     }
   }
 
+  async addOrUpdateTour(tour: any) {
+    if (!tour) {
+      this.logger.error('Cannot add/update undefined tour to search index')
+      return
+    }
+
+    const documentToIndex = this.formatTourForIndex(tour)
+    await this.meiliSearch.index('tours').addDocuments([documentToIndex])
+    this.logger.log(`Added/updated tour ${tour.id} in Meilisearch`)
+  }
+
   async deleteItinerary(itineraryId: string) {
     try {
       await this.meiliSearch.index('itineraries').deleteDocument(itineraryId)
@@ -282,6 +450,24 @@ export class MeilisearchService implements OnModuleInit {
         this.logger.log(
           `Itinerary ${itineraryId} not found in index, skipping delete`
         )
+        return
+      }
+      // Re-throw other errors for the global handler
+      throw error
+    }
+  }
+
+  async deleteTour(tourId: string) {
+    try {
+      await this.meiliSearch.index('tours').deleteDocument(tourId)
+      this.logger.log(`Deleted tour ${tourId} from Meilisearch`)
+    } catch (error) {
+      // Only suppress "document not found" errors
+      if (
+        error?.message?.includes('Document') &&
+        error?.message?.includes('not found')
+      ) {
+        this.logger.log(`Tour ${tourId} not found in index, skipping delete`)
         return
       }
       // Re-throw other errors for the global handler

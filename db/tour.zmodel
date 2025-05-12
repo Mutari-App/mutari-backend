@@ -12,11 +12,13 @@ model Tour extends Base {
   pricePerTicket Decimal
   duration      Int
   durationType  DURATION_TYPE
+  availableTickets Int         @default(0)
   itineraryId   String
   
   itinerary     Itinerary      @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
   includes      TourIncludes[]
   tickets       TourTicket[]
+  views TourView[]
 }
 
 model TourIncludes extends Id {
@@ -49,4 +51,16 @@ model TourTicketGuest extends Id {
   email         String
   
   tourTicket    TourTicket @relation(fields: [tourTicketId], references: [id], onDelete: Cascade)
+}
+
+model TourView extends Base {
+  userId      String
+  tourId String
+  viewedAt    DateTime @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tour   Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@index([userId, viewedAt])
+  @@unique([userId, tourId])
 }
