@@ -30,6 +30,7 @@ describe('TourService', () => {
   const mockPrismaService = {
     tour: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
     },
     itinerary: {
       findUnique: jest.fn(),
@@ -41,6 +42,9 @@ describe('TourService', () => {
       update: jest.fn(),
       delete: jest.fn(),
     },
+    tourIncludes: {
+      findMany: jest.fn()
+    }
   }
 
   const mockMeilisearchService = {
@@ -66,7 +70,7 @@ describe('TourService', () => {
     }),
     tourIncludes: {
       findMany: jest.fn(),
-    }
+    },
   }
 
   beforeEach(async () => {
@@ -401,6 +405,9 @@ describe('TourService', () => {
           filter: undefined,
         })
       )
+    })
+  })
+
   describe('findOne', () => {
     it('should return tour with itinerary when found', async () => {
       const tourId = 'tour123'
@@ -437,9 +444,13 @@ describe('TourService', () => {
         { id: 'inc2', tourId, icon: 'bus', text: 'transportasi' },
       ]
 
-      prisma.tour.findUnique = jest.fn().mockResolvedValue(mockTour)
-      prisma.itinerary.findUnique = jest.fn().mockResolvedValue(mockItinerary)
-      prisma.tourIncludes.findMany = jest.fn().mockResolvedValue(mockIncludes)
+      prismaService.tour.findUnique = jest.fn().mockResolvedValue(mockTour)
+      prismaService.itinerary.findUnique = jest
+        .fn()
+        .mockResolvedValue(mockItinerary)
+      prismaService.tourIncludes.findMany = jest
+        .fn()
+        .mockResolvedValue(mockIncludes)
 
       const result = await service.findOne(tourId)
 
@@ -449,11 +460,11 @@ describe('TourService', () => {
         includes: mockIncludes,
       })
 
-      expect(prisma.tour.findUnique).toHaveBeenCalledWith({
+      expect(prismaService.tour.findUnique).toHaveBeenCalledWith({
         where: { id: tourId },
       })
 
-      expect(prisma.itinerary.findUnique).toHaveBeenCalledWith({
+      expect(prismaService.itinerary.findUnique).toHaveBeenCalledWith({
         where: { id: itineraryId },
         include: {
           sections: {
@@ -464,13 +475,13 @@ describe('TourService', () => {
         },
       })
 
-      expect(prisma.tourIncludes.findMany).toHaveBeenCalledWith({
+      expect(prismaService.tourIncludes.findMany).toHaveBeenCalledWith({
         where: { tourId },
       })
     })
 
     it('should throw NotFoundException if tour not found', async () => {
-      prisma.tour.findUnique = jest.fn().mockResolvedValue(null)
+      prismaService.tour.findUnique = jest.fn().mockResolvedValue(null)
 
       await expect(service.findOne('nonexistent')).rejects.toThrow(
         NotFoundException
@@ -487,9 +498,9 @@ describe('TourService', () => {
         itineraryId,
       }
 
-      prisma.tour.findUnique = jest.fn().mockResolvedValue(mockTour)
-      prisma.itinerary.findUnique = jest.fn().mockResolvedValue(null)
-      prisma.tourIncludes.findMany = jest.fn().mockResolvedValue([])
+      prismaService.tour.findUnique = jest.fn().mockResolvedValue(mockTour)
+      prismaService.itinerary.findUnique = jest.fn().mockResolvedValue(null)
+      prismaService.tourIncludes.findMany = jest.fn().mockResolvedValue([])
 
       const result = await service.findOne(tourId)
 

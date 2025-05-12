@@ -4,6 +4,7 @@ import { TourService } from './tour.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { HttpStatus } from '@nestjs/common'
 import { DURATION_TYPE } from '@prisma/client'
+import { PrismaService } from 'src/prisma/prisma.service'
 
 describe('TourController', () => {
   let controller: TourController
@@ -13,6 +14,8 @@ describe('TourController', () => {
   const mockTourService = {
     createTourView: jest.fn(),
     getTourView: jest.fn(),
+    findOne: jest.fn(),
+    findMany: jest.fn(),
   }
 
   const mockResponseUtil = {
@@ -231,27 +234,34 @@ describe('TourController', () => {
       expect(result).toEqual({
         suggestions: ['Paris City Tour', 'Paris, France'],
       })
+    })
+  })
 
   describe('findOne', () => {
     it('should return a successful response with tour data', async () => {
+      const mockTourData = {
+      id: 'tour123',
+      title: 'Test tour',
+    }
+
       const mockResponse = {
         statusCode: HttpStatus.OK,
         message: 'Tour fetched successfully.',
         data: mockTour,
       }
 
-      mockTourService.findOne.mockResolvedValue(mockTour)
+      mockTourService.findOne.mockResolvedValue(mockTourData)
       mockResponseUtil.response.mockReturnValue(mockResponse)
 
       const result = await controller.findOne('tour123')
 
-      expect(service.findOne).toHaveBeenCalledWith('tour123')
+      expect(tourService.findOne).toHaveBeenCalledWith('tour123')
       expect(responseUtil.response).toHaveBeenCalledWith(
         {
           statusCode: HttpStatus.OK,
           message: 'Tour fetched successfully.',
         },
-        { data: mockTour }
+        { data: mockTourData }
       )
       expect(result).toBe(mockResponse)
     })
