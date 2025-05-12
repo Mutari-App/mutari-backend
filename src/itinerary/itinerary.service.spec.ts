@@ -927,6 +927,170 @@ describe('ItineraryService', () => {
       // No route should be created because nextBlock will be undefined (position 1 is skipped)
       expect(mockPrismaService.route.create).not.toHaveBeenCalled()
     })
+
+    it('should handle empty createdBlocks and use default TRANSPORT_MODE.DRIVE when transportMode is not provided', async () => {
+      // Arrange
+      const createItineraryDto: CreateItineraryDto = {
+        title: 'Test Itinerary',
+        description: 'Test Description',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-05'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 1',
+                position: 0,
+                startTime: new Date('2023-01-01T09:00:00Z'),
+                endTime: new Date('2023-01-01T10:00:00Z'),
+                location: 'Test Location 1',
+                price: 100,
+                routeToNext: {
+                  distance: 1000,
+                  duration: 600,
+                  polyline: 'test_polyline',
+                  // transportMode is intentionally not provided to test default
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 2',
+                position: 1,
+                startTime: new Date('2023-01-01T11:00:00Z'),
+                endTime: new Date('2023-01-01T12:00:00Z'),
+                location: 'Test Location 2',
+                price: 200,
+              },
+            ],
+          },
+          {
+            sectionNumber: 2,
+            title: 'Day 2',
+            blocks: [], // Empty blocks to test empty createdBlocks handling
+          },
+        ],
+      }
+
+      // Mock the itinerary.create response with one section having blocks and one without
+      mockPrismaService.itinerary.create.mockResolvedValue({
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        title: createItineraryDto.title,
+        sections: [
+          {
+            id: 'section-1',
+            sectionNumber: 1,
+            blocks: [
+              {
+                id: 'block-1',
+                position: 0,
+                blockType: BLOCK_TYPE.LOCATION,
+              },
+              {
+                id: 'block-2',
+                position: 1,
+                blockType: BLOCK_TYPE.LOCATION,
+              },
+            ],
+          },
+          {
+            id: 'section-2',
+            sectionNumber: 2,
+            blocks: [], // Empty blocks
+          },
+        ],
+      })
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return callback(mockPrismaService)
+      })
+
+      // Act
+      await service.createItinerary(createItineraryDto, mockUser)
+
+      // Assert
+      expect(mockPrismaService.itinerary.create).toHaveBeenCalled()
+
+      // Verify that route.create was called with the default transport mode
+      expect(mockPrismaService.route.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          sourceBlockId: 'block-1',
+          destinationBlockId: 'block-2',
+          distance: 1000,
+          duration: 600,
+          polyline: 'test_polyline',
+          transportMode: TRANSPORT_MODE.DRIVE, // Default transport mode should be used
+        }),
+      })
+
+      // Verify that the section with empty blocks doesn't cause errors
+      // This assertion checks that the function completed successfully despite empty blocks
+      expect(mockPrismaService.route.create).toHaveBeenCalledTimes(1)
+    })
+
+    it('should handle when section is not found in the created itinerary', async () => {
+      // Arrange
+      const createItineraryDto: CreateItineraryDto = {
+        title: 'Test Itinerary',
+        description: 'Test Description',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-05'),
+        sections: [
+          {
+            sectionNumber: 1,
+            title: 'Day 1',
+            blocks: [
+              {
+                blockType: BLOCK_TYPE.LOCATION,
+                title: 'Location 1',
+                position: 0,
+                routeToNext: {
+                  distance: 1000,
+                  duration: 600,
+                  polyline: 'test_polyline',
+                  transportMode: TRANSPORT_MODE.WALK,
+                  sourceBlockId: '',
+                  destinationBlockId: '',
+                },
+              },
+            ],
+          },
+        ],
+      }
+
+      // Mock the itinerary.create response with a different section number
+      // This simulates the case where a section from the DTO isn't found in the created itinerary
+      mockPrismaService.itinerary.create.mockResolvedValue({
+        id: 'itinerary-123',
+        userId: mockUser.id,
+        title: createItineraryDto.title,
+        sections: [
+          {
+            id: 'section-999', // Different section number than in the DTO
+            sectionNumber: 999,
+            blocks: [],
+          },
+        ],
+      })
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return callback(mockPrismaService)
+      })
+
+      // Act
+      await service.createItinerary(createItineraryDto, mockUser)
+
+      // Assert
+      expect(mockPrismaService.itinerary.create).toHaveBeenCalled()
+
+      // No routes should be created since the section wasn't found
+      expect(mockPrismaService.route.create).not.toHaveBeenCalled()
+    })
   })
 
   describe('updateItinerary', () => {

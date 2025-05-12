@@ -371,4 +371,22 @@ export class ProfileService {
     })
     return updatedUser
   }
+
+  async getTransactionHistory(userId: string) {
+    const transactions = await this.prisma.tourTicket.findMany({
+      where: { userId },
+      include: {
+        tour: {
+          select: {
+            title: true,
+            location: true,
+          },
+        },
+        guests: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    return transactions
+  }
 }
