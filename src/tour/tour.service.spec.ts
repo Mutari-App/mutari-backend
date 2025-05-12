@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { TourService } from './tour.service'
 import { PrismaService } from 'src/prisma/prisma.service'
-import { CreateTourDto } from './dto/create-tour.dto'
-import { UpdateTourDto } from './dto/update-tour.dto'
+import { MeilisearchService } from 'src/meilisearch/meilisearch.service'
 import { User } from '@prisma/client'
+import { DURATION_TYPE } from '@prisma/client'
 import { NotFoundException } from '@nestjs/common'
 
 describe('TourService', () => {
@@ -29,11 +29,11 @@ describe('TourService', () => {
 
   const mockPrismaService = {
     tour: {
-      findMany: jest.fn().mockResolvedValue([{ id: '1', title: 'Mock Tour' }]),
-      create: jest.fn(),
       findUnique: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
+      findMany: jest.fn(),
+    },
+    itinerary: {
+      findUnique: jest.fn(),
     },
     tourView: {
       findMany: jest.fn(),
@@ -41,6 +41,35 @@ describe('TourService', () => {
       findUnique: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+    },
+    tourIncludes: {
+      findMany: jest.fn()
+    }
+  }
+
+  const mockMeilisearchService = {
+    searchTours: jest.fn().mockResolvedValue({
+      hits: [
+        {
+          id: 'tour1',
+          title: 'Paris City Tour',
+          coverImage: 'paris-tour.jpg',
+          maxCapacity: 20,
+          description: 'Guided tour of Paris highlights',
+          location: 'Paris, France',
+          pricePerTicket: 99.99,
+          duration: 8,
+          durationType: 'HOUR',
+          availableTickets: 15,
+          includes: [{ icon: 'food', text: 'Lunch included' }],
+          itinerary: { id: 'itinerary1', title: 'Paris Trip' },
+          user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
+        },
+      ],
+      estimatedTotalHits: 1,
+    }),
+    tourIncludes: {
+      findMany: jest.fn(),
     },
   }
 
@@ -51,6 +80,10 @@ describe('TourService', () => {
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        {
+          provide: MeilisearchService,
+          useValue: mockMeilisearchService,
         },
       ],
     }).compile()
@@ -229,6 +262,252 @@ describe('TourService', () => {
           tourId: 'it-100',
           viewedAt: expect.any(Date),
         },
+      })
+    })
+  })
+
+  describe('searchTours', () => {
+    it('should search tours with default parameters', async () => {
+      const result = await service.searchTours()
+
+      expect(mockMeilisearchService.searchTours).toHaveBeenCalledWith('', {
+        limit: 20,
+        offset: 0,
+        filter: undefined,
+        sort: ['createdAt:desc'],
+      })
+
+      // Removed hasAvailableTickets from the expectation
+      expect(result).toEqual({
+        data: [
+          {
+            id: 'tour1',
+            title: 'Paris City Tour',
+            coverImage: 'paris-tour.jpg',
+            maxCapacity: 20,
+            description: 'Guided tour of Paris highlights',
+            location: 'Paris, France',
+            pricePerTicket: 99.99,
+            duration: 8,
+            durationType: 'HOUR',
+            availableTickets: 15,
+            includes: [{ icon: 'food', text: 'Lunch included' }],
+            itinerary: { id: 'itinerary1', title: 'Paris Trip' },
+            user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
+          },
+        ],
+        metadata: {
+          total: 1,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should search tours with filters and pagination', async () => {
+      await service.searchTours(
+        'paris',
+        2,
+        10,
+        {
+          location: 'Paris, France',
+          minPrice: 50,
+          maxPrice: 150,
+          minDuration: 4,
+          durationType: 'HOUR',
+          hasAvailableTickets: true,
+        },
+        'pricePerTicket',
+        'asc'
+      )
+
+      expect(mockMeilisearchService.searchTours).toHaveBeenCalledWith('paris', {
+        limit: 10,
+        offset: 10,
+        filter: [
+          [
+            'location = "Paris, France"',
+            'pricePerTicket >= 50',
+            'pricePerTicket <= 150',
+            'duration >= 4',
+            'durationType = "HOUR"',
+            'availableTickets > 0',
+          ],
+        ],
+        sort: ['pricePerTicket:asc'],
+      })
+    })
+
+    it('should handle empty search results', async () => {
+      mockMeilisearchService.searchTours.mockResolvedValueOnce({
+        hits: [],
+        estimatedTotalHits: 0,
+      })
+
+      const result = await service.searchTours('nonexistent')
+
+      expect(result).toEqual({
+        data: [],
+        metadata: {
+          total: 0,
+          page: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it('should handle various duration filters correctly', async () => {
+      // Test with only minDuration
+      await service.searchTours('', 1, 10, { minDuration: 2 })
+      expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
+        '',
+        expect.objectContaining({
+          filter: [['duration >= 2']],
+        })
+      )
+
+      // Test with only maxDuration
+      await service.searchTours('', 1, 10, { maxDuration: 5 })
+      expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
+        '',
+        expect.objectContaining({
+          filter: [['duration <= 5']],
+        })
+      )
+
+      // Test with both min and max duration
+      await service.searchTours('', 1, 10, { minDuration: 2, maxDuration: 5 })
+      expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
+        '',
+        expect.objectContaining({
+          filter: [['duration >= 2', 'duration <= 5']],
+        })
+      )
+    })
+
+    // Additional test for single filter
+    it('should handle a single filter correctly', async () => {
+      await service.searchTours('', 1, 10, { location: 'Tokyo, Japan' })
+      expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
+        '',
+        expect.objectContaining({
+          filter: [['location = "Tokyo, Japan"']],
+        })
+      )
+    })
+
+    // Additional test for empty filters
+    it('should handle no filters correctly', async () => {
+      await service.searchTours('', 1, 10, {})
+      expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
+        '',
+        expect.objectContaining({
+          filter: undefined,
+        })
+      )
+    })
+  })
+
+  describe('findOne', () => {
+    it('should return tour with itinerary when found', async () => {
+      const tourId = 'tour123'
+      const itineraryId = 'itinerary456'
+
+      const mockTour = {
+        id: tourId,
+        title: 'Mount Bromo Tour',
+        maxCapacity: 10,
+        description: 'A tour to Mount Bromo',
+        location: 'East Java',
+        pricePerTicket: 100,
+        duration: 3,
+        DURATION_TYPE: DURATION_TYPE.DAY,
+        itineraryId: itineraryId,
+      }
+
+      const mockItinerary = {
+        id: itineraryId,
+        title: 'Itinerary Title',
+        sections: [
+          {
+            id: 'section1',
+            blocks: [
+              { id: 'block1', name: 'Block 1' },
+              { id: 'block2', name: 'Block 2' },
+            ],
+          },
+        ],
+      }
+
+      const mockIncludes = [
+        { id: 'inc1', tourId, icon: 'home', text: 'hotel' },
+        { id: 'inc2', tourId, icon: 'bus', text: 'transportasi' },
+      ]
+
+      prismaService.tour.findUnique = jest.fn().mockResolvedValue(mockTour)
+      prismaService.itinerary.findUnique = jest
+        .fn()
+        .mockResolvedValue(mockItinerary)
+      prismaService.tourIncludes.findMany = jest
+        .fn()
+        .mockResolvedValue(mockIncludes)
+
+      const result = await service.findOne(tourId)
+
+      expect(result).toEqual({
+        ...mockTour,
+        itinerary: mockItinerary,
+        includes: mockIncludes,
+      })
+
+      expect(prismaService.tour.findUnique).toHaveBeenCalledWith({
+        where: { id: tourId },
+      })
+
+      expect(prismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: itineraryId },
+        include: {
+          sections: {
+            include: {
+              blocks: true,
+            },
+          },
+        },
+      })
+
+      expect(prismaService.tourIncludes.findMany).toHaveBeenCalledWith({
+        where: { tourId },
+      })
+    })
+
+    it('should throw NotFoundException if tour not found', async () => {
+      prismaService.tour.findUnique = jest.fn().mockResolvedValue(null)
+
+      await expect(service.findOne('nonexistent')).rejects.toThrow(
+        NotFoundException
+      )
+    })
+
+    it('should return tour with null itinerary if itinerary not found', async () => {
+      const tourId = 'tour123'
+      const itineraryId = 'itinerary999'
+
+      const mockTour = {
+        id: tourId,
+        title: 'Simple Tour',
+        itineraryId,
+      }
+
+      prismaService.tour.findUnique = jest.fn().mockResolvedValue(mockTour)
+      prismaService.itinerary.findUnique = jest.fn().mockResolvedValue(null)
+      prismaService.tourIncludes.findMany = jest.fn().mockResolvedValue([])
+
+      const result = await service.findOne(tourId)
+
+      expect(result).toEqual({
+        ...mockTour,
+        itinerary: null,
+        includes: [],
       })
     })
   })
