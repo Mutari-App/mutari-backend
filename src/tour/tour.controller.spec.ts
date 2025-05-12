@@ -9,11 +9,6 @@ describe('TourController', () => {
   let tourService: TourService
   let responseUtil: ResponseUtil
 
-  const mockTourService = {
-    createTourView: jest.fn(),
-    getTourView: jest.fn(),
-  }
-
   const mockResponseUtil = {
     response: jest.fn(),
   }
@@ -35,23 +30,20 @@ describe('TourController', () => {
     user: { id: 'user1', firstName: 'John', lastName: 'Doe' },
   }
 
-  beforeEach(async () => {
-    const mockTourService = {
-      create: jest.fn((dto) => ({ id: 1, ...dto })),
-      findAll: jest.fn(() => [{ id: 1, title: 'Test tour' }]),
-      findOne: jest.fn((id) => ({ id, title: 'Test tour' })),
-      update: jest.fn((id, dto) => ({ id, ...dto })),
-      remove: jest.fn((id) => ({ id, deleted: true })),
-      searchTours: jest.fn().mockResolvedValue({
-        data: [mockTour],
-        metadata: {
-          total: 1,
-          page: 1,
-          totalPages: 1,
-        },
-      }),
-    }
+  const mockTourService = {
+    searchTours: jest.fn().mockResolvedValue({
+      data: [mockTour],
+      metadata: {
+        total: 1,
+        page: 1,
+        totalPages: 1,
+      },
+    }),
+    createTourView: jest.fn(),
+    getTourView: jest.fn(),
+  }
 
+  beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TourController],
       providers: [
@@ -69,6 +61,10 @@ describe('TourController', () => {
     controller = module.get<TourController>(TourController)
     tourService = module.get<TourService>(TourService)
     responseUtil = module.get<ResponseUtil>(ResponseUtil)
+  })
+
+  afterEach(() => {
+    jest.clearAllMocks()
   })
 
   it('should be defined', () => {
