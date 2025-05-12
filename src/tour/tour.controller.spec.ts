@@ -1,12 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { TourController } from './tour.controller'
 import { TourService } from './tour.service'
-import { CreateTourDto } from './dto/create-tour.dto'
-import { UpdateTourDto } from './dto/update-tour.dto'
+import { ResponseUtil } from 'src/common/utils/response.util'
+import { HttpStatus } from '@nestjs/common'
 
 describe('TourController', () => {
   let controller: TourController
-  let service: TourService
+  let tourService: TourService
+  let responseUtil: ResponseUtil
+
+  const mockTourService = {
+    createTourView: jest.fn(),
+    getTourView: jest.fn(),
+  }
+
+  const mockResponseUtil = {
+    response: jest.fn(),
+  }
 
   // Create a complete mock tour object that matches all required properties
   const mockTour = {
@@ -49,70 +59,91 @@ describe('TourController', () => {
           provide: TourService,
           useValue: mockTourService,
         },
+        {
+          provide: ResponseUtil,
+          useValue: mockResponseUtil,
+        },
       ],
     }).compile()
 
     controller = module.get<TourController>(TourController)
-    service = module.get<TourService>(TourService)
+    tourService = module.get<TourService>(TourService)
+    responseUtil = module.get<ResponseUtil>(ResponseUtil)
   })
 
   it('should be defined', () => {
     expect(controller).toBeDefined()
   })
 
-  describe('create', () => {
-    it('should create a tour', () => {
-      const createTourDto: CreateTourDto = {
-        title: 'New Tour',
-        description: 'Test Description',
-      }
-      expect(controller.create(createTourDto)).toEqual({
-        id: 1,
-        ...createTourDto,
+  describe('createTourView', () => {
+    it('should call service and return response', async () => {
+      const user = { id: 'user123' }
+      const tourId = 'tour123'
+      const createdView = { id: 'view1', tourId, userId: user.id }
+
+      mockTourService.createTourView.mockResolvedValue(createdView)
+      mockResponseUtil.response.mockReturnValue({
+        statusCode: HttpStatus.CREATED,
+        message: 'Tour view added successfully',
+        data: createdView,
       })
-      expect(service.create).toHaveBeenCalledWith(createTourDto)
-    })
-  })
 
-  describe('findAll', () => {
-    it('should return array of tours', () => {
-      expect(controller.findAll()).toEqual([{ id: 1, title: 'Test tour' }])
-      expect(service.findAll).toHaveBeenCalled()
-    })
-  })
+      const result = await controller.createTourView(user as any, tourId)
 
-  describe('findOne', () => {
-    it('should return a single tour', () => {
-      const id = '1'
-      expect(controller.findOne(id)).toEqual({ id: '1', title: 'Test tour' })
-      expect(service.findOne).toHaveBeenCalledWith('1')
-    })
-  })
-
-  describe('update', () => {
-    it('should update a tour', () => {
-      const id = '1'
-      const updateTourDto: UpdateTourDto = { title: 'Updated Tour' }
-      expect(controller.update(id, updateTourDto)).toEqual({
-        id: '1',
-        ...updateTourDto,
+      expect(tourService.createTourView).toHaveBeenCalledWith(tourId, user)
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.CREATED,
+          message: 'Tour view added successfully',
+        },
+        {
+          tour: createdView,
+        }
+      )
+      expect(result).toEqual({
+        statusCode: HttpStatus.CREATED,
+        message: 'Tour view added successfully',
+        data: createdView,
       })
-      expect(service.update).toHaveBeenCalledWith('1', updateTourDto)
     })
   })
 
-  describe('remove', () => {
-    it('should remove a tour', () => {
-      const id = '1'
-      expect(controller.remove(id)).toEqual({ id: '1', deleted: true })
-      expect(service.remove).toHaveBeenCalledWith('1')
+  describe('getTourView', () => {
+    it('should call service and return viewed tours', async () => {
+      const user = { id: 'user123' }
+      const tours = [{ tourId: 'a' }, { tourId: 'b' }]
+
+      mockTourService.getTourView.mockResolvedValue(tours)
+      mockResponseUtil.response.mockReturnValue({
+        statusCode: HttpStatus.OK,
+        message: 'Tour views fetched successfully',
+        tours: tours,
+      })
+
+      const result = await controller.getTourView(user as any)
+
+      expect(tourService.getTourView).toHaveBeenCalledWith(user)
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Tour views fetched successfully',
+        },
+        {
+          tours: tours,
+        }
+      )
+      expect(result).toEqual({
+        statusCode: HttpStatus.OK,
+        message: 'Tour views fetched successfully',
+        tours: tours,
+      })
     })
   })
 
   describe('searchTours', () => {
     it('should search tours with default parameters', async () => {
       const result = await controller.searchTours()
-      expect(service.searchTours).toHaveBeenCalledWith(
+      expect(tourService.searchTours).toHaveBeenCalledWith(
         '',
         1,
         20,
@@ -146,7 +177,7 @@ describe('TourController', () => {
         'asc'
       )
 
-      expect(service.searchTours).toHaveBeenCalledWith(
+      expect(tourService.searchTours).toHaveBeenCalledWith(
         'paris',
         2,
         10,
@@ -172,12 +203,12 @@ describe('TourController', () => {
       expect(result).toEqual({
         suggestions: [],
       })
-      expect(service.searchTours).not.toHaveBeenCalled()
+      expect(tourService.searchTours).not.toHaveBeenCalled()
     })
 
     it('should return tour title suggestions', async () => {
       // Mock the data with a complete tour object
-      jest.spyOn(service, 'searchTours').mockResolvedValueOnce({
+      jest.spyOn(tourService, 'searchTours').mockResolvedValueOnce({
         data: [
           {
             ...mockTour,
@@ -194,7 +225,7 @@ describe('TourController', () => {
 
       const result = await controller.getSearchSuggestions('paris')
 
-      expect(service.searchTours).toHaveBeenCalledWith('paris', 1, 10)
+      expect(tourService.searchTours).toHaveBeenCalledWith('paris', 1, 10)
       // Updated expectation to match what's actually returned
       expect(result).toEqual({
         suggestions: ['Paris City Tour', 'Paris, France'],

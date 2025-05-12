@@ -2,46 +2,51 @@ import {
   Controller,
   Get,
   Post,
-  Body,
-  Patch,
   Param,
-  Delete,
   Query,
   ParseIntPipe,
   ParseFloatPipe,
+  HttpStatus,
 } from '@nestjs/common'
 import { TourService } from './tour.service'
-import { CreateTourDto } from './dto/create-tour.dto'
-import { UpdateTourDto } from './dto/update-tour.dto'
 import { Public } from '../common/decorators/public.decorator'
+import { ResponseUtil } from 'src/common/utils/response.util'
+import { User } from '@prisma/client'
+import { GetUser } from 'src/common/decorators/getUser.decorator'
 
 @Controller('tour')
 export class TourController {
-  constructor(private readonly tourService: TourService) {}
+  constructor(
+    private readonly tourService: TourService,
+    private readonly responseUtil: ResponseUtil
+  ) {}
 
-  @Post()
-  create(@Body() createTourDto: CreateTourDto) {
-    return this.tourService.create(createTourDto)
+  @Post('views/:tourId')
+  async createTourView(@GetUser() user: User, @Param('tourId') tourId: string) {
+    const tour = await this.tourService.createTourView(tourId, user)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Tour view added successfully',
+      },
+      {
+        tour,
+      }
+    )
   }
 
-  @Get()
-  findAll() {
-    return this.tourService.findAll()
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.tourService.findOne(id)
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTourDto: UpdateTourDto) {
-    return this.tourService.update(id, updateTourDto)
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.tourService.remove(id)
+  @Get('views')
+  async getTourView(@GetUser() user: User) {
+    const tours = await this.tourService.getTourView(user)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Tour views fetched successfully',
+      },
+      {
+        tours,
+      }
+    )
   }
 
   @Public()

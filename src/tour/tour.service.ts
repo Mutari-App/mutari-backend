@@ -1,8 +1,7 @@
-import { Injectable } from '@nestjs/common'
-import { CreateTourDto } from './dto/create-tour.dto'
-import { UpdateTourDto } from './dto/update-tour.dto'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { MeilisearchService } from 'src/meilisearch/meilisearch.service'
+import { User } from '@prisma/client'
 
 @Injectable()
 export class TourService {
@@ -11,24 +10,63 @@ export class TourService {
     private readonly meilisearchService: MeilisearchService
   ) {}
 
-  create(createTourDto: CreateTourDto) {
-    return 'This action adds a new tour'
+  async createTourView(tourId: string, user: User) {
+    const userId = user.id
+
+    const tourExists = await this.prisma.tour.findUnique({
+      where: { id: tourId },
+    })
+
+    if (!tourExists) {
+      throw new NotFoundException('Tour not found')
+    }
+
+    const userViews = await this.prisma.tourView.findMany({
+      where: { userId },
+      orderBy: { viewedAt: 'desc' },
+    })
+
+    const itineraryExists = userViews.some((view) => view.tourId === tourId)
+
+    if (itineraryExists) {
+      return this.prisma.tourView.update({
+        where: {
+          userId_tourId: { userId, tourId },
+        },
+        data: {
+          viewedAt: new Date(),
+        },
+      })
+    }
+
+    if (userViews.length >= 10) {
+      await this.prisma.tourView.delete({
+        where: {
+          id: userViews[userViews.length - 1].id,
+        },
+      })
+    }
+
+    return this.prisma.tourView.create({
+      data: {
+        userId,
+        tourId,
+        viewedAt: new Date(),
+      },
+    })
   }
 
-  findAll() {
-    return `This action returns all tour`
-  }
+  async getTourView(user: User) {
+    const userId = user.id
+    const views = await this.prisma.tourView.findMany({
+      where: { userId },
+      orderBy: { viewedAt: 'desc' },
+      include: {
+        tour: true,
+      },
+    })
 
-  findOne(id: string) {
-    return `This action returns a #${id} tour`
-  }
-
-  update(id: string, updateTourDto: UpdateTourDto) {
-    return `This action updates a #${id} tour`
-  }
-
-  remove(id: string) {
-    return `This action removes a #${id} tour`
+    return views
   }
 
   async searchTours(
