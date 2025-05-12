@@ -15,6 +15,9 @@ describe('TourService', () => {
     itinerary: {
       findUnique: jest.fn(),
     },
+    tourIncludes: {
+      findMany: jest.fn(),
+    }
   }
 
   beforeEach(async () => {
@@ -71,14 +74,21 @@ describe('TourService', () => {
         ],
       }
 
+      const mockIncludes = [
+        { id: 'inc1', tourId, icon: 'home', text: 'hotel' },
+        { id: 'inc2', tourId, icon: 'bus', text: 'transportasi' },
+      ]
+
       prisma.tour.findUnique = jest.fn().mockResolvedValue(mockTour)
       prisma.itinerary.findUnique = jest.fn().mockResolvedValue(mockItinerary)
+      prisma.tourIncludes.findMany = jest.fn().mockResolvedValue(mockIncludes)
 
       const result = await service.findOne(tourId)
 
       expect(result).toEqual({
         ...mockTour,
         itinerary: mockItinerary,
+        includes: mockIncludes,
       })
 
       expect(prisma.tour.findUnique).toHaveBeenCalledWith({
@@ -94,6 +104,10 @@ describe('TourService', () => {
             },
           },
         },
+      })
+
+      expect(prisma.tourIncludes.findMany).toHaveBeenCalledWith({
+        where: { tourId },
       })
     })
 
@@ -117,12 +131,14 @@ describe('TourService', () => {
 
       prisma.tour.findUnique = jest.fn().mockResolvedValue(mockTour)
       prisma.itinerary.findUnique = jest.fn().mockResolvedValue(null)
+      prisma.tourIncludes.findMany = jest.fn().mockResolvedValue([])
 
       const result = await service.findOne(tourId)
 
       expect(result).toEqual({
         ...mockTour,
         itinerary: null,
+        includes: [],
       })
     })
   })
