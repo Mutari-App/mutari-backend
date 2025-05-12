@@ -6,11 +6,11 @@ import {
   Query,
   ParseIntPipe,
   ParseFloatPipe,
-  HttpStatus,
 } from '@nestjs/common'
 import { TourService } from './tour.service'
-import { Public } from '../common/decorators/public.decorator'
 import { ResponseUtil } from 'src/common/utils/response.util'
+import { HttpStatus } from '@nestjs/common/enums/http-status.enum'
+import { Public } from 'src/common/decorators/public.decorator'
 import { User } from '@prisma/client'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
 
@@ -20,6 +20,22 @@ export class TourController {
     private readonly tourService: TourService,
     private readonly responseUtil: ResponseUtil
   ) {}
+
+  @Public()
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    const tour = await this.tourService.findOne(id)
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Tour fetched successfully.',
+      },
+      {
+        data: tour,
+      }
+    )
+  }
 
   @Post('views/:tourId')
   async createTourView(@GetUser() user: User, @Param('tourId') tourId: string) {
