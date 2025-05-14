@@ -18,9 +18,4 @@ export class PasswordResetDTO extends VerifyPasswordResetDTO {
     message: 'Confirm password does not match new password',
   })
   confirmPassword: string
-
-  @IsString()
-  @MinLength(8)
-  @MaxLength(8)
-  verificationCode: string
 }
