@@ -1,7 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { MeilisearchService } from 'src/meilisearch/meilisearch.service'
 import { User } from '@prisma/client'
+import { BuyTourTicketDTO } from './dto/buy-tour-ticket.dto'
 
 @Injectable()
 export class TourService {
@@ -190,5 +195,13 @@ export class TourService {
     }
 
     return result
+  }
+
+  async buyTourTicket(
+    tourId: string,
+    buyTourTicketDto: BuyTourTicketDTO,
+    user: User
+  ) {
+    return null
   }
 }

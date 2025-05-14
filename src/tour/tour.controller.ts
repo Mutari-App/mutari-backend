@@ -45,7 +45,19 @@ export class TourController {
     @Body() buyTourTicketDto: BuyTourTicketDTO,
     @GetUser() user: User
   ) {
-    return null
+    const tourTicket = await this.tourService.buyTourTicket(
+      id,
+      buyTourTicketDto,
+      user
+    )
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Tour ticket purchased successfully',
+      },
+      tourTicket
+    )
   }
   g
 
