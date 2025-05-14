@@ -380,16 +380,13 @@ export class AuthService {
       },
     })
 
-    await this.prisma.ticket.deleteMany({
-      where: {
-        userId: user.id,
-      },
-    })
-
-    await this.emailService.sendEmail(
-      data.email,
-      'Your password has been reset',
-      successPasswordResetTemplate()
-    )
+    await Promise.all([
+      this.prisma.ticket.deleteMany({ where: { userId: user.id } }),
+      this.emailService.sendEmail(
+        data.email,
+        'Your password has been reset',
+        successPasswordResetTemplate()
+      ),
+    ])
   }
 }
