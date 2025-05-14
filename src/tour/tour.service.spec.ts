@@ -2,9 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { TourService } from './tour.service'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { MeilisearchService } from 'src/meilisearch/meilisearch.service'
-import { User } from '@prisma/client'
+import { TITLE, User } from '@prisma/client'
 import { DURATION_TYPE } from '@prisma/client'
 import { NotFoundException } from '@nestjs/common'
+import { create } from 'domain'
+import { BuyTourTicketDTO } from './dto/buy-tour-ticket.dto'
 
 describe('TourService', () => {
   let service: TourService
@@ -43,8 +45,11 @@ describe('TourService', () => {
       delete: jest.fn(),
     },
     tourIncludes: {
-      findMany: jest.fn()
-    }
+      findMany: jest.fn(),
+    },
+    tourTicket: {
+      create: jest.fn(),
+    },
   }
 
   const mockMeilisearchService = {
@@ -509,6 +514,271 @@ describe('TourService', () => {
         itinerary: null,
         includes: [],
       })
+    })
+  })
+
+  describe('buyTourTicket', () => {
+    beforeEach(() => {
+      jest.clearAllMocks()
+
+      // Setup tourTicket mock
+      mockPrismaService.tourTicket = {
+        create: jest.fn(),
+      }
+    })
+
+    it('should successfully buy a tour ticket', async () => {
+      const tourId = 'tour-123'
+      const mockTour = {
+        id: tourId,
+        maxCapacity: 10,
+        availableTickets: 5,
+        pricePerTicket: {
+          toNumber: () => 100,
+        },
+      }
+
+      const buyTourTicketDto: BuyTourTicketDTO = {
+        quantity: 2,
+        tourDate: new Date(),
+        customer: {
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+          phoneNumber: '123456789',
+          title: TITLE.MR,
+        },
+        visitors: [
+          {
+            firstName: 'John',
+            lastName: 'Doe',
+            email: 'john@example.com',
+            phoneNumber: '123456789',
+            title: TITLE.MR,
+          },
+          {
+            firstName: 'Jane',
+            lastName: 'Doe',
+            email: 'jane@example.com',
+            phoneNumber: '987654321',
+            title: TITLE.MRS,
+          },
+        ],
+      }
+
+      const expectedTicket = {
+        id: 'ticket-123',
+        tourDate: buyTourTicketDto.tourDate,
+        customerFirstName: 'John',
+        customerLastName: 'Doe',
+        customerEmail: 'john@example.com',
+        customerPhoneNumber: '123456789',
+        customerTitle: TITLE.MR,
+        quantity: 2,
+        totalPrice: 200,
+      }
+
+      mockPrismaService.tour.findUnique.mockResolvedValue(mockTour)
+      mockPrismaService.tourTicket.create.mockResolvedValue(expectedTicket)
+
+      const result = await service.buyTourTicket(
+        tourId,
+        buyTourTicketDto,
+        mockUser
+      )
+
+      expect(mockPrismaService.tour.findUnique).toHaveBeenCalledWith({
+        where: { id: tourId },
+      })
+
+      expect(mockPrismaService.tourTicket.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          tourDate: buyTourTicketDto.tourDate,
+          customerEmail: buyTourTicketDto.customer.email,
+          customerFirstName: buyTourTicketDto.customer.firstName,
+          customerLastName: buyTourTicketDto.customer.lastName,
+          customerPhoneNumber: buyTourTicketDto.customer.phoneNumber,
+          customerTitle: buyTourTicketDto.customer.title,
+          quantity: buyTourTicketDto.quantity,
+          totalPrice: 200,
+          tour: {
+            connect: {
+              id: tourId,
+            },
+          },
+          user: {
+            connect: {
+              id: mockUser.id,
+            },
+          },
+        }),
+      })
+
+      expect(result).toEqual(expectedTicket)
+    })
+
+    it('should throw BadRequestException when quantity does not match visitors count', async () => {
+      const tourId = 'tour-123'
+      const buyTourTicketDto = {
+        quantity: 3, // Mismatch with visitors count (2)
+        tourDate: new Date(),
+        customer: {
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+          phoneNumber: '123456789',
+          title: TITLE.MR,
+        },
+        visitors: [
+          {
+            firstName: 'John',
+            lastName: 'Doe',
+            email: 'john@example.com',
+            phoneNumber: '123456789',
+            title: TITLE.MR,
+          },
+          {
+            firstName: 'Jane',
+            lastName: 'Doe',
+            email: 'jane@example.com',
+            phoneNumber: '987654321',
+            title: TITLE.MRS,
+          },
+        ],
+      }
+
+      await expect(
+        service.buyTourTicket(tourId, buyTourTicketDto, mockUser)
+      ).rejects.toThrow('Quantity and visitors count mismatch')
+
+      expect(mockPrismaService.tour.findUnique).not.toHaveBeenCalled()
+    })
+
+    it('should throw NotFoundException when tour is not found', async () => {
+      const tourId = 'nonexistent-tour'
+      const buyTourTicketDto = {
+        quantity: 2,
+        tourDate: new Date(),
+        customer: {
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+          phoneNumber: '123456789',
+          title: TITLE.MR,
+        },
+        visitors: [
+          {
+            firstName: 'John',
+            lastName: 'Doe',
+            email: 'john@example.com',
+            phoneNumber: '123456789',
+            title: TITLE.MR,
+          },
+          {
+            firstName: 'Jane',
+            lastName: 'Doe',
+            email: 'jane@example.com',
+            phoneNumber: '987654321',
+            title: TITLE.MRS,
+          },
+        ],
+      }
+
+      mockPrismaService.tour.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.buyTourTicket(tourId, buyTourTicketDto, mockUser)
+      ).rejects.toThrow(`Tour with ID ${tourId} not found`)
+
+      expect(mockPrismaService.tour.findUnique).toHaveBeenCalledWith({
+        where: { id: tourId },
+      })
+    })
+
+    it('should throw BadRequestException when visitors exceed tour max capacity', async () => {
+      const tourId = 'tour-123'
+      const mockTour = {
+        id: tourId,
+        maxCapacity: 1, // Only 1 person allowed
+        availableTickets: 5,
+      }
+
+      const buyTourTicketDto = {
+        quantity: 2,
+        tourDate: new Date(),
+        customer: {
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+          phoneNumber: '123456789',
+          title: TITLE.MR,
+        },
+        visitors: [
+          {
+            firstName: 'John',
+            lastName: 'Doe',
+            email: 'john@example.com',
+            phoneNumber: '123456789',
+            title: TITLE.MR,
+          },
+          {
+            firstName: 'Jane',
+            lastName: 'Doe',
+            email: 'jane@example.com',
+            phoneNumber: '987654321',
+            title: TITLE.MRS,
+          },
+        ],
+      }
+
+      mockPrismaService.tour.findUnique.mockResolvedValue(mockTour)
+
+      await expect(
+        service.buyTourTicket(tourId, buyTourTicketDto, mockUser)
+      ).rejects.toThrow('Tour capacity exceeded')
+    })
+
+    it('should throw BadRequestException when not enough tickets available', async () => {
+      const tourId = 'tour-123'
+      const mockTour = {
+        id: tourId,
+        maxCapacity: 10,
+        availableTickets: 1, // Only 1 ticket available
+      }
+
+      const buyTourTicketDto = {
+        quantity: 2,
+        tourDate: new Date(),
+        customer: {
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+          phoneNumber: '123456789',
+          title: TITLE.MR,
+        },
+        visitors: [
+          {
+            firstName: 'John',
+            lastName: 'Doe',
+            email: 'john@example.com',
+            phoneNumber: '123456789',
+            title: TITLE.MR,
+          },
+          {
+            firstName: 'Jane',
+            lastName: 'Doe',
+            email: 'jane@example.com',
+            phoneNumber: '987654321',
+            title: TITLE.MRS,
+          },
+        ],
+      }
+
+      mockPrismaService.tour.findUnique.mockResolvedValue(mockTour)
+
+      await expect(
+        service.buyTourTicket(tourId, buyTourTicketDto, mockUser)
+      ).rejects.toThrow('Not enough tickets available')
     })
   })
 })
