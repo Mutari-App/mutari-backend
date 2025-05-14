@@ -1,4 +1,4 @@
 {
-    "sonarQubeUri": "https://sonarqube.cs.ui.ac.id",
-    "projectKey": "Mutari-Backend"
+  "sonarQubeUri": "https://sonarqube.cs.ui.ac.id",
+  "projectKey": "Mutari-Backend"
 }

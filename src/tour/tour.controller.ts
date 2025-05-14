@@ -6,6 +6,7 @@ import {
   Query,
   ParseIntPipe,
   ParseFloatPipe,
+  Body,
 } from '@nestjs/common'
 import { TourService } from './tour.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
@@ -13,6 +14,7 @@ import { HttpStatus } from '@nestjs/common/enums/http-status.enum'
 import { Public } from 'src/common/decorators/public.decorator'
 import { User } from '@prisma/client'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
+import { BuyTourTicketDTO } from './dto/buy-tour-ticket.dto'
 
 @Controller('tour')
 export class TourController {
@@ -36,6 +38,16 @@ export class TourController {
       }
     )
   }
+
+  @Post(':id/buy')
+  async buyTourTicket(
+    @Param('id') id: string,
+    @Body() buyTourTicketDto: BuyTourTicketDTO,
+    @GetUser() user: User
+  ) {
+    return null
+  }
+  g
 
   @Post('views/:tourId')
   async createTourView(@GetUser() user: User, @Param('tourId') tourId: string) {
