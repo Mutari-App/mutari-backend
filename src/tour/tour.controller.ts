@@ -22,50 +22,6 @@ export class TourController {
   ) {}
 
   @Public()
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
-    const tour = await this.tourService.findOne(id)
-
-    return this.responseUtil.response(
-      {
-        statusCode: HttpStatus.OK,
-        message: 'Tour fetched successfully.',
-      },
-      {
-        data: tour,
-      }
-    )
-  }
-
-  @Post('views/:tourId')
-  async createTourView(@GetUser() user: User, @Param('tourId') tourId: string) {
-    const tour = await this.tourService.createTourView(tourId, user)
-    return this.responseUtil.response(
-      {
-        statusCode: HttpStatus.CREATED,
-        message: 'Tour view added successfully',
-      },
-      {
-        tour,
-      }
-    )
-  }
-
-  @Get('views')
-  async getTourView(@GetUser() user: User) {
-    const tours = await this.tourService.getTourView(user)
-    return this.responseUtil.response(
-      {
-        statusCode: HttpStatus.OK,
-        message: 'Tour views fetched successfully',
-      },
-      {
-        tours,
-      }
-    )
-  }
-
-  @Public()
   @Get('search')
   async searchTours(
     @Query('q') query: string = '',
@@ -132,5 +88,49 @@ export class TourController {
     return {
       suggestions: suggestions.slice(0, 5),
     }
+  }
+
+  @Public()
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    const tour = await this.tourService.findOne(id)
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Tour fetched successfully.',
+      },
+      {
+        data: tour,
+      }
+    )
+  }
+
+  @Post('views/:tourId')
+  async createTourView(@GetUser() user: User, @Param('tourId') tourId: string) {
+    const tour = await this.tourService.createTourView(tourId, user)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Tour view added successfully',
+      },
+      {
+        tour,
+      }
+    )
+  }
+
+  @Get('views')
+  async getTourView(@GetUser() user: User) {
+    const tours = await this.tourService.getTourView(user)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Tour views fetched successfully',
+      },
+      {
+        tours,
+      }
+    )
   }
 }
