@@ -4,63 +4,71 @@ import 'itinerary'
 import 'enum'
 
 model Tour extends Base {
-  title         String
-  coverImage    String?
-  maxCapacity   Int
-  description   String?
-  location      String
-  pricePerTicket Decimal
-  duration      Int
-  durationType  DURATION_TYPE
-  availableTickets Int         @default(0)
-  itineraryId   String
-  
-  itinerary     Itinerary      @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  includes      TourIncludes[]
-  tickets       TourTicket[]
-  views TourView[]
+    title            String
+    coverImage       String?
+    maxCapacity      Int
+    description      String?
+    location         String
+    pricePerTicket   Decimal
+    duration         Int
+    durationType     DURATION_TYPE
+    availableTickets Int            @default(0)
+    itineraryId      String
+
+    itinerary        Itinerary      @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+    includes         TourIncludes[]
+    tickets          TourTicket[]
+    views            TourView[]
 }
 
 model TourIncludes extends Id {
-  tourId       String
-  icon         String
-  text         String
-  
-  tour         Tour    @relation(fields: [tourId], references: [id], onDelete: Cascade)
+    tourId String
+    icon   String
+    text   String
+
+    tour   Tour   @relation(fields: [tourId], references: [id], onDelete: Cascade)
 }
 
 model TourTicket extends Base {
-  userId        String
-  tourId        String
-  quantity      Int
-  totalPrice    Decimal
-  status        TICKET_STATUS     @default(PENDING)
-  paymentStatus PAYMENT_STATUS    @default(UNPAID)
-  
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tour          Tour              @relation(fields: [tourId], references: [id], onDelete: Cascade)
-  guests        TourTicketGuest[]
+    userId              String
+    tourId              String
+    tourDate            DateTime
+    quantity            Int
+    totalPrice          Decimal
+    status              TICKET_STATUS     @default(PENDING)
+    paymentStatus       PAYMENT_STATUS    @default(UNPAID)
+
+    user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+    tour                Tour              @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+    customerTitle       TITLE
+    customerFirstName   String
+    customerLastName    String?
+    customerPhoneNumber String
+    customerEmail       String
+
+    guests              TourTicketGuest[]
 }
 
 model TourTicketGuest extends Id {
-  tourTicketId  String
-  title         TITLE
-  firstName     String
-  lastName      String
-  phoneNumber   String
-  email         String
-  
-  tourTicket    TourTicket @relation(fields: [tourTicketId], references: [id], onDelete: Cascade)
+    tourTicketId String
+    title        TITLE
+    firstName    String
+    lastName     String?
+    phoneNumber  String
+    email        String
+
+    tourTicket   TourTicket @relation(fields: [tourTicketId], references: [id], onDelete: Cascade)
 }
 
 model TourView extends Base {
-  userId      String
-  tourId String
-  viewedAt    DateTime @default(now())
+    userId   String
+    tourId   String
+    viewedAt DateTime @default(now())
 
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tour   Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+    user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    tour     Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
 
-  @@index([userId, viewedAt])
-  @@unique([userId, tourId])
+    @@index([userId, viewedAt])
+    @@unique([userId, tourId])
 }
