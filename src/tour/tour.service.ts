@@ -234,7 +234,7 @@ export class TourService {
 
     const tourTicket = await this.prisma.tourTicket.create({
       data: {
-        tourDate,
+        tourDate: new Date(tourDate),
         customerEmail,
         customerFirstName,
         customerLastName,

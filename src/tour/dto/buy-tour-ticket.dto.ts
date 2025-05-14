@@ -2,11 +2,12 @@ import { TITLE } from '@prisma/client'
 import { Type } from 'class-transformer'
 import {
   ArrayMinSize,
-  IsDate,
+  IsDateString,
   IsEmail,
   IsEnum,
   IsNotEmpty,
   IsNumber,
+  IsPhoneNumber,
   IsString,
   ValidateNested,
 } from 'class-validator'
@@ -25,7 +26,7 @@ class TourParticipantDTO {
   lastName: string
 
   @IsNotEmpty()
-  @IsString()
+  @IsPhoneNumber('ID')
   phoneNumber: string
 
   @IsNotEmpty()
@@ -35,8 +36,7 @@ class TourParticipantDTO {
 
 export class BuyTourTicketDTO {
   @IsNotEmpty()
-  @Type(() => Date)
-  @IsDate()
+  @IsDateString()
   tourDate: Date
 
   @IsNumber()
