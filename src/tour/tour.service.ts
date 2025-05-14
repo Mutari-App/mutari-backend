@@ -202,6 +202,70 @@ export class TourService {
     buyTourTicketDto: BuyTourTicketDTO,
     user: User
   ) {
-    return null
+    if (buyTourTicketDto.quantity !== buyTourTicketDto.visitors.length) {
+      throw new BadRequestException('Quantity and visitors count mismatch')
+    }
+
+    const tour = await this.prisma.tour.findUnique({
+      where: { id: tourId },
+    })
+
+    if (!tour) {
+      throw new NotFoundException(`Tour with ID ${tourId} not found`)
+    }
+
+    if (buyTourTicketDto.visitors.length > tour.maxCapacity) {
+      throw new BadRequestException(`Tour capacity exceeded`)
+    }
+
+    if (buyTourTicketDto.visitors.length > tour.availableTickets) {
+      throw new BadRequestException(`Not enough tickets available`)
+    }
+
+    const { customer, visitors, quantity, tourDate } = buyTourTicketDto
+
+    const {
+      firstName: customerFirstName,
+      lastName: customerLastName,
+      email: customerEmail,
+      phoneNumber: customerPhoneNumber,
+      title: customerTitle,
+    } = customer
+
+    const tourTicket = await this.prisma.tourTicket.create({
+      data: {
+        tourDate,
+        customerEmail,
+        customerFirstName,
+        customerLastName,
+        customerPhoneNumber,
+        customerTitle,
+        quantity,
+        totalPrice: quantity * tour.pricePerTicket.toNumber(),
+        tour: {
+          connect: {
+            id: tourId,
+          },
+        },
+        guests: {
+          createMany: {
+            data: visitors.map((visitor) => ({
+              firstName: visitor.firstName,
+              lastName: visitor.lastName,
+              email: visitor.email,
+              phoneNumber: visitor.phoneNumber,
+              title: visitor.title,
+            })),
+          },
+        },
+        user: {
+          connect: {
+            id: user.id,
+          },
+        },
+      },
+    })
+
+    return tourTicket
   }
 }
