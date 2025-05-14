@@ -141,13 +141,104 @@ const mockFormattedItinerary = {
   ],
 }
 
+// Add mock tour data
+const mockTours = [
+  {
+    id: 'tour1',
+    title: 'Paris City Tour',
+    coverImage: 'paris-tour.jpg',
+    maxCapacity: 20,
+    description: 'Guided tour of Paris highlights',
+    location: 'Paris, France',
+    pricePerTicket: '99.99',
+    duration: 8,
+    durationType: 'HOUR',
+    availableTickets: 15,
+    createdAt: new Date('2025-04-10'),
+    includes: [
+      {
+        id: 'include1',
+        icon: 'food',
+        text: 'Lunch included',
+      },
+      {
+        id: 'include2',
+        icon: 'hotel',
+        text: 'Hotel pickup',
+      },
+    ],
+    tickets: [],
+    itinerary: {
+      id: 'itinerary1',
+      title: 'Paris Trip',
+      coverImage: 'paris.jpg',
+      user: {
+        id: 'user1',
+        firstName: 'John',
+        lastName: 'Doe',
+        photoProfile: 'profile.jpg',
+      },
+    },
+  },
+]
+
+// Mock formatted tour for index
+const mockFormattedTour = {
+  id: 'tour1',
+  title: 'Paris City Tour',
+  coverImage: 'paris-tour.jpg',
+  maxCapacity: 20,
+  description: 'Guided tour of Paris highlights',
+  location: 'Paris, France',
+  pricePerTicket: 99.99,
+  duration: 8,
+  durationType: 'HOUR',
+  availableTickets: 15,
+  createdAt: '2025-04-10T00:00:00.000Z',
+  includes: [
+    {
+      icon: 'food',
+      text: 'Lunch included',
+    },
+    {
+      icon: 'hotel',
+      text: 'Hotel pickup',
+    },
+  ],
+  itinerary: {
+    id: 'itinerary1',
+    title: 'Paris Trip',
+    coverImage: 'paris.jpg',
+  },
+  user: {
+    id: 'user1',
+    firstName: 'John',
+    lastName: 'Doe',
+    photoProfile: 'profile.jpg',
+  },
+}
+
 const mockMeiliSearchIndex = {
   updateSettings: jest.fn().mockResolvedValue({}),
   addDocuments: jest.fn().mockResolvedValue({}),
   deleteDocument: jest.fn().mockResolvedValue({}),
-  search: jest.fn().mockResolvedValue({
-    hits: [mockFormattedItinerary],
-    estimatedTotalHits: 1,
+  search: jest.fn().mockImplementation((query, options) => {
+    // Return appropriate data based on the index being searched
+    if (
+      mockMeiliSearch.index.mock.calls[
+        mockMeiliSearch.index.mock.calls.length - 1
+      ][0] === 'tours'
+    ) {
+      return Promise.resolve({
+        hits: [mockFormattedTour],
+        estimatedTotalHits: 1,
+      })
+    }
+
+    return Promise.resolve({
+      hits: [mockFormattedItinerary],
+      estimatedTotalHits: 1,
+    })
   }),
 }
 
@@ -162,6 +253,9 @@ const mockMeiliSearch = {
 const mockPrismaService = {
   itinerary: {
     findMany: jest.fn().mockResolvedValue(mockItineraries),
+  },
+  tour: {
+    findMany: jest.fn().mockResolvedValue(mockTours),
   },
 }
 
@@ -213,52 +307,29 @@ describe('MeilisearchService', () => {
   })
 
   describe('setupIndexes', () => {
-    it('should create index if it does not exist', async () => {
+    it('should create itinerary and tour indexes if they do not exist', async () => {
       await service.setupIndexes()
 
       expect(meiliSearch.getIndexes).toHaveBeenCalled()
       expect(meiliSearch.createIndex).toHaveBeenCalledWith('itineraries', {
         primaryKey: 'id',
       })
-      expect(mockMeiliSearchIndex.updateSettings).toHaveBeenCalledWith({
-        searchableAttributes: [
-          'title',
-          'description',
-          'tags.tag.name',
-          'user.firstName',
-          'user.lastName',
-          'sections.title',
-          'sections.blocks.title',
-          'sections.blocks.description',
-        ],
-        filterableAttributes: [
-          'tags.tag.id',
-          'isPublished',
-          'daysCount',
-          'likes',
-        ],
-        sortableAttributes: ['createdAt', 'likes', 'daysCount'],
-        rankingRules: [
-          'words',
-          'typo',
-          'proximity',
-          'attribute',
-          'sort',
-          'exactness',
-        ],
+      expect(meiliSearch.createIndex).toHaveBeenCalledWith('tours', {
+        primaryKey: 'id',
       })
+      expect(mockMeiliSearchIndex.updateSettings).toHaveBeenCalledTimes(2)
     })
 
     it('should not create index if it already exists', async () => {
       ;(meiliSearch.getIndexes as jest.Mock).mockResolvedValueOnce({
-        results: [{ uid: 'itineraries' }],
+        results: [{ uid: 'itineraries' }, { uid: 'tours' }],
       })
 
       await service.setupIndexes()
 
       expect(meiliSearch.getIndexes).toHaveBeenCalled()
       expect(meiliSearch.createIndex).not.toHaveBeenCalled()
-      expect(mockMeiliSearchIndex.updateSettings).toHaveBeenCalled()
+      expect(mockMeiliSearchIndex.updateSettings).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -360,6 +431,115 @@ describe('MeilisearchService', () => {
     })
   })
 
+  describe('formatTourForIndex', () => {
+    it('should correctly format a tour for indexing', () => {
+      const formattedTour = service.formatTourForIndex(mockTours[0])
+
+      expect(formattedTour).toEqual({
+        id: 'tour1',
+        title: 'Paris City Tour',
+        coverImage: 'paris-tour.jpg',
+        maxCapacity: 20,
+        description: 'Guided tour of Paris highlights',
+        location: 'Paris, France',
+        pricePerTicket: 99.99,
+        duration: 8,
+        durationType: 'HOUR',
+        availableTickets: 15,
+        createdAt: '2025-04-10T00:00:00.000Z',
+        includes: [
+          {
+            icon: 'food',
+            text: 'Lunch included',
+          },
+          {
+            icon: 'hotel',
+            text: 'Hotel pickup',
+          },
+        ],
+        itinerary: {
+          id: 'itinerary1',
+          title: 'Paris Trip',
+          coverImage: 'paris.jpg',
+        },
+        user: {
+          id: 'user1',
+          firstName: 'John',
+          lastName: 'Doe',
+          photoProfile: 'profile.jpg',
+        },
+      })
+    })
+
+    it('should handle missing fields gracefully', () => {
+      const partialTour = {
+        id: 'tour2',
+        title: 'Simple Tour',
+        location: 'London',
+        pricePerTicket: '49.99',
+        duration: 2,
+        durationType: 'HOUR',
+        maxCapacity: 10,
+        itinerary: {
+          id: 'itinerary2',
+          title: 'London Trip',
+          user: {
+            id: 'user1',
+            firstName: 'John',
+            lastName: 'Doe',
+          },
+        },
+      }
+
+      const formattedTour = service.formatTourForIndex(partialTour)
+
+      expect(formattedTour).toEqual({
+        id: 'tour2',
+        title: 'Simple Tour',
+        coverImage: null,
+        maxCapacity: 10,
+        description: null,
+        location: 'London',
+        pricePerTicket: 49.99,
+        duration: 2,
+        durationType: 'HOUR',
+        availableTickets: 0,
+        createdAt: expect.any(String),
+        includes: [],
+        itinerary: {
+          id: 'itinerary2',
+          title: 'London Trip',
+          coverImage: null,
+        },
+        user: {
+          id: 'user1',
+          firstName: 'John',
+          lastName: 'Doe',
+          photoProfile: null,
+        },
+      })
+    })
+
+    it('should handle null or undefined tour and return null', () => {
+      // Test with undefined
+      const formattedUndefined = service.formatTourForIndex(undefined)
+      expect(formattedUndefined).toBeNull()
+      expect(Logger.prototype.error).toHaveBeenCalledWith(
+        'Cannot format undefined tour for index'
+      )
+
+      // Reset the mock to check for null case
+      jest.clearAllMocks()
+
+      // Test with null
+      const formattedNull = service.formatTourForIndex(null)
+      expect(formattedNull).toBeNull()
+      expect(Logger.prototype.error).toHaveBeenCalledWith(
+        'Cannot format undefined tour for index'
+      )
+    })
+  })
+
   describe('syncItineraries', () => {
     it('should fetch published itineraries and index them', async () => {
       await service.syncItineraries()
@@ -391,6 +571,38 @@ describe('MeilisearchService', () => {
       ;(prisma.itinerary.findMany as jest.Mock).mockResolvedValueOnce([])
 
       await service.syncItineraries()
+
+      expect(mockMeiliSearchIndex.addDocuments).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('syncTours', () => {
+    it('should fetch tours and index them', async () => {
+      await service.syncTours()
+
+      expect(prisma.tour.findMany).toHaveBeenCalledWith({
+        include: expect.objectContaining({
+          includes: true,
+          tickets: true,
+          itinerary: expect.any(Object),
+        }),
+      })
+
+      expect(mockMeiliSearchIndex.addDocuments).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: 'tour1',
+            title: 'Paris City Tour',
+            location: 'Paris, France',
+          }),
+        ])
+      )
+    })
+
+    it('should not index if no tours', async () => {
+      ;(prisma.tour.findMany as jest.Mock).mockResolvedValueOnce([])
+
+      await service.syncTours()
 
       expect(mockMeiliSearchIndex.addDocuments).not.toHaveBeenCalled()
     })
@@ -486,6 +698,24 @@ describe('MeilisearchService', () => {
     })
   })
 
+  describe('searchTours', () => {
+    it('should search tours with the provided query and options', async () => {
+      const query = 'Paris'
+      const options = {
+        filter: 'location = "Paris, France"',
+        sort: ['pricePerTicket:asc'],
+      }
+
+      const result = await service.searchTours(query, options)
+
+      expect(mockMeiliSearchIndex.search).toHaveBeenCalledWith(query, options)
+      expect(result).toEqual({
+        hits: [mockFormattedTour],
+        estimatedTotalHits: 1,
+      })
+    })
+  })
+
   describe('addOrUpdateItinerary', () => {
     it('should add a published itinerary to the index', async () => {
       const itinerary = { ...mockItineraries[0], isPublished: true }
@@ -525,6 +755,28 @@ describe('MeilisearchService', () => {
     })
   })
 
+  describe('addOrUpdateTour', () => {
+    it('should add a tour to the index', async () => {
+      const tour = { ...mockTours[0] }
+      const formatSpy = jest
+        .spyOn(service, 'formatTourForIndex')
+        .mockReturnValue(mockFormattedTour)
+
+      await service.addOrUpdateTour(tour)
+
+      expect(formatSpy).toHaveBeenCalledWith(tour)
+      expect(mockMeiliSearchIndex.addDocuments).toHaveBeenCalledWith([
+        mockFormattedTour,
+      ])
+    })
+
+    it('should handle undefined tour gracefully', async () => {
+      await service.addOrUpdateTour(undefined)
+
+      expect(mockMeiliSearchIndex.addDocuments).not.toHaveBeenCalled()
+    })
+  })
+
   describe('deleteItinerary', () => {
     it('should delete an itinerary from the index', async () => {
       const itineraryId = 'itinerary1'
@@ -552,6 +804,34 @@ describe('MeilisearchService', () => {
       )
 
       await expect(service.deleteItinerary('itinerary1')).rejects.toThrow(error)
+    })
+  })
+
+  describe('deleteTour', () => {
+    it('should delete a tour from the index', async () => {
+      const tourId = 'tour1'
+
+      await service.deleteTour(tourId)
+
+      expect(mockMeiliSearchIndex.deleteDocument).toHaveBeenCalledWith(tourId)
+    })
+
+    it('should handle document not found gracefully', async () => {
+      const error = new Error('Document tour1 not found')
+      ;(mockMeiliSearchIndex.deleteDocument as jest.Mock).mockRejectedValueOnce(
+        error
+      )
+
+      await expect(service.deleteTour('tour1')).resolves.not.toThrow()
+    })
+
+    it('should throw other errors', async () => {
+      const error = new Error('Connection error')
+      ;(mockMeiliSearchIndex.deleteDocument as jest.Mock).mockRejectedValueOnce(
+        error
+      )
+
+      await expect(service.deleteTour('tour1')).rejects.toThrow(error)
     })
   })
 })

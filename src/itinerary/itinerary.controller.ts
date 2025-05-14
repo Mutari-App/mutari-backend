@@ -217,20 +217,6 @@ export class ItineraryController {
     )
   }
 
-  @Get('/trending')
-  async findTrendingItineraries() {
-    const itineraries = await this.itineraryService.findTrendingItineraries()
-    return this.responseUtil.response(
-      {
-        statusCode: HttpStatus.OK,
-        message: 'Trending itineraries fetched successfully.',
-      },
-      {
-        itineraries,
-      }
-    )
-  }
-
   @SemiPublic()
   @Get(':id')
   async findOne(@Param('id') id: string, @GetUser() user?: User) {
