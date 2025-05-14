@@ -43,8 +43,8 @@ describe('TourService', () => {
       delete: jest.fn(),
     },
     tourIncludes: {
-      findMany: jest.fn()
-    }
+      findMany: jest.fn(),
+    },
   }
 
   const mockMeilisearchService = {

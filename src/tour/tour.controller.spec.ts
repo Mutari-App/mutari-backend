@@ -3,14 +3,11 @@ import { TourController } from './tour.controller'
 import { TourService } from './tour.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { HttpStatus } from '@nestjs/common'
-import { DURATION_TYPE } from '@prisma/client'
-import { PrismaService } from 'src/prisma/prisma.service'
 
 describe('TourController', () => {
   let controller: TourController
   let tourService: TourService
   let responseUtil: ResponseUtil
-
 
   const mockResponseUtil = {
     response: jest.fn(),
@@ -237,9 +234,9 @@ describe('TourController', () => {
   describe('findOne', () => {
     it('should return a successful response with tour data', async () => {
       const mockTourData = {
-      id: 'tour123',
-      title: 'Test tour',
-    }
+        id: 'tour123',
+        title: 'Test tour',
+      }
 
       const mockResponse = {
         statusCode: HttpStatus.OK,
