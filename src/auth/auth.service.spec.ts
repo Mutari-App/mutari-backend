@@ -452,6 +452,38 @@ describe('AuthService', () => {
         } as VerifyRegistrationDTO)
       ).rejects.toThrow(UnauthorizedException)
     })
+
+    it('should throw BadRequestException when ticket has expired', async () => {
+      // Arrange
+      const expiresIn = 300000 // 5 minutes in milliseconds
+
+      // Create a date that's older than the expiration time
+      const now = new Date()
+      const oldDate = new Date(now.getTime() - expiresIn - 60000) // 1 minute past expiration
+
+      prisma.ticket.findUnique.mockResolvedValue({
+        uniqueCode: 'EXPIRED123',
+        updatedAt: oldDate,
+        createdAt: oldDate,
+        id: 'ticket123',
+        user: {
+          email: 'test@example.com',
+          firstName: 'John',
+          updatedAt: undefined,
+        } as any,
+      } as any)
+
+      // Act & Assert
+      await expect(
+        service.verify({
+          verificationCode: 'code',
+          email: 'test@example.com',
+          firstName: 'John',
+        } as VerifyRegistrationDTO)
+      ).rejects.toThrow(
+        new BadRequestException('Verification code has expired')
+      )
+    })
   })
 
   describe('register', () => {
