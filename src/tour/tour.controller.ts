@@ -66,6 +66,20 @@ export class TourController {
     )
   }
 
+  @Get('views')
+  async getTourView(@GetUser() user: User) {
+    const tours = await this.tourService.getTourView(user)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Tour views fetched successfully',
+      },
+      {
+        tours,
+      }
+    )
+  }
+
   @Public()
   @Get('suggestions')
   async getSearchSuggestions(@Query('q') query: string = '') {
@@ -116,20 +130,6 @@ export class TourController {
       },
       {
         tour,
-      }
-    )
-  }
-
-  @Get('views')
-  async getTourView(@GetUser() user: User) {
-    const tours = await this.tourService.getTourView(user)
-    return this.responseUtil.response(
-      {
-        statusCode: HttpStatus.OK,
-        message: 'Tour views fetched successfully',
-      },
-      {
-        tours,
       }
     )
   }
