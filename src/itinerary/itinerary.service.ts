@@ -1620,7 +1620,7 @@ export class ItineraryService {
 
     const hasAccess = itineraryAccess.some((access) => access.userId === userId)
 
-    if (!itinerary.isPublished && itinerary.userId != userId && !hasAccess) {
+    if (itinerary.userId != userId && !itinerary.isPublished && !hasAccess) {
       throw new UnauthorizedException('You have no access to this itinerary')
     }
 
