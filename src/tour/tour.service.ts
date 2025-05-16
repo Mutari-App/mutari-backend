@@ -102,16 +102,50 @@ export class TourService {
       filterConditions.push(`pricePerTicket <= ${filters.maxPrice}`)
     }
 
-    if (filters?.minDuration !== undefined) {
-      filterConditions.push(`duration >= ${filters.minDuration}`)
-    }
+    const hasDurationType = filters?.durationType !== undefined
+    const hasMinDuration = filters?.minDuration !== undefined
+    const hasMaxDuration = filters?.maxDuration !== undefined
 
-    if (filters?.maxDuration !== undefined) {
-      filterConditions.push(`duration <= ${filters.maxDuration}`)
-    }
-
-    if (filters?.durationType) {
+    // Only apply durationType filter if it's provided
+    if (hasDurationType) {
       filterConditions.push(`durationType = "${filters.durationType}"`)
+
+      // When durationType is specified, also apply any duration filters
+      if (hasMinDuration) {
+        filterConditions.push(`duration >= ${filters.minDuration}`)
+      }
+
+      if (hasMaxDuration) {
+        filterConditions.push(`duration <= ${filters.maxDuration}`)
+      }
+    } else {
+      // If no durationType is specified but duration filters exist,
+      // we need to handle all possible duration types
+      if (hasMinDuration || hasMaxDuration) {
+        const durationFilters = []
+        // For days
+        const dayFilters = []
+        if (hasMinDuration)
+          dayFilters.push(`duration >= ${filters.minDuration}`)
+        if (hasMaxDuration)
+          dayFilters.push(`duration <= ${filters.maxDuration}`)
+        if (dayFilters.length > 0) {
+          durationFilters.push([...dayFilters, `durationType = "DAY"`])
+        }
+        // For hours
+        const hourFilters = []
+        if (hasMinDuration)
+          hourFilters.push(`duration >= ${filters.minDuration}`)
+        if (hasMaxDuration)
+          hourFilters.push(`duration <= ${filters.maxDuration}`)
+        if (hourFilters.length > 0) {
+          durationFilters.push([...hourFilters, `durationType = "HOUR"`])
+        }
+        // Add the duration filters as a nested OR condition
+        if (durationFilters.length > 0) {
+          filterConditions.push(durationFilters)
+        }
+      }
     }
 
     // Only show tours with available tickets if requested
@@ -119,9 +153,7 @@ export class TourService {
       filterConditions.push(`availableTickets > 0`)
     }
 
-    const filterString = filterConditions.length
-      ? [[...filterConditions]]
-      : undefined
+    const filterString = filterConditions.length ? filterConditions : undefined
 
     const searchOptions = {
       limit,

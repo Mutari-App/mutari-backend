@@ -18,6 +18,11 @@ import * as bcrypt from 'bcryptjs'
 import { JwtService } from '@nestjs/jwt'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { LoginDTO } from './dto/login.dto'
+import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
+import { resetPasswordTemplate } from './templates/reset-pw-template'
+import { VerifyPasswordResetDTO } from './dto/verify-pw-reset.dto'
+import { PasswordResetDTO } from './dto/pw-reset.dto'
+import { successPasswordResetTemplate } from './templates/success-pw-reset-template'
 
 @Injectable()
 export class AuthService {
@@ -301,5 +306,87 @@ export class AuthService {
       'Register Successful!',
       newUserRegistrationTemplate(data.firstName)
     )
+  }
+
+  async sendPasswordResetVerification(data: RequestPasswordResetDTO) {
+    let user = await this.prisma.user.findUnique({
+      where: {
+        email: data.email,
+        isEmailConfirmed: true,
+      },
+    })
+
+    if (!user) {
+      throw new BadRequestException('Email address is invalid')
+    }
+
+    const verificationCode = await this._generateUniqueVerificationCode(
+      this.prisma,
+      user
+    )
+
+    await this.emailService.sendEmail(
+      data.email,
+      'Please reset your password',
+      resetPasswordTemplate(verificationCode.uniqueCode)
+    )
+  }
+
+  async verifyPasswordReset(data: VerifyPasswordResetDTO) {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: {
+        uniqueCode: data.verificationCode,
+      },
+      include: {
+        user: true,
+      },
+    })
+
+    if (!ticket) {
+      throw new NotFoundException('Verification code not found')
+    }
+
+    if (ticket.user.email !== data.email) {
+      throw new UnauthorizedException('Invalid verification')
+    }
+  }
+
+  async resetPassword(data: PasswordResetDTO) {
+    await this.verifyPasswordReset(data)
+
+    if (data.password != data.confirmPassword) {
+      throw new BadRequestException('Password does not match')
+    }
+
+    const saltOrRounds = bcrypt.genSaltSync(10)
+    const hashedPassword = await bcrypt.hash(data.password, saltOrRounds)
+
+    const user = await this.prisma.user.findUnique({
+      where: {
+        email: data.email,
+      },
+    })
+
+    if (!user) {
+      throw new NotFoundException('User not found')
+    }
+
+    await this.prisma.user.update({
+      where: {
+        email: user.email,
+      },
+      data: {
+        password: hashedPassword,
+      },
+    })
+
+    await Promise.all([
+      this.prisma.ticket.deleteMany({ where: { userId: user.id } }),
+      this.emailService.sendEmail(
+        data.email,
+        'Your password has been reset',
+        successPasswordResetTemplate()
+      ),
+    ])
   }
 }

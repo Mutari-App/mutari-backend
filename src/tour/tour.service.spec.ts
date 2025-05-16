@@ -43,8 +43,8 @@ describe('TourService', () => {
       delete: jest.fn(),
     },
     tourIncludes: {
-      findMany: jest.fn()
-    }
+      findMany: jest.fn(),
+    },
   }
 
   const mockMeilisearchService = {
@@ -321,18 +321,17 @@ describe('TourService', () => {
         'asc'
       )
 
+      // Updated to match the new filter format
       expect(mockMeilisearchService.searchTours).toHaveBeenCalledWith('paris', {
         limit: 10,
         offset: 10,
         filter: [
-          [
-            'location = "Paris, France"',
-            'pricePerTicket >= 50',
-            'pricePerTicket <= 150',
-            'duration >= 4',
-            'durationType = "HOUR"',
-            'availableTickets > 0',
-          ],
+          'location = "Paris, France"',
+          'pricePerTicket >= 50',
+          'pricePerTicket <= 150',
+          'durationType = "HOUR"',
+          'duration >= 4',
+          'availableTickets > 0',
         ],
         sort: ['pricePerTicket:asc'],
       })
@@ -359,28 +358,49 @@ describe('TourService', () => {
     it('should handle various duration filters correctly', async () => {
       // Test with only minDuration
       await service.searchTours('', 1, 10, { minDuration: 2 })
+
+      // Updated to match the correct capitalization of duration types (DAY and HOUR)
       expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
         '',
         expect.objectContaining({
-          filter: [['duration >= 2']],
+          filter: [
+            [
+              ['duration >= 2', 'durationType = "DAY"'],
+              ['duration >= 2', 'durationType = "HOUR"'],
+            ],
+          ],
         })
       )
 
       // Test with only maxDuration
       await service.searchTours('', 1, 10, { maxDuration: 5 })
+
+      // Updated with correct capitalization
       expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
         '',
         expect.objectContaining({
-          filter: [['duration <= 5']],
+          filter: [
+            [
+              ['duration <= 5', 'durationType = "DAY"'],
+              ['duration <= 5', 'durationType = "HOUR"'],
+            ],
+          ],
         })
       )
 
       // Test with both min and max duration
       await service.searchTours('', 1, 10, { minDuration: 2, maxDuration: 5 })
+
+      // Updated with correct capitalization
       expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
         '',
         expect.objectContaining({
-          filter: [['duration >= 2', 'duration <= 5']],
+          filter: [
+            [
+              ['duration >= 2', 'duration <= 5', 'durationType = "DAY"'],
+              ['duration >= 2', 'duration <= 5', 'durationType = "HOUR"'],
+            ],
+          ],
         })
       )
     })
@@ -388,10 +408,12 @@ describe('TourService', () => {
     // Additional test for single filter
     it('should handle a single filter correctly', async () => {
       await service.searchTours('', 1, 10, { location: 'Tokyo, Japan' })
+
+      // Updated to match the new filter format for single filter
       expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
         '',
         expect.objectContaining({
-          filter: [['location = "Tokyo, Japan"']],
+          filter: ['location = "Tokyo, Japan"'],
         })
       )
     })
@@ -403,6 +425,22 @@ describe('TourService', () => {
         '',
         expect.objectContaining({
           filter: undefined,
+        })
+      )
+    })
+
+    // New test for duration with durationType specified
+    it('should handle duration with durationType correctly', async () => {
+      await service.searchTours('', 1, 10, {
+        minDuration: 2,
+        maxDuration: 5,
+        durationType: 'DAY',
+      })
+
+      expect(mockMeilisearchService.searchTours).toHaveBeenLastCalledWith(
+        '',
+        expect.objectContaining({
+          filter: ['durationType = "DAY"', 'duration >= 2', 'duration <= 5'],
         })
       )
     })

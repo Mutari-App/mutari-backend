@@ -9,6 +9,9 @@ import { COOKIE_CONFIG } from './constant'
 import { CreateUserDTO } from './dto/create-user.dto'
 import { RegisterDTO } from './dto/register.dto'
 import { VerifyRegistrationDTO } from './dto/verify-registration.dto'
+import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
+import { VerifyPasswordResetDTO } from './dto/verify-pw-reset.dto'
+import { PasswordResetDTO } from './dto/pw-reset.dto'
 
 describe('AuthController', () => {
   let controller: AuthController
@@ -30,6 +33,9 @@ describe('AuthController', () => {
             sendVerification: jest.fn(),
             verify: jest.fn(),
             register: jest.fn(),
+            sendPasswordResetVerification: jest.fn(),
+            verifyPasswordReset: jest.fn(),
+            resetPassword: jest.fn(),
           },
         },
         {
@@ -286,6 +292,63 @@ describe('AuthController', () => {
         statusCode: 200,
         message: 'User fetched successfully.',
         user: mockUser,
+        success: true,
+      })
+    })
+  })
+
+  describe('requestPasswordReset', () => {
+    it('should call authService.sendPasswordResetVerification with correct data', async () => {
+      const dto: RequestPasswordResetDTO = {
+        email: 'john.doe@example.com',
+      }
+      jest
+        .spyOn(service, 'sendPasswordResetVerification')
+        .mockResolvedValue(undefined)
+
+      const result = await controller.requestPasswordReset(dto)
+      expect(service.sendPasswordResetVerification).toHaveBeenCalledWith(dto)
+      expect(result).toEqual({
+        statusCode: 200,
+        message: 'Sent verification code to email',
+        success: true,
+      })
+    })
+  })
+
+  describe('verifyPasswordReset', () => {
+    it('should call authService.verifyPasswordReset with correct data', async () => {
+      const dto: VerifyPasswordResetDTO = {
+        verificationCode: 'code',
+        email: 'john.doe@example.com',
+      }
+      jest.spyOn(service, 'verifyPasswordReset').mockResolvedValue(undefined)
+
+      const result = await controller.verifyPasswordReset(dto)
+      expect(service.verifyPasswordReset).toHaveBeenCalledWith(dto)
+      expect(result).toEqual({
+        statusCode: 200,
+        message: 'Verification successful',
+        success: true,
+      })
+    })
+  })
+
+  describe('resetPassword', () => {
+    it('should call authService.resetPassword with correct data', async () => {
+      const dto: PasswordResetDTO = {
+        email: 'john.doe@example.com',
+        password: 'password',
+        confirmPassword: 'password',
+        verificationCode: 'code',
+      }
+      jest.spyOn(service, 'resetPassword').mockResolvedValue(undefined)
+
+      const result = await controller.resetPassword(dto)
+      expect(service.resetPassword).toHaveBeenCalledWith(dto)
+      expect(result).toEqual({
+        statusCode: 200,
+        message: 'Password reset successfully',
         success: true,
       })
     })
