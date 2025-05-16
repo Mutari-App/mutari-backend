@@ -21,22 +21,6 @@ export class TourController {
     private readonly responseUtil: ResponseUtil
   ) {}
 
-  @Public()
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
-    const tour = await this.tourService.findOne(id)
-
-    return this.responseUtil.response(
-      {
-        statusCode: HttpStatus.OK,
-        message: 'Tour fetched successfully.',
-      },
-      {
-        data: tour,
-      }
-    )
-  }
-
   @Post('views/:tourId')
   async createTourView(@GetUser() user: User, @Param('tourId') tourId: string) {
     const tour = await this.tourService.createTourView(tourId, user)
@@ -132,5 +116,21 @@ export class TourController {
     return {
       suggestions: suggestions.slice(0, 5),
     }
+  }
+
+  @Public()
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    const tour = await this.tourService.findOne(id)
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Tour fetched successfully.',
+      },
+      {
+        data: tour,
+      }
+    )
   }
 }
