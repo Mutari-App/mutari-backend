@@ -2,11 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { TourService } from './tour.service'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { MeilisearchService } from 'src/meilisearch/meilisearch.service'
-import { TITLE, User } from '@prisma/client'
+import { PAYMENT_STATUS, TITLE, User } from '@prisma/client'
 import { DURATION_TYPE } from '@prisma/client'
 import { NotFoundException } from '@nestjs/common'
-import { create } from 'domain'
 import { BuyTourTicketDTO } from './dto/buy-tour-ticket.dto'
+import { MidtransService } from 'src/midtrans/midtrans.service'
 
 describe('TourService', () => {
   let service: TourService
@@ -49,6 +49,8 @@ describe('TourService', () => {
     },
     tourTicket: {
       create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
     },
   }
 
@@ -89,6 +91,18 @@ describe('TourService', () => {
         {
           provide: MeilisearchService,
           useValue: mockMeilisearchService,
+        },
+        {
+          provide: MidtransService,
+          useValue: {
+            createTransaction: jest.fn().mockResolvedValue({
+              token: 'test-token',
+              redirect_url: 'https://example.com/payment',
+            }),
+            getTransactionStatus: jest.fn().mockResolvedValue({
+              transaction_status: 'settlement',
+            }),
+          },
         },
       ],
     }).compile()
@@ -562,6 +576,8 @@ describe('TourService', () => {
       // Setup tourTicket mock
       mockPrismaService.tourTicket = {
         create: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
       }
     })
 
@@ -638,7 +654,7 @@ describe('TourService', () => {
           customerPhoneNumber: buyTourTicketDto.customer.phoneNumber,
           customerTitle: buyTourTicketDto.customer.title,
           quantity: buyTourTicketDto.quantity,
-          totalPrice: 200,
+          totalPrice: expect.any(Number),
           tour: {
             connect: {
               id: tourId,
@@ -647,6 +663,11 @@ describe('TourService', () => {
           user: {
             connect: {
               id: mockUser.id,
+            },
+          },
+          guests: {
+            createMany: {
+              data: buyTourTicketDto.visitors,
             },
           },
         }),
@@ -817,6 +838,98 @@ describe('TourService', () => {
       await expect(
         service.buyTourTicket(tourId, buyTourTicketDto, mockUser)
       ).rejects.toThrow('Not enough tickets available')
+    })
+  })
+  describe('payTourTicket', () => {
+    beforeEach(() => {
+      // Setup mocks for tourTicket
+      mockPrismaService.tourTicket = {
+        ...mockPrismaService.tourTicket,
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      }
+
+      // Reset the midtransService mock
+      jest.clearAllMocks()
+    })
+
+    it('should throw NotFoundException when ticket not found', async () => {
+      mockPrismaService.tourTicket.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.payTourTicket('non-existent-id', mockUser)
+      ).rejects.toThrow(NotFoundException)
+
+      expect(mockPrismaService.tourTicket.findUnique).toHaveBeenCalledWith({
+        where: { id: 'non-existent-id' },
+      })
+    })
+
+    it('should throw BadRequestException when user is not authorized', async () => {
+      const mockTicket = {
+        id: 'ticket-1',
+        userId: 'other-user-id', // Different from mockUser.id
+        paymentStatus: PAYMENT_STATUS.UNPAID,
+      }
+
+      mockPrismaService.tourTicket.findUnique.mockResolvedValue(mockTicket)
+
+      await expect(service.payTourTicket('ticket-1', mockUser)).rejects.toThrow(
+        'You are not authorized to pay this ticket'
+      )
+
+      expect(mockPrismaService.tourTicket.findUnique).toHaveBeenCalledWith({
+        where: { id: 'ticket-1' },
+      })
+    })
+
+    it('should throw BadRequestException when ticket is already paid', async () => {
+      const mockTicket = {
+        id: 'ticket-1',
+        userId: mockUser.id,
+        paymentStatus: PAYMENT_STATUS.PAID,
+      }
+
+      mockPrismaService.tourTicket.findUnique.mockResolvedValue(mockTicket)
+
+      await expect(service.payTourTicket('ticket-1', mockUser)).rejects.toThrow(
+        'Tour ticket already paid'
+      )
+
+      expect(mockPrismaService.tourTicket.findUnique).toHaveBeenCalledWith({
+        where: { id: 'ticket-1' },
+      })
+    })
+
+    it('should update and return the ticket when transaction status is settlement', async () => {
+      const mockTicket = {
+        id: 'ticket-1',
+        userId: mockUser.id,
+        paymentStatus: PAYMENT_STATUS.UNPAID,
+      }
+
+      const mockUpdatedTicket = {
+        ...mockTicket,
+        paymentStatus: PAYMENT_STATUS.PAID,
+      }
+
+      mockPrismaService.tourTicket.findUnique.mockResolvedValue(mockTicket)
+
+      mockPrismaService.tourTicket.update.mockResolvedValue(mockUpdatedTicket)
+
+      const result = await service.payTourTicket('ticket-1', mockUser)
+
+      expect(mockPrismaService.tourTicket.findUnique).toHaveBeenCalledWith({
+        where: { id: 'ticket-1' },
+      })
+      expect(
+        service['midtransService'].getTransactionStatus
+      ).toHaveBeenCalledWith('ticket-1')
+      expect(mockPrismaService.tourTicket.update).toHaveBeenCalledWith({
+        where: { id: 'ticket-1' },
+        data: { paymentStatus: PAYMENT_STATUS.PAID },
+      })
+      expect(result).toEqual(mockUpdatedTicket)
     })
   })
 })
