@@ -46,6 +46,7 @@ describe('TourController', () => {
     findOne: jest.fn(),
     findMany: jest.fn(),
     buyTourTicket: jest.fn(),
+    payTourTicket: jest.fn(),
   }
 
   beforeEach(async () => {
@@ -334,6 +335,47 @@ describe('TourController', () => {
           message: 'Tour ticket purchased successfully',
         },
         mockTicket
+      )
+      expect(result).toBe(mockResponse)
+    })
+  })
+
+  describe('payTourTicket', () => {
+    it('should process tour ticket payment successfully', async () => {
+      // Mock data
+      const orderId = 'order123'
+      const user = { id: 'user123', email: 'test@example.com' }
+
+      const mockTicket = {
+        id: 'ticket123',
+        orderId,
+        userId: user.id,
+        status: 'PAID',
+        amount: 199.99,
+        paymentDate: new Date(),
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Tour ticket payment successful',
+        data: { tourTicket: mockTicket },
+      }
+
+      // Setup mocks
+      mockTourService.payTourTicket = jest.fn().mockResolvedValue(mockTicket)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      // Call the method
+      const result = await controller.payTourTicket(orderId, user as any)
+
+      // Assertions
+      expect(tourService.payTourTicket).toHaveBeenCalledWith(orderId, user)
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Tour ticket payment successful',
+        },
+        { tourTicket: mockTicket }
       )
       expect(result).toBe(mockResponse)
     })
