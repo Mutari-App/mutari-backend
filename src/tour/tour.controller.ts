@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   ParseFloatPipe,
   Body,
+  Patch,
 } from '@nestjs/common'
 import { TourService } from './tour.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
@@ -22,44 +23,6 @@ export class TourController {
     private readonly tourService: TourService,
     private readonly responseUtil: ResponseUtil
   ) {}
-
-  @Public()
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
-    const tour = await this.tourService.findOne(id)
-
-    return this.responseUtil.response(
-      {
-        statusCode: HttpStatus.OK,
-        message: 'Tour fetched successfully.',
-      },
-      {
-        data: tour,
-      }
-    )
-  }
-
-  @Post(':id/buy')
-  async buyTourTicket(
-    @Param('id') id: string,
-    @Body() buyTourTicketDto: BuyTourTicketDTO,
-    @GetUser() user: User
-  ) {
-    const tourTicket = await this.tourService.buyTourTicket(
-      id,
-      buyTourTicketDto,
-      user
-    )
-
-    return this.responseUtil.response(
-      {
-        statusCode: HttpStatus.CREATED,
-        message: 'Tour ticket purchased successfully',
-      },
-      tourTicket
-    )
-  }
-  g
 
   @Post('views/:tourId')
   async createTourView(@GetUser() user: User, @Param('tourId') tourId: string) {
@@ -174,31 +137,40 @@ export class TourController {
     )
   }
 
-  @Post('views/:tourId')
-  async createTourView(@GetUser() user: User, @Param('tourId') tourId: string) {
-    const tour = await this.tourService.createTourView(tourId, user)
+  @Post(':id/buy')
+  async buyTourTicket(
+    @Param('id') id: string,
+    @Body() buyTourTicketDto: BuyTourTicketDTO,
+    @GetUser() user: User
+  ) {
+    const tourTicket = await this.tourService.buyTourTicket(
+      id,
+      buyTourTicketDto,
+      user
+    )
+
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.CREATED,
-        message: 'Tour view added successfully',
+        message: 'Tour ticket purchased successfully',
       },
-      {
-        tour,
-      }
+      tourTicket
     )
   }
 
-  @Get('views')
-  async getTourView(@GetUser() user: User) {
-    const tours = await this.tourService.getTourView(user)
+  @Patch(':orderId/pay')
+  async payTourTicket(
+    @Param('orderId') orderId: string,
+    @GetUser() user: User
+  ) {
+    const tourTicket = await this.tourService.payTourTicket(orderId, user)
+
     return this.responseUtil.response(
       {
         statusCode: HttpStatus.OK,
-        message: 'Tour views fetched successfully',
+        message: 'Tour ticket payment successful',
       },
-      {
-        tours,
-      }
+      { tourTicket }
     )
   }
 }
