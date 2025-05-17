@@ -245,6 +245,7 @@ describe('AuthService', () => {
         referralCode: '',
         referredById: '',
         loyaltyPoints: 0,
+        firebaseUid: null,
       })
 
       await expect(
@@ -269,6 +270,7 @@ describe('AuthService', () => {
         referralCode: '',
         referredById: '',
         loyaltyPoints: 0,
+        firebaseUid: null,
       })
 
       jest
@@ -532,6 +534,7 @@ describe('AuthService', () => {
         isEmailConfirmed: false,
         referredById: '',
         loyaltyPoints: 0,
+        firebaseUid: null,
       })
 
       jest
@@ -692,6 +695,7 @@ describe('AuthService', () => {
         isEmailConfirmed: false,
         referredById: '',
         loyaltyPoints: 0,
+        firebaseUid: null,
       })
 
       jest

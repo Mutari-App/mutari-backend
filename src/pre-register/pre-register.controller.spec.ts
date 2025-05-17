@@ -104,6 +104,7 @@ describe('PreRegisterController', () => {
         referredById: 'USER124',
         loyaltyPoints: 0,
         birthDate: null,
+        firebaseUid: null,
       }
 
       const result = await controller.referralCode(user)

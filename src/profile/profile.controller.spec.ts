@@ -39,6 +39,7 @@ describe('ProfileController', () => {
     referredById: 'referred-user-123',
     loyaltyPoints: 1000,
     birthDate: new Date(),
+    firebaseUid: null,
   }
 
   beforeEach(async () => {
