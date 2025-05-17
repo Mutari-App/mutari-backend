@@ -5,14 +5,16 @@ import {
 } from '@nestjs/common'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { MeilisearchService } from 'src/meilisearch/meilisearch.service'
-import { User } from '@prisma/client'
+import { PAYMENT_STATUS, User } from '@prisma/client'
 import { BuyTourTicketDTO } from './dto/buy-tour-ticket.dto'
+import { MidtransService } from 'src/midtrans/midtrans.service'
 
 @Injectable()
 export class TourService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly meilisearchService: MeilisearchService
+    private readonly meilisearchService: MeilisearchService,
+    private readonly midtransService: MidtransService
   ) {}
 
   async createTourView(tourId: string, user: User) {
@@ -273,7 +275,7 @@ export class TourService {
         customerPhoneNumber,
         customerTitle,
         quantity,
-        totalPrice: quantity * tour.pricePerTicket.toNumber(),
+        totalPrice: quantity * tour.pricePerTicket,
         tour: {
           connect: {
             id: tourId,
@@ -299,5 +301,35 @@ export class TourService {
     })
 
     return tourTicket
+  }
+
+  async payTourTicket(id: string, user) {
+    const tourTicket = await this.prisma.tourTicket.findUnique({
+      where: { id },
+    })
+    if (!tourTicket) {
+      throw new NotFoundException(`Tour ticket with ID ${id} not found`)
+    }
+    if (tourTicket.userId !== user.id) {
+      throw new BadRequestException(`You are not authorized to pay this ticket`)
+    }
+    if (tourTicket.paymentStatus === PAYMENT_STATUS.PAID) {
+      throw new BadRequestException(`Tour ticket already paid`)
+    }
+
+    const transactionDetails =
+      await this.midtransService.getTransactionStatus(id)
+
+    if (transactionDetails.transaction_status === 'settlement') {
+      const updatedTourTicket = await this.prisma.tourTicket.update({
+        where: { id },
+        data: {
+          paymentStatus: PAYMENT_STATUS.PAID,
+        },
+      })
+      return updatedTourTicket
+    } else {
+      throw new BadRequestException(transactionDetails.status_message)
+    }
   }
 }
