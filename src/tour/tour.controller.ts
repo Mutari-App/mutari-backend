@@ -21,6 +21,34 @@ export class TourController {
     private readonly responseUtil: ResponseUtil
   ) {}
 
+  @Post('views/:tourId')
+  async createTourView(@GetUser() user: User, @Param('tourId') tourId: string) {
+    const tour = await this.tourService.createTourView(tourId, user)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Tour view added successfully',
+      },
+      {
+        tour,
+      }
+    )
+  }
+
+  @Get('views')
+  async getTourView(@GetUser() user: User) {
+    const tours = await this.tourService.getTourView(user)
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Tour views fetched successfully',
+      },
+      {
+        tours,
+      }
+    )
+  }
+
   @Public()
   @Get('search')
   async searchTours(
@@ -66,20 +94,6 @@ export class TourController {
     )
   }
 
-  @Get('views')
-  async getTourView(@GetUser() user: User) {
-    const tours = await this.tourService.getTourView(user)
-    return this.responseUtil.response(
-      {
-        statusCode: HttpStatus.OK,
-        message: 'Tour views fetched successfully',
-      },
-      {
-        tours,
-      }
-    )
-  }
-
   @Public()
   @Get('suggestions')
   async getSearchSuggestions(@Query('q') query: string = '') {
@@ -116,20 +130,6 @@ export class TourController {
       },
       {
         data: tour,
-      }
-    )
-  }
-
-  @Post('views/:tourId')
-  async createTourView(@GetUser() user: User, @Param('tourId') tourId: string) {
-    const tour = await this.tourService.createTourView(tourId, user)
-    return this.responseUtil.response(
-      {
-        statusCode: HttpStatus.CREATED,
-        message: 'Tour view added successfully',
-      },
-      {
-        tour,
       }
     )
   }
