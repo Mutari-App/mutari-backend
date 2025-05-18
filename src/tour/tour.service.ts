@@ -118,33 +118,25 @@ export class TourService {
       if (hasMaxDuration) {
         filterConditions.push(`duration <= ${filters.maxDuration}`)
       }
-    } else {
-      // If no durationType is specified but duration filters exist,
-      // we need to handle all possible duration types
-      if (hasMinDuration || hasMaxDuration) {
-        const durationFilters = []
-        // For days
-        const dayFilters = []
-        if (hasMinDuration)
-          dayFilters.push(`duration >= ${filters.minDuration}`)
-        if (hasMaxDuration)
-          dayFilters.push(`duration <= ${filters.maxDuration}`)
-        if (dayFilters.length > 0) {
-          durationFilters.push([...dayFilters, `durationType = "DAY"`])
-        }
-        // For hours
-        const hourFilters = []
-        if (hasMinDuration)
-          hourFilters.push(`duration >= ${filters.minDuration}`)
-        if (hasMaxDuration)
-          hourFilters.push(`duration <= ${filters.maxDuration}`)
-        if (hourFilters.length > 0) {
-          durationFilters.push([...hourFilters, `durationType = "HOUR"`])
-        }
-        // Add the duration filters as a nested OR condition
-        if (durationFilters.length > 0) {
-          filterConditions.push(durationFilters)
-        }
+    } else if (hasMinDuration || hasMaxDuration) {
+      const durationFilters = []
+      // For days
+      const dayFilters = []
+      if (hasMinDuration) dayFilters.push(`duration >= ${filters.minDuration}`)
+      if (hasMaxDuration) dayFilters.push(`duration <= ${filters.maxDuration}`)
+      if (dayFilters.length > 0) {
+        durationFilters.push([...dayFilters, `durationType = "DAY"`])
+      }
+      // For hours
+      const hourFilters = []
+      if (hasMinDuration) hourFilters.push(`duration >= ${filters.minDuration}`)
+      if (hasMaxDuration) hourFilters.push(`duration <= ${filters.maxDuration}`)
+      if (hourFilters.length > 0) {
+        durationFilters.push([...hourFilters, `durationType = "HOUR"`])
+      }
+      // Add the duration filters as a nested OR condition
+      if (durationFilters.length > 0) {
+        filterConditions.push(durationFilters)
       }
     }
 

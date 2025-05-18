@@ -9,6 +9,7 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common'
 import { EmailService } from 'src/email/email.service'
 import { CreateContingencyPlanDto } from './dto/create-contingency-plan.dto'
@@ -40,6 +41,7 @@ describe('ItineraryService', () => {
       findUnique: jest.fn(),
       create: jest.fn(),
       delete: jest.fn(),
+      findMany: jest.fn(),
     },
     pendingItineraryInvite: {
       createMany: jest.fn(),
@@ -4818,7 +4820,13 @@ describe('ItineraryService', () => {
   describe('createViewItinerary', () => {
     it('should update viewedAt if itinerary already viewed', async () => {
       const userViews = [{ itineraryId: 'it-1' }]
+      const mockData = {
+        ...mockItineraryData,
+        isPublished: true,
+      }
       mockPrismaService.itineraryView.findMany.mockResolvedValue(userViews)
+      mockPrismaService.itineraryAccess.findMany.mockResolvedValue([])
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockData)
 
       await service.createViewItinerary('it-1', mockUser)
 
@@ -4838,9 +4846,15 @@ describe('ItineraryService', () => {
         id: `view-${i}`,
         itineraryId: `it-${i}`,
       }))
+      const mockData = {
+        ...mockItineraryData,
+        isPublished: true,
+      }
 
       mockPrismaService.itineraryView.findMany.mockResolvedValue(userViews)
       mockPrismaService.itineraryView.create.mockResolvedValue({})
+      mockPrismaService.itineraryAccess.findMany.mockResolvedValue([])
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockData)
 
       await service.createViewItinerary('new-itinerary', mockUser)
 
@@ -4861,9 +4875,15 @@ describe('ItineraryService', () => {
         id: `view-${i}`,
         itineraryId: `it-${i}`,
       }))
+      const mockData = {
+        ...mockItineraryData,
+        isPublished: true,
+      }
 
       mockPrismaService.itineraryView.findMany.mockResolvedValue(userViews)
       mockPrismaService.itineraryView.create.mockResolvedValue({})
+      mockPrismaService.itineraryAccess.findMany.mockResolvedValue([])
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(mockData)
 
       await service.createViewItinerary('it-100', mockUser)
 
@@ -4874,6 +4894,75 @@ describe('ItineraryService', () => {
           itineraryId: 'it-100',
           viewedAt: expect.any(Date),
         },
+      })
+    })
+
+    it('should throw NotFoundException if itinerary doesnt exist', async () => {
+      const itineraries = [{ itineraryId: 'itin-1' }]
+      const itineraryViews = [{ itineraryId: 'itin-1', userId: 'user-123' }]
+      mockPrismaService.itinerary.findMany.mockResolvedValue(itineraries)
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(itineraryViews)
+
+      await expect(
+        service.createViewItinerary('not-existing-itinerary', mockUser)
+      ).rejects.toBeInstanceOf(NotFoundException)
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: 'not-existing-itinerary' },
+      })
+      expect(mockPrismaService.itineraryView.update).not.toHaveBeenCalled()
+      expect(mockPrismaService.itineraryView.create).not.toHaveBeenCalled()
+      expect(mockPrismaService.itineraryView.delete).not.toHaveBeenCalled()
+    })
+
+    it('should throw NotFoundException if tour doesnt exist', async () => {
+      const itineraries = [{ itineraryId: 'itin-1' }]
+      const itineraryViews = [{ itineraryId: 'itin-1', userId: 'user-123' }]
+      mockPrismaService.itinerary.findMany.mockResolvedValue(itineraries)
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(null)
+      mockPrismaService.itineraryView.findMany.mockResolvedValue(itineraryViews)
+
+      await expect(
+        service.createViewItinerary('not-existing-itinerary', mockUser)
+      ).rejects.toBeInstanceOf(NotFoundException)
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: 'not-existing-itinerary' },
+      })
+      expect(mockPrismaService.itineraryView.update).not.toHaveBeenCalled()
+      expect(mockPrismaService.itineraryView.create).not.toHaveBeenCalled()
+      expect(mockPrismaService.itineraryView.delete).not.toHaveBeenCalled()
+    })
+
+    it('should throw UnauthorizedException if user has no access to the itinerary', async () => {
+      const mockItineraryId = 'itin-123'
+      const mockUser = { id: 'user-abc' } as User
+
+      const itinerary = {
+        id: mockItineraryId,
+        userId: 'owner-xyz',
+        isPublished: false,
+      }
+
+      const itineraryAccess = []
+
+      mockPrismaService.itinerary.findUnique.mockResolvedValue(itinerary)
+      mockPrismaService.itineraryAccess.findMany.mockResolvedValue(
+        itineraryAccess
+      )
+
+      await expect(
+        service.createViewItinerary(mockItineraryId, mockUser)
+      ).rejects.toBeInstanceOf(UnauthorizedException)
+
+      expect(mockPrismaService.itinerary.findUnique).toHaveBeenCalledWith({
+        where: { id: mockItineraryId },
+      })
+
+      expect(mockPrismaService.itineraryAccess.findMany).toHaveBeenCalledWith({
+        where: { itineraryId: mockItineraryId },
+        select: { userId: true },
       })
     })
   })

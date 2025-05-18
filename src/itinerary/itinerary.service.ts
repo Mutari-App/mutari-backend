@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
@@ -1603,6 +1604,25 @@ export class ItineraryService {
 
   async createViewItinerary(itineraryId: string, user: User) {
     const userId = user.id
+
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: itineraryId },
+    })
+
+    if (!itinerary) {
+      throw new NotFoundException('Itinerary not found')
+    }
+
+    const itineraryAccess = await this.prisma.itineraryAccess.findMany({
+      where: { itineraryId },
+      select: { userId: true },
+    })
+
+    const hasAccess = itineraryAccess.some((access) => access.userId === userId)
+
+    if (itinerary.userId != userId && !itinerary.isPublished && !hasAccess) {
+      throw new UnauthorizedException('You have no access to this itinerary')
+    }
 
     const userViews = await this.prisma.itineraryView.findMany({
       where: { userId },
