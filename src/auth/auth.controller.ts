@@ -73,6 +73,26 @@ export class AuthController {
   }
 
   @Public()
+  @Post('google-register')
+  async googleRegister(
+    @Body() googleAuthDTO: GoogleAuthDTO,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const registerResponse =
+      await this.authService.googleRegister(googleAuthDTO)
+    res.cookie(COOKIE_CONFIG.accessToken.name, registerResponse.accessToken, {
+      ...COOKIE_CONFIG.accessToken.options,
+    })
+    res.cookie(COOKIE_CONFIG.refreshToken.name, registerResponse.refreshToken, {
+      ...COOKIE_CONFIG.refreshToken.options,
+    })
+    return this.responseUtil.response({
+      message: 'Success Register',
+      statusCode: 200,
+    })
+  }
+
+  @Public()
   @Post('/createUser')
   async createUser(@Body() data: CreateUserDTO) {
     await this.authService.createUser(data)
