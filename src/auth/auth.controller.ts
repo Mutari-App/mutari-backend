@@ -24,6 +24,7 @@ import { GetUser } from 'src/common/decorators/getUser.decorator'
 import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
 import { VerifyPasswordResetDTO } from './dto/verify-pw-reset.dto'
 import { PasswordResetDTO } from './dto/pw-reset.dto'
+import { GoogleAuthDTO } from './dto/google-auth-dto'
 
 @UseGuards(PreRegistGuard)
 @Controller('auth')
@@ -40,6 +41,25 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response
   ) {
     const loginResponse = await this.authService.login(loginDto)
+    res.cookie(COOKIE_CONFIG.accessToken.name, loginResponse.accessToken, {
+      ...COOKIE_CONFIG.accessToken.options,
+    })
+    res.cookie(COOKIE_CONFIG.refreshToken.name, loginResponse.refreshToken, {
+      ...COOKIE_CONFIG.refreshToken.options,
+    })
+    return this.responseUtil.response({
+      message: 'Success Login',
+      statusCode: 200,
+    })
+  }
+
+  @Public()
+  @Post('google-login')
+  async googleLogin(
+    @Body() googleAuthDTO: GoogleAuthDTO,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const loginResponse = await this.authService.googleLogin(googleAuthDTO)
     res.cookie(COOKIE_CONFIG.accessToken.name, loginResponse.accessToken, {
       ...COOKIE_CONFIG.accessToken.options,
     })
