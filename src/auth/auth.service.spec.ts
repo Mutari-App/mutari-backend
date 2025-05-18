@@ -8,6 +8,7 @@ import { EmailService } from 'src/email/email.service'
 import {
   BadRequestException,
   ConflictException,
+  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common'
@@ -23,6 +24,8 @@ import { resetPasswordTemplate } from './templates/reset-pw-template'
 import { VerifyPasswordResetDTO } from './dto/verify-pw-reset.dto'
 import { PasswordResetDTO } from './dto/pw-reset.dto'
 import { successPasswordResetTemplate } from './templates/success-pw-reset-template'
+import * as admin from 'firebase-admin'
+import * as firebaseModule from 'src/firebase/firebase'
 
 describe('AuthService', () => {
   let service: AuthService
@@ -764,6 +767,196 @@ describe('AuthService', () => {
           confirmPassword: 'pass',
         } as PasswordResetDTO)
       ).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  describe('googleLogin', () => {
+    it('should throw NotFoundException if user does not exist', async () => {
+      // Mock verifyFirebaseToken to return email and firebaseUid
+      jest.spyOn(service, 'verifyFirebaseToken').mockResolvedValue({
+        email: 'google@example.com',
+        firebaseUid: 'firebase-uid-123',
+        name: 'Google User',
+      })
+
+      // Mock findUnique to return null (user not found)
+      prismaService.user.findUnique = jest.fn().mockResolvedValue(null)
+
+      const googleAuthDTO = { firebaseToken: 'mock-firebase-token' }
+
+      // Assert that googleLogin throws NotFoundException
+      await expect(service.googleLogin(googleAuthDTO)).rejects.toThrow(
+        NotFoundException
+      )
+
+      // Verify that user.findUnique was called with the right parameters
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: {
+          email: 'google@example.com',
+          firebaseUid: 'firebase-uid-123',
+        },
+      })
+    })
+
+    it('should return access and refresh tokens if login is successful', async () => {
+      // Mock user data
+      const mockUser = {
+        id: 'user-123',
+        email: 'google@example.com',
+        firstName: 'Google',
+        lastName: 'User',
+        firebaseUid: 'firebase-uid-123',
+      }
+
+      // Mock verifyFirebaseToken
+      jest.spyOn(service, 'verifyFirebaseToken').mockResolvedValue({
+        email: mockUser.email,
+        firebaseUid: mockUser.firebaseUid,
+        name: `${mockUser.firstName} ${mockUser.lastName}`,
+      })
+
+      // Mock findUnique to return the user
+      prismaService.user.findUnique = jest.fn().mockResolvedValue(mockUser)
+
+      // Mock JWT sign methods
+      jwtService.signAsync = jest
+        .fn()
+        .mockResolvedValueOnce('mock-access-token')
+        .mockResolvedValueOnce('mock-refresh-token')
+
+      const googleAuthDTO = { firebaseToken: 'mock-firebase-token' }
+
+      // Call googleLogin
+      const result = await service.googleLogin(googleAuthDTO)
+
+      // Verify tokens were generated
+      expect(jwtService.signAsync).toHaveBeenCalledWith(
+        { userId: mockUser.id },
+        {
+          secret: process.env.JWT_SECRET,
+          expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
+        }
+      )
+
+      expect(jwtService.signAsync).toHaveBeenCalledWith(
+        { userId: mockUser.id },
+        {
+          secret: process.env.JWT_REFRESH_SECRET,
+          expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
+        }
+      )
+
+      // Assert returned tokens
+      expect(result).toEqual({
+        accessToken: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+      })
+    })
+  })
+
+  describe('verifyFirebaseToken', () => {
+    it('should verify a Firebase token and return user data', async () => {
+      // Setup mock data
+      const mockTokenData = {
+        email: 'firebase@example.com',
+        uid: 'firebase-uid-123',
+        name: 'Firebase User',
+      }
+
+      // Mock the Firebase admin auth object
+      const mockAuthObject = {
+        verifyIdToken: jest.fn().mockResolvedValue(mockTokenData),
+      }
+
+      // Mock the admin.auth() method
+      const mockAdminApp = {
+        auth: jest.fn().mockReturnValue(mockAuthObject),
+      }
+
+      // Mock the entire initFirebaseAdmin function
+      jest
+        .spyOn(firebaseModule, 'initFirebaseAdmin')
+        .mockReturnValue(mockAdminApp as any)
+
+      // Mock admin.apps.length to simulate no existing app
+      jest.spyOn(admin, 'apps', 'get').mockReturnValue([])
+
+      // Create test data
+      const googleAuthDTO = { firebaseToken: 'mock-firebase-token' }
+
+      // Call the method
+      const result = await service.verifyFirebaseToken(googleAuthDTO)
+
+      // Assertions
+      expect(mockAuthObject.verifyIdToken).toHaveBeenCalledWith(
+        'mock-firebase-token'
+      )
+      expect(result).toEqual({
+        email: 'firebase@example.com',
+        firebaseUid: 'firebase-uid-123',
+        name: 'Firebase User',
+      })
+    })
+
+    it('should throw InternalServerErrorException if email is missing', async () => {
+      // Mock data without email
+      const mockTokenData = {
+        uid: 'firebase-uid-123',
+        name: 'Firebase User',
+        // email intentionally missing
+      }
+
+      // Mock the Firebase admin auth object
+      const mockAuthObject = {
+        verifyIdToken: jest.fn().mockResolvedValue(mockTokenData),
+      }
+
+      // Mock the admin.auth() method
+      const mockAdminApp = {
+        auth: jest.fn().mockReturnValue(mockAuthObject),
+      }
+
+      // Mock the initFirebaseAdmin function
+      jest
+        .spyOn(firebaseModule, 'initFirebaseAdmin')
+        .mockReturnValue(mockAdminApp as any)
+
+      // Mock admin.apps to simulate no existing app
+      jest.spyOn(admin, 'apps', 'get').mockReturnValue([])
+
+      const googleAuthDTO = { firebaseToken: 'mock-firebase-token' }
+
+      // Assert that the method throws the expected exception
+      await expect(service.verifyFirebaseToken(googleAuthDTO)).rejects.toThrow(
+        InternalServerErrorException
+      )
+    })
+
+    it('should throw InternalServerErrorException if Firebase verification fails', async () => {
+      // Mock the Firebase admin auth object to throw an error
+      const mockAuthObject = {
+        verifyIdToken: jest.fn().mockRejectedValue(new Error('Invalid token')),
+      }
+
+      // Mock the admin.auth() method
+      const mockAdminApp = {
+        auth: jest.fn().mockReturnValue(mockAuthObject),
+      }
+
+      // Mock the initFirebaseAdmin function
+      jest
+        .spyOn(firebaseModule, 'initFirebaseAdmin')
+        .mockReturnValue(mockAdminApp as any)
+
+      // Mock admin.apps to simulate no existing app
+      jest.spyOn(admin, 'apps', 'get').mockReturnValue([])
+
+      const googleAuthDTO = { firebaseToken: 'invalid-firebase-token' }
+
+      // Assert that the method throws the expected exception
+      await expect(service.verifyFirebaseToken(googleAuthDTO)).rejects.toThrow(
+        InternalServerErrorException
+      )
     })
   })
 })
