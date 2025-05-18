@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common'
@@ -23,6 +24,9 @@ import { resetPasswordTemplate } from './templates/reset-pw-template'
 import { VerifyPasswordResetDTO } from './dto/verify-pw-reset.dto'
 import { PasswordResetDTO } from './dto/pw-reset.dto'
 import { successPasswordResetTemplate } from './templates/success-pw-reset-template'
+import { GoogleAuthDTO } from './dto/google-auth-dto'
+import * as admin from 'firebase-admin'
+import { initFirebaseAdmin } from 'src/firebase/firebase'
 
 @Injectable()
 export class AuthService {
@@ -46,6 +50,58 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(password, user.password)
     if (!isPasswordValid) {
       throw new UnauthorizedException('Incorrect Email or Password')
+    }
+
+    const accessToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_SECRET,
+        expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
+      }
+    )
+
+    const refreshToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
+      }
+    )
+
+    return { accessToken, refreshToken }
+  }
+
+  async verifyFirebaseToken(googleAuth: GoogleAuthDTO) {
+    const { firebaseToken } = googleAuth
+
+    try {
+      const firebaseAdminApp = admin.apps.length ? admin : initFirebaseAdmin()
+
+      const {
+        email,
+        uid: firebaseUid,
+        name,
+      } = await firebaseAdminApp.auth().verifyIdToken(firebaseToken)
+
+      if (!email) {
+        throw new InternalServerErrorException('Verify firebase token failed')
+      }
+
+      return { email, firebaseUid, name }
+    } catch (error) {
+      throw new InternalServerErrorException((error as Error).message)
+    }
+  }
+
+  async googleLogin(googleAuthDTO: GoogleAuthDTO) {
+    const { email, firebaseUid } = await this.verifyFirebaseToken(googleAuthDTO)
+
+    const user = await this.prisma.user.findUnique({
+      where: { email, firebaseUid },
+    })
+
+    if (!user) {
+      throw new NotFoundException('User not found')
     }
 
     const accessToken = await this.jwtService.signAsync(
