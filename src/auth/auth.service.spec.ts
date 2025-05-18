@@ -854,6 +854,243 @@ describe('AuthService', () => {
     })
   })
 
+  describe('googleRegister', () => {
+    it('should throw ConflictException if user already exists', async () => {
+      // Mock verifyFirebaseToken
+      jest.spyOn(service, 'verifyFirebaseToken').mockResolvedValue({
+        email: 'existing@example.com',
+        firebaseUid: 'existing-firebase-uid',
+        name: 'Existing User',
+      })
+
+      // Mock existing user
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'existing-user-id',
+        email: 'existing@example.com',
+        firebaseUid: 'existing-firebase-uid',
+      } as User)
+
+      const googleAuthDTO = { firebaseToken: 'mock-firebase-token' }
+
+      await expect(service.googleRegister(googleAuthDTO)).rejects.toThrow(
+        ConflictException
+      )
+    })
+
+    it('should register a new user and return tokens', async () => {
+      // Create a complete user object with ID
+      const newUser = {
+        id: 'new-user-id',
+        email: 'new@example.com',
+        firstName: 'New',
+        lastName: 'User',
+        firebaseUid: 'new-firebase-uid',
+        isEmailConfirmed: true,
+        // Add other required User properties
+        password: '',
+        phoneNumber: '',
+        photoProfile: '',
+        birthDate: null,
+        referralCode: '',
+        referredById: null,
+        loyaltyPoints: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      // Mock verifyFirebaseToken
+      jest.spyOn(service, 'verifyFirebaseToken').mockResolvedValue({
+        email: 'new@example.com',
+        firebaseUid: 'new-firebase-uid',
+        name: 'New User',
+      })
+
+      // Mock user not found
+      prisma.user.findUnique.mockResolvedValue(null)
+
+      // Mock upsert to return the complete user
+      prisma.user.upsert.mockResolvedValue(newUser)
+
+      // Mock JWT sign
+      jwtService.signAsync = jest
+        .fn()
+        .mockResolvedValueOnce('new-access-token')
+        .mockResolvedValueOnce('new-refresh-token')
+
+      const googleAuthDTO = { firebaseToken: 'mock-firebase-token' }
+
+      // Call googleRegister
+      const result = await service.googleRegister(googleAuthDTO)
+
+      // Verify upsert was called with correct params
+      expect(prisma.user.upsert).toHaveBeenCalledWith({
+        where: { email: 'new@example.com' },
+        update: {
+          firebaseUid: 'new-firebase-uid',
+          isEmailConfirmed: true,
+        },
+        create: {
+          firstName: 'New',
+          lastName: 'User',
+          email: 'new@example.com',
+          firebaseUid: 'new-firebase-uid',
+          isEmailConfirmed: true,
+        },
+      })
+
+      // Assert JWT tokens were generated with the correct user ID
+      expect(jwtService.signAsync).toHaveBeenCalledWith(
+        { userId: 'new-user-id' },
+        {
+          secret: process.env.JWT_SECRET,
+          expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
+        }
+      )
+
+      // Assert returned tokens
+      expect(result).toEqual({
+        accessToken: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+      })
+    })
+
+    it('should handle names from Firebase correctly', async () => {
+      // Create a complete user object
+      const singleNameUser = {
+        id: 'single-user-id',
+        firstName: 'Single',
+        lastName: '',
+        email: 'single@example.com',
+        firebaseUid: 'single-name-uid',
+        isEmailConfirmed: true,
+        // Add other required User properties
+        password: '',
+        phoneNumber: '',
+        photoProfile: '',
+        birthDate: null,
+        referralCode: '',
+        referredById: null,
+        loyaltyPoints: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      // Mock verifyFirebaseToken with just a single name
+      jest.spyOn(service, 'verifyFirebaseToken').mockResolvedValue({
+        email: 'single@example.com',
+        firebaseUid: 'single-name-uid',
+        name: 'Single',
+      })
+
+      // Mock user not found
+      prisma.user.findUnique.mockResolvedValue(null)
+
+      // Mock upsert to return the complete user
+      prisma.user.upsert.mockResolvedValue(singleNameUser)
+
+      // Mock JWT sign
+      jwtService.signAsync = jest
+        .fn()
+        .mockResolvedValueOnce('single-access-token')
+        .mockResolvedValueOnce('single-refresh-token')
+
+      const googleAuthDTO = { firebaseToken: 'mock-firebase-token' }
+
+      // Call googleRegister
+      const result = await service.googleRegister(googleAuthDTO)
+
+      // Verify first name and last name were split correctly
+      expect(prisma.user.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            firstName: 'Single',
+            lastName: '',
+          }),
+        })
+      )
+
+      // Verify tokens were generated with the correct ID
+      expect(jwtService.signAsync).toHaveBeenCalledWith(
+        { userId: 'single-user-id' },
+        expect.any(Object)
+      )
+
+      // Assert returned tokens
+      expect(result).toEqual({
+        accessToken: 'single-access-token',
+        refreshToken: 'single-refresh-token',
+      })
+    })
+
+    it('should use email prefix if no name is provided', async () => {
+      // Create a complete user object
+      const noNameUser = {
+        id: 'noname-user-id',
+        firstName: 'noname',
+        lastName: '',
+        email: 'noname@example.com',
+        firebaseUid: 'no-name-uid',
+        isEmailConfirmed: true,
+        // Add other required User properties
+        password: '',
+        phoneNumber: '',
+        photoProfile: '',
+        birthDate: null,
+        referralCode: '',
+        referredById: null,
+        loyaltyPoints: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      // Mock verifyFirebaseToken with no name
+      jest.spyOn(service, 'verifyFirebaseToken').mockResolvedValue({
+        email: 'noname@example.com',
+        firebaseUid: 'no-name-uid',
+        name: null,
+      })
+
+      // Mock user not found
+      prisma.user.findUnique.mockResolvedValue(null)
+
+      // Mock upsert to return the complete user
+      prisma.user.upsert.mockResolvedValue(noNameUser)
+
+      // Mock JWT sign
+      jwtService.signAsync = jest
+        .fn()
+        .mockResolvedValueOnce('noname-access-token')
+        .mockResolvedValueOnce('noname-refresh-token')
+
+      const googleAuthDTO = { firebaseToken: 'mock-firebase-token' }
+
+      // Call googleRegister
+      const result = await service.googleRegister(googleAuthDTO)
+
+      // Verify first name became email prefix
+      expect(prisma.user.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            firstName: 'noname',
+            lastName: '',
+          }),
+        })
+      )
+
+      // Verify tokens were generated with the correct ID
+      expect(jwtService.signAsync).toHaveBeenCalledWith(
+        { userId: 'noname-user-id' },
+        expect.any(Object)
+      )
+
+      // Assert returned tokens
+      expect(result).toEqual({
+        accessToken: 'noname-access-token',
+        refreshToken: 'noname-refresh-token',
+      })
+    })
+  })
+
   describe('verifyFirebaseToken', () => {
     it('should verify a Firebase token and return user data', async () => {
       // Setup mock data
