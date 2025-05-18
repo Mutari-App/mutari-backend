@@ -123,6 +123,54 @@ export class AuthService {
     return { accessToken, refreshToken }
   }
 
+  async googleRegister(googleAuthDTO: GoogleAuthDTO) {
+    let { email, firebaseUid, name } =
+      await this.verifyFirebaseToken(googleAuthDTO)
+
+    let user = await this.prisma.user.findUnique({
+      where: { email: email, firebaseUid: firebaseUid },
+    })
+
+    if (user) {
+      throw new ConflictException('User already exists')
+    }
+
+    name ??= email.split('@')[0]
+
+    user = await this.prisma.user.upsert({
+      where: { email: email },
+      update: {
+        firebaseUid: firebaseUid,
+        isEmailConfirmed: true,
+      },
+      create: {
+        firstName: name.split(' ')[0],
+        lastName: name.split(' ').slice(1).join(' '),
+        email: email,
+        firebaseUid: firebaseUid,
+        isEmailConfirmed: true,
+      },
+    })
+
+    const accessToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_SECRET,
+        expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
+      }
+    )
+
+    const refreshToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
+      }
+    )
+
+    return { accessToken, refreshToken }
+  }
+
   private isRefreshTokenBlackListed(refreshToken: string, userId: string) {
     return this.prisma.refreshToken.findFirst({
       where: {
