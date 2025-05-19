@@ -1,13 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { MeilisearchService } from 'src/meilisearch/meilisearch.service'
-import { User } from '@prisma/client'
+import { PAYMENT_STATUS, User } from '@prisma/client'
+import { BuyTourTicketDTO } from './dto/buy-tour-ticket.dto'
+// import { MidtransService } from 'src/midtrans/midtrans.service'
+import { DokuService } from 'src/doku/doku.service'
 
 @Injectable()
 export class TourService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly meilisearchService: MeilisearchService
+    private readonly meilisearchService: MeilisearchService,
+    // private readonly midtransService: MidtransService
+    private readonly dokuService: DokuService
   ) {}
 
   async createTourView(tourId: string, user: User) {
@@ -214,5 +223,105 @@ export class TourService {
     }
 
     return result
+  }
+
+  async buyTourTicket(
+    tourId: string,
+    buyTourTicketDto: BuyTourTicketDTO,
+    user: User
+  ) {
+    if (buyTourTicketDto.quantity !== buyTourTicketDto.visitors.length) {
+      throw new BadRequestException('Quantity and visitors count mismatch')
+    }
+
+    const tour = await this.prisma.tour.findUnique({
+      where: { id: tourId },
+    })
+
+    if (!tour) {
+      throw new NotFoundException(`Tour with ID ${tourId} not found`)
+    }
+
+    if (buyTourTicketDto.visitors.length > tour.maxCapacity) {
+      throw new BadRequestException(`Tour capacity exceeded`)
+    }
+
+    if (buyTourTicketDto.visitors.length > tour.availableTickets) {
+      throw new BadRequestException(`Not enough tickets available`)
+    }
+
+    const { customer, visitors, quantity, tourDate } = buyTourTicketDto
+
+    const {
+      firstName: customerFirstName,
+      lastName: customerLastName,
+      email: customerEmail,
+      phoneNumber: customerPhoneNumber,
+      title: customerTitle,
+    } = customer
+
+    const tourTicket = await this.prisma.tourTicket.create({
+      data: {
+        tourDate: new Date(tourDate),
+        customerEmail,
+        customerFirstName,
+        customerLastName,
+        customerPhoneNumber,
+        customerTitle,
+        quantity,
+        totalPrice: quantity * tour.pricePerTicket,
+        tour: {
+          connect: {
+            id: tourId,
+          },
+        },
+        guests: {
+          createMany: {
+            data: visitors.map((visitor) => ({
+              firstName: visitor.firstName,
+              lastName: visitor.lastName,
+              email: visitor.email,
+              phoneNumber: visitor.phoneNumber,
+              title: visitor.title,
+            })),
+          },
+        },
+        user: {
+          connect: {
+            id: user.id,
+          },
+        },
+      },
+    })
+
+    return tourTicket
+  }
+
+  async payTourTicket(id: string, user) {
+    const tourTicket = await this.prisma.tourTicket.findUnique({
+      where: { id },
+    })
+    if (!tourTicket) {
+      throw new NotFoundException(`Tour ticket with ID ${id} not found`)
+    }
+    if (tourTicket.userId !== user.id) {
+      throw new BadRequestException(`You are not authorized to pay this ticket`)
+    }
+    if (tourTicket.paymentStatus === PAYMENT_STATUS.PAID) {
+      throw new BadRequestException(`Tour ticket already paid`)
+    }
+
+    const transactionDetails = await this.dokuService.getOrderStatus(id)
+    if (transactionDetails.transaction.status === 'SUCCESS') {
+      const updatedTourTicket = await this.prisma.tourTicket.update({
+        where: { id },
+        data: {
+          paymentStatus: PAYMENT_STATUS.PAID,
+        },
+      })
+      return updatedTourTicket
+    } else {
+      throw new BadRequestException(transactionDetails.status_message)
+    }
   }
 }
