@@ -1260,4 +1260,120 @@ describe('AuthService', () => {
       }
     })
   })
+
+  describe('linkAccount', () => {
+    it('should link an existing user account with Firebase', async () => {
+      // Mock the verified Firebase token data
+      jest.spyOn(service, 'verifyFirebaseToken').mockResolvedValue({
+        email: 'test@example.com',
+        firebaseUid: 'firebase-uid-123',
+        name: 'Test User',
+      })
+
+      // Mock existing user without Firebase UID
+      const mockUser = {
+        id: 'user-id',
+        email: 'test@example.com',
+        firebaseUid: null,
+      } as User
+
+      // Mock the user lookup
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-id',
+        email: 'test@example.com',
+        firebaseUid: null,
+      } as User)
+
+      // Call the method
+      await service.linkAccount(mockUser, { firebaseToken: 'valid-token' })
+
+      // Verify that the user is updated with the Firebase UID
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-id' },
+        data: { firebaseUid: 'firebase-uid-123' },
+      })
+    })
+
+    it('should throw BadRequestException if emails do not match', async () => {
+      // Mock the verified Firebase token data with different email
+      jest.spyOn(service, 'verifyFirebaseToken').mockResolvedValue({
+        email: 'different@example.com',
+        firebaseUid: 'firebase-uid-123',
+        name: 'Different User',
+      })
+
+      // Mock user
+      const mockUser = {
+        id: 'user-id',
+        email: 'test@example.com',
+        firebaseUid: null,
+      } as User
+
+      // Call the method and expect exception
+      await expect(
+        service.linkAccount(mockUser, { firebaseToken: 'valid-token' })
+      ).rejects.toThrow(BadRequestException)
+
+      // Verify the update was not called
+      expect(prisma.user.update).not.toHaveBeenCalled()
+    })
+
+    it('should throw NotFoundException if user does not exist', async () => {
+      // Mock the verified Firebase token data
+      jest.spyOn(service, 'verifyFirebaseToken').mockResolvedValue({
+        email: 'test@example.com',
+        firebaseUid: 'firebase-uid-123',
+        name: 'Test User',
+      })
+
+      // Mock user
+      const mockUser = {
+        id: 'user-id',
+        email: 'test@example.com',
+        firebaseUid: null,
+      } as User
+
+      // Mock user lookup to return null (not found)
+      prisma.user.findUnique.mockResolvedValue(null)
+
+      // Call the method and expect exception
+      await expect(
+        service.linkAccount(mockUser, { firebaseToken: 'valid-token' })
+      ).rejects.toThrow(NotFoundException)
+
+      // Verify the update was not called
+      expect(prisma.user.update).not.toHaveBeenCalled()
+    })
+
+    it('should throw ConflictException if user is already linked', async () => {
+      // Mock the verified Firebase token data
+      jest.spyOn(service, 'verifyFirebaseToken').mockResolvedValue({
+        email: 'test@example.com',
+        firebaseUid: 'firebase-uid-123',
+        name: 'Test User',
+      })
+
+      // Mock user
+      const mockUser = {
+        id: 'user-id',
+        email: 'test@example.com',
+        firebaseUid: null,
+      } as User
+
+      // Mock user lookup to return a user that already has a Firebase UID
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-id',
+        email: 'test@example.com',
+        firebaseUid: 'existing-firebase-uid',
+      } as User)
+
+      // Call the method and expect exception
+      await expect(
+        service.linkAccount(mockUser, { firebaseToken: 'valid-token' })
+      ).rejects.toThrow(ConflictException)
+
+      // Verify the update was not called
+      expect(prisma.user.update).not.toHaveBeenCalled()
+    })
+  })
 })

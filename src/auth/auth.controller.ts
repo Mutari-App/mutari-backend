@@ -92,6 +92,15 @@ export class AuthController {
     })
   }
 
+  @Post('link-account')
+  async linkAccount(@GetUser() user: User, @Body() data: GoogleAuthDTO) {
+    await this.authService.linkAccount(user, data)
+    return this.responseUtil.response({
+      message: 'Success Link Account',
+      statusCode: 200,
+    })
+  }
+
   @Public()
   @Post('/createUser')
   async createUser(@Body() data: CreateUserDTO) {

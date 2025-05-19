@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
 import { LoginDTO } from './dto/login.dto'
-import { UnauthorizedException } from '@nestjs/common'
+import { BadRequestException, UnauthorizedException } from '@nestjs/common'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { Request, Response } from 'express'
 import { COOKIE_CONFIG } from './constant'
@@ -39,6 +39,7 @@ describe('AuthController', () => {
             resetPassword: jest.fn(),
             googleLogin: jest.fn(),
             googleRegister: jest.fn(),
+            linkAccount: jest.fn(),
           },
         },
         {
@@ -471,6 +472,66 @@ describe('AuthController', () => {
       await expect(
         controller.googleRegister(dto, mockResponse as Response)
       ).rejects.toThrow(UnauthorizedException)
+    })
+  })
+
+  describe('linkAccount', () => {
+    it('should link a user account with Firebase and return success', async () => {
+      // Create mock user and GoogleAuthDTO
+      const mockUser = {
+        id: 'user-id',
+        email: 'test@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+      }
+
+      const dto: GoogleAuthDTO = {
+        firebaseToken: 'mock-firebase-token',
+      }
+
+      // Mock the service's linkAccount method
+      jest.spyOn(service, 'linkAccount').mockResolvedValue(undefined)
+
+      // Mock the responseUtil.response method
+      jest.spyOn(responseUtil, 'response').mockImplementation((data) => ({
+        ...data,
+        success: true,
+      }))
+
+      // Call the controller method
+      const result = await controller.linkAccount(mockUser as any, dto)
+
+      // Verify service method was called with correct params
+      expect(service.linkAccount).toHaveBeenCalledWith(mockUser, dto)
+
+      // Verify the correct response was returned
+      expect(result).toEqual({
+        message: 'Success Link Account',
+        statusCode: 200,
+        success: true,
+      })
+    })
+
+    it('should throw an exception if linking fails', async () => {
+      // Create mock user and GoogleAuthDTO
+      const mockUser = {
+        id: 'user-id',
+        email: 'test@example.com',
+      }
+
+      const dto: GoogleAuthDTO = {
+        firebaseToken: 'mock-firebase-token',
+      }
+
+      // Mock the service to throw an error
+      jest
+        .spyOn(service, 'linkAccount')
+        .mockRejectedValue(new BadRequestException('Email mismatch'))
+
+      // Verify the controller throws the same exception
+      await expect(
+        controller.linkAccount(mockUser as any, dto)
+      ).rejects.toThrow(BadRequestException)
     })
   })
 })
