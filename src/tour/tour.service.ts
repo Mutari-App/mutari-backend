@@ -7,14 +7,16 @@ import { PrismaService } from 'src/prisma/prisma.service'
 import { MeilisearchService } from 'src/meilisearch/meilisearch.service'
 import { PAYMENT_STATUS, User } from '@prisma/client'
 import { BuyTourTicketDTO } from './dto/buy-tour-ticket.dto'
-import { MidtransService } from 'src/midtrans/midtrans.service'
+// import { MidtransService } from 'src/midtrans/midtrans.service'
+import { DokuService } from 'src/doku/doku.service'
 
 @Injectable()
 export class TourService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly meilisearchService: MeilisearchService,
-    private readonly midtransService: MidtransService
+    // private readonly midtransService: MidtransService
+    private readonly dokuService: DokuService
   ) {}
 
   async createTourView(tourId: string, user: User) {
@@ -317,10 +319,8 @@ export class TourService {
       throw new BadRequestException(`Tour ticket already paid`)
     }
 
-    const transactionDetails =
-      await this.midtransService.getTransactionStatus(id)
-
-    if (transactionDetails.transaction_status === 'settlement') {
+    const transactionDetails = await this.dokuService.getOrderStatus(id)
+    if (transactionDetails.transaction.status === 'SUCCESS') {
       const updatedTourTicket = await this.prisma.tourTicket.update({
         where: { id },
         data: {

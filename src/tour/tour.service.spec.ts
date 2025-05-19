@@ -7,6 +7,7 @@ import { DURATION_TYPE } from '@prisma/client'
 import { NotFoundException } from '@nestjs/common'
 import { BuyTourTicketDTO } from './dto/buy-tour-ticket.dto'
 import { MidtransService } from 'src/midtrans/midtrans.service'
+import { DokuService } from 'src/doku/doku.service'
 
 describe('TourService', () => {
   let service: TourService
@@ -92,15 +93,25 @@ describe('TourService', () => {
           provide: MeilisearchService,
           useValue: mockMeilisearchService,
         },
+        // {
+        //   provide: MidtransService,
+        //   useValue: {
+        //     createTransaction: jest.fn().mockResolvedValue({
+        //       token: 'test-token',
+        //       redirect_url: 'https://example.com/payment',
+        //     }),
+        //     getTransactionStatus: jest.fn().mockResolvedValue({
+        //       transaction_status: 'settlement',
+        //     }),
+        //   },
+        // },
         {
-          provide: MidtransService,
+          provide: DokuService,
           useValue: {
-            createTransaction: jest.fn().mockResolvedValue({
-              token: 'test-token',
-              redirect_url: 'https://example.com/payment',
-            }),
-            getTransactionStatus: jest.fn().mockResolvedValue({
-              transaction_status: 'settlement',
+            getOrderStatus: jest.fn().mockResolvedValue({
+              transaction: {
+                status: 'SUCCESS',
+              },
             }),
           },
         },
@@ -922,9 +933,9 @@ describe('TourService', () => {
       expect(mockPrismaService.tourTicket.findUnique).toHaveBeenCalledWith({
         where: { id: 'ticket-1' },
       })
-      expect(
-        service['midtransService'].getTransactionStatus
-      ).toHaveBeenCalledWith('ticket-1')
+      expect(service['dokuService'].getOrderStatus).toHaveBeenCalledWith(
+        'ticket-1'
+      )
       expect(mockPrismaService.tourTicket.update).toHaveBeenCalledWith({
         where: { id: 'ticket-1' },
         data: { paymentStatus: PAYMENT_STATUS.PAID },
