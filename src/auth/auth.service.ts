@@ -171,6 +171,32 @@ export class AuthService {
     return { accessToken, refreshToken }
   }
 
+  async linkAccount(user: User, linkaccountDTO: GoogleAuthDTO) {
+    const { firebaseUid, email } =
+      await this.verifyFirebaseToken(linkaccountDTO)
+
+    if (user.email !== email) {
+      throw new BadRequestException('Invalid email')
+    }
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: email },
+    })
+
+    if (!existingUser) {
+      throw new NotFoundException('User not found')
+    }
+
+    if (existingUser.firebaseUid) {
+      throw new ConflictException('User already linked with another account')
+    }
+
+    await this.prisma.user.update({
+      where: { id: existingUser.id },
+      data: { firebaseUid: firebaseUid },
+    })
+  }
+
   private isRefreshTokenBlackListed(refreshToken: string, userId: string) {
     return this.prisma.refreshToken.findFirst({
       where: {
