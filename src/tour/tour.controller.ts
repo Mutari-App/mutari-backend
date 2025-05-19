@@ -6,13 +6,16 @@ import {
   Query,
   ParseIntPipe,
   ParseFloatPipe,
-  HttpStatus,
+  Body,
+  Patch,
 } from '@nestjs/common'
 import { TourService } from './tour.service'
-import { Public } from '../common/decorators/public.decorator'
 import { ResponseUtil } from 'src/common/utils/response.util'
+import { HttpStatus } from '@nestjs/common/enums/http-status.enum'
+import { Public } from 'src/common/decorators/public.decorator'
 import { User } from '@prisma/client'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
+import { BuyTourTicketDTO } from './dto/buy-tour-ticket.dto'
 
 @Controller('tour')
 export class TourController {
@@ -116,5 +119,58 @@ export class TourController {
     return {
       suggestions: suggestions.slice(0, 5),
     }
+  }
+
+  @Public()
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    const tour = await this.tourService.findOne(id)
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Tour fetched successfully.',
+      },
+      {
+        data: tour,
+      }
+    )
+  }
+
+  @Post(':id/buy')
+  async buyTourTicket(
+    @Param('id') id: string,
+    @Body() buyTourTicketDto: BuyTourTicketDTO,
+    @GetUser() user: User
+  ) {
+    const tourTicket = await this.tourService.buyTourTicket(
+      id,
+      buyTourTicketDto,
+      user
+    )
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.CREATED,
+        message: 'Tour ticket purchased successfully',
+      },
+      tourTicket
+    )
+  }
+
+  @Patch(':orderId/pay')
+  async payTourTicket(
+    @Param('orderId') orderId: string,
+    @GetUser() user: User
+  ) {
+    const tourTicket = await this.tourService.payTourTicket(orderId, user)
+
+    return this.responseUtil.response(
+      {
+        statusCode: HttpStatus.OK,
+        message: 'Tour ticket payment successful',
+      },
+      { tourTicket }
+    )
   }
 }

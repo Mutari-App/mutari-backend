@@ -25,6 +25,22 @@ export class ProfileController {
     private readonly responseUtil: ResponseUtil
   ) {}
 
+  @Get('transactions')
+  async getTransactionHistory(@GetUser() user: User) {
+    const transactions = await this.profileService.getTransactionHistory(
+      user.id
+    )
+    return this.responseUtil.response(
+      {
+        message: 'Transaction history fetched successfully',
+        statusCode: HttpStatus.OK,
+      },
+      {
+        transactions,
+      }
+    )
+  }
+
   @Public()
   @HttpCode(HttpStatus.OK)
   @Get(':id')
@@ -156,20 +172,6 @@ export class ProfileController {
       },
       {
         itineraryLikes,
-      }
-    )
-  }
-
-  @Get(':userId/transactions')
-  async getTransactionHistory(@Param('id') userId: string) {
-    const transactions = await this.profileService.getTransactionHistory(userId)
-    return this.responseUtil.response(
-      {
-        message: 'Transaction history fetched successfully',
-        statusCode: HttpStatus.OK,
-      },
-      {
-        transactions,
       }
     )
   }

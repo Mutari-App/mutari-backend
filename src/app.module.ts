@@ -22,6 +22,7 @@ import { GeminiModule } from './gemini/gemini.module'
 import { UmamiModule } from './umami/umami.module'
 import { MeilisearchModule } from './meilisearch/meilisearch.module'
 import { TourModule } from './tour/tour.module'
+import { DokuModule } from './doku/doku.module'
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { TourModule } from './tour/tour.module'
     UmamiModule,
     MeilisearchModule,
     TourModule,
+    DokuModule,
   ],
   controllers: [AppController],
   providers: [

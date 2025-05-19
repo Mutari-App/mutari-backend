@@ -9,6 +9,10 @@ import { COOKIE_CONFIG } from './constant'
 import { CreateUserDTO } from './dto/create-user.dto'
 import { RegisterDTO } from './dto/register.dto'
 import { VerifyRegistrationDTO } from './dto/verify-registration.dto'
+import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
+import { VerifyPasswordResetDTO } from './dto/verify-pw-reset.dto'
+import { PasswordResetDTO } from './dto/pw-reset.dto'
+import { GoogleAuthDTO } from './dto/google-auth-dto'
 
 describe('AuthController', () => {
   let controller: AuthController
@@ -30,6 +34,11 @@ describe('AuthController', () => {
             sendVerification: jest.fn(),
             verify: jest.fn(),
             register: jest.fn(),
+            sendPasswordResetVerification: jest.fn(),
+            verifyPasswordReset: jest.fn(),
+            resetPassword: jest.fn(),
+            googleLogin: jest.fn(),
+            googleRegister: jest.fn(),
           },
         },
         {
@@ -288,6 +297,180 @@ describe('AuthController', () => {
         user: mockUser,
         success: true,
       })
+    })
+  })
+
+  describe('requestPasswordReset', () => {
+    it('should call authService.sendPasswordResetVerification with correct data', async () => {
+      const dto: RequestPasswordResetDTO = {
+        email: 'john.doe@example.com',
+      }
+      jest
+        .spyOn(service, 'sendPasswordResetVerification')
+        .mockResolvedValue(undefined)
+
+      const result = await controller.requestPasswordReset(dto)
+      expect(service.sendPasswordResetVerification).toHaveBeenCalledWith(dto)
+      expect(result).toEqual({
+        statusCode: 200,
+        message: 'Sent verification code to email',
+        success: true,
+      })
+    })
+  })
+
+  describe('verifyPasswordReset', () => {
+    it('should call authService.verifyPasswordReset with correct data', async () => {
+      const dto: VerifyPasswordResetDTO = {
+        verificationCode: 'code',
+        email: 'john.doe@example.com',
+      }
+      jest.spyOn(service, 'verifyPasswordReset').mockResolvedValue(undefined)
+
+      const result = await controller.verifyPasswordReset(dto)
+      expect(service.verifyPasswordReset).toHaveBeenCalledWith(dto)
+      expect(result).toEqual({
+        statusCode: 200,
+        message: 'Verification successful',
+        success: true,
+      })
+    })
+  })
+
+  describe('resetPassword', () => {
+    it('should call authService.resetPassword with correct data', async () => {
+      const dto: PasswordResetDTO = {
+        email: 'john.doe@example.com',
+        password: 'password',
+        confirmPassword: 'password',
+        verificationCode: 'code',
+      }
+      jest.spyOn(service, 'resetPassword').mockResolvedValue(undefined)
+
+      const result = await controller.resetPassword(dto)
+      expect(service.resetPassword).toHaveBeenCalledWith(dto)
+      expect(result).toEqual({
+        statusCode: 200,
+        message: 'Password reset successfully',
+        success: true,
+      })
+    })
+  })
+
+  describe('googleLogin', () => {
+    it('should return success on successful Google login', async () => {
+      const dto: GoogleAuthDTO = {
+        firebaseToken: 'mock-firebase-token',
+      }
+
+      const mockLoginResponse = {
+        accessToken: 'google-access-token',
+        refreshToken: 'google-refresh-token',
+      }
+
+      jest.spyOn(service, 'googleLogin').mockResolvedValue(mockLoginResponse)
+
+      const result = await controller.googleLogin(dto, mockResponse as Response)
+
+      expect(service.googleLogin).toHaveBeenCalledWith(dto)
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        COOKIE_CONFIG.accessToken.name,
+        mockLoginResponse.accessToken,
+        expect.any(Object)
+      )
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        COOKIE_CONFIG.refreshToken.name,
+        mockLoginResponse.refreshToken,
+        expect.any(Object)
+      )
+      expect(result).toEqual({
+        message: 'Success Login',
+        statusCode: 200,
+        success: true,
+      })
+    })
+
+    it('should throw NotFoundException if user is not found during Google login', async () => {
+      const dto: GoogleAuthDTO = {
+        firebaseToken: 'invalid-firebase-token',
+      }
+
+      jest
+        .spyOn(service, 'googleLogin')
+        .mockRejectedValue(new UnauthorizedException('User not found'))
+
+      await expect(
+        controller.googleLogin(dto, mockResponse as Response)
+      ).rejects.toThrow(UnauthorizedException)
+    })
+  })
+
+  describe('googleRegister', () => {
+    it('should return success on successful Google registration', async () => {
+      const dto: GoogleAuthDTO = {
+        firebaseToken: 'mock-firebase-token',
+      }
+
+      const mockRegisterResponse = {
+        accessToken: 'google-register-access-token',
+        refreshToken: 'google-register-refresh-token',
+      }
+
+      jest
+        .spyOn(service, 'googleRegister')
+        .mockResolvedValue(mockRegisterResponse)
+
+      const result = await controller.googleRegister(
+        dto,
+        mockResponse as Response
+      )
+
+      expect(service.googleRegister).toHaveBeenCalledWith(dto)
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        COOKIE_CONFIG.accessToken.name,
+        mockRegisterResponse.accessToken,
+        expect.any(Object)
+      )
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        COOKIE_CONFIG.refreshToken.name,
+        mockRegisterResponse.refreshToken,
+        expect.any(Object)
+      )
+      expect(result).toEqual({
+        message: 'Success Register',
+        statusCode: 200,
+        success: true,
+      })
+    })
+
+    it('should throw ConflictException if user already exists during Google registration', async () => {
+      const dto: GoogleAuthDTO = {
+        firebaseToken: 'existing-user-token',
+      }
+
+      jest
+        .spyOn(service, 'googleRegister')
+        .mockRejectedValue(new UnauthorizedException('User already exists'))
+
+      await expect(
+        controller.googleRegister(dto, mockResponse as Response)
+      ).rejects.toThrow(UnauthorizedException)
+    })
+
+    it('should throw InternalServerErrorException if Firebase token verification fails', async () => {
+      const dto: GoogleAuthDTO = {
+        firebaseToken: 'invalid-token-format',
+      }
+
+      jest
+        .spyOn(service, 'googleRegister')
+        .mockRejectedValue(
+          new UnauthorizedException('Firebase verification failed')
+        )
+
+      await expect(
+        controller.googleRegister(dto, mockResponse as Response)
+      ).rejects.toThrow(UnauthorizedException)
     })
   })
 })

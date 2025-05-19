@@ -39,6 +39,7 @@ describe('ProfileController', () => {
     referredById: 'referred-user-123',
     loyaltyPoints: 1000,
     birthDate: new Date(),
+    firebaseUid: null,
   }
 
   beforeEach(async () => {
@@ -444,15 +445,15 @@ describe('ProfileController', () => {
       )
     })
   })
+
   describe('getTransactionHistory', () => {
-    it('should return transaction history when getTransactionHistory is called with a valid ID', async () => {
+    it('should return transaction history when getTransactionHistory is called with a valid user', async () => {
       // Arrange
-      const userId = 'user-123'
       const expectedTransactions = [
         {
           id: 'transaction-1',
           tourId: 'tour-1',
-          userId,
+          userId: mockUser.id,
           quantity: 2,
           paymentStatus: 'PAID',
           totalPrice: 500000,
@@ -469,7 +470,7 @@ describe('ProfileController', () => {
         {
           id: 'transaction-2',
           tourId: 'tour-2',
-          userId,
+          userId: mockUser.id,
           quantity: 1,
           paymentStatus: 'PENDING',
           totalPrice: 300000,
@@ -489,7 +490,7 @@ describe('ProfileController', () => {
       )
 
       // Act
-      const result = await controller.getTransactionHistory(userId)
+      const result = await controller.getTransactionHistory(mockUser)
 
       // Assert
       expect(result).toEqual({
@@ -502,17 +503,16 @@ describe('ProfileController', () => {
         },
       })
       expect(mockProfileService.getTransactionHistory).toHaveBeenCalledWith(
-        userId
+        mockUser.id
       )
     })
 
     it('should return empty array when user has no transactions', async () => {
       // Arrange
-      const userId = 'user-123'
       mockProfileService.getTransactionHistory.mockResolvedValue([])
 
       // Act
-      const result = await controller.getTransactionHistory(userId)
+      const result = await controller.getTransactionHistory(mockUser)
 
       // Assert
       expect(result).toEqual({
@@ -525,24 +525,23 @@ describe('ProfileController', () => {
         },
       })
       expect(mockProfileService.getTransactionHistory).toHaveBeenCalledWith(
-        userId
+        mockUser.id
       )
     })
 
     it('should handle NotFoundException if service throws it', async () => {
       // Arrange
-      const userId = 'non-existent-user'
       const errorMessage = 'User not found'
       mockProfileService.getTransactionHistory.mockRejectedValue(
         new NotFoundException(errorMessage)
       )
 
       // Act and Assert
-      await expect(controller.getTransactionHistory(userId)).rejects.toThrow(
+      await expect(controller.getTransactionHistory(mockUser)).rejects.toThrow(
         NotFoundException
       )
       expect(mockProfileService.getTransactionHistory).toHaveBeenCalledWith(
-        userId
+        mockUser.id
       )
     })
   })

@@ -21,6 +21,10 @@ import { VerifyRegistrationDTO } from './dto/verify-registration.dto'
 import { CreateUserDTO } from './dto/create-user.dto'
 import { PreRegistGuard } from './guards/pre-regist.guard'
 import { GetUser } from 'src/common/decorators/getUser.decorator'
+import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
+import { VerifyPasswordResetDTO } from './dto/verify-pw-reset.dto'
+import { PasswordResetDTO } from './dto/pw-reset.dto'
+import { GoogleAuthDTO } from './dto/google-auth-dto'
 
 @UseGuards(PreRegistGuard)
 @Controller('auth')
@@ -45,6 +49,45 @@ export class AuthController {
     })
     return this.responseUtil.response({
       message: 'Success Login',
+      statusCode: 200,
+    })
+  }
+
+  @Public()
+  @Post('google-login')
+  async googleLogin(
+    @Body() googleAuthDTO: GoogleAuthDTO,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const loginResponse = await this.authService.googleLogin(googleAuthDTO)
+    res.cookie(COOKIE_CONFIG.accessToken.name, loginResponse.accessToken, {
+      ...COOKIE_CONFIG.accessToken.options,
+    })
+    res.cookie(COOKIE_CONFIG.refreshToken.name, loginResponse.refreshToken, {
+      ...COOKIE_CONFIG.refreshToken.options,
+    })
+    return this.responseUtil.response({
+      message: 'Success Login',
+      statusCode: 200,
+    })
+  }
+
+  @Public()
+  @Post('google-register')
+  async googleRegister(
+    @Body() googleAuthDTO: GoogleAuthDTO,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const registerResponse =
+      await this.authService.googleRegister(googleAuthDTO)
+    res.cookie(COOKIE_CONFIG.accessToken.name, registerResponse.accessToken, {
+      ...COOKIE_CONFIG.accessToken.options,
+    })
+    res.cookie(COOKIE_CONFIG.refreshToken.name, registerResponse.refreshToken, {
+      ...COOKIE_CONFIG.refreshToken.options,
+    })
+    return this.responseUtil.response({
+      message: 'Success Register',
       statusCode: 200,
     })
   }
@@ -132,5 +175,35 @@ export class AuthController {
         user,
       }
     )
+  }
+
+  @Public()
+  @Post('requestPasswordReset')
+  async requestPasswordReset(@Body() data: RequestPasswordResetDTO) {
+    await this.authService.sendPasswordResetVerification(data)
+    return this.responseUtil.response({
+      statusCode: HttpStatus.OK,
+      message: 'Sent verification code to email',
+    })
+  }
+
+  @Public()
+  @Post('verifyPasswordReset')
+  async verifyPasswordReset(@Body() data: VerifyPasswordResetDTO) {
+    await this.authService.verifyPasswordReset(data)
+    return this.responseUtil.response({
+      statusCode: HttpStatus.OK,
+      message: 'Verification successful',
+    })
+  }
+
+  @Public()
+  @Post('resetPassword')
+  async resetPassword(@Body() data: PasswordResetDTO) {
+    await this.authService.resetPassword(data)
+    return this.responseUtil.response({
+      statusCode: HttpStatus.OK,
+      message: 'Password reset successfully',
+    })
   }
 }

@@ -3,6 +3,8 @@ import { TourController } from './tour.controller'
 import { TourService } from './tour.service'
 import { ResponseUtil } from 'src/common/utils/response.util'
 import { HttpStatus } from '@nestjs/common'
+import { BuyTourTicketDTO } from './dto/buy-tour-ticket.dto'
+import { TITLE } from '@prisma/client'
 
 describe('TourController', () => {
   let controller: TourController
@@ -41,6 +43,10 @@ describe('TourController', () => {
     }),
     createTourView: jest.fn(),
     getTourView: jest.fn(),
+    findOne: jest.fn(),
+    findMany: jest.fn(),
+    buyTourTicket: jest.fn(),
+    payTourTicket: jest.fn(),
   }
 
   beforeEach(async () => {
@@ -226,6 +232,152 @@ describe('TourController', () => {
       expect(result).toEqual({
         suggestions: ['Paris City Tour', 'Paris, France'],
       })
+    })
+  })
+
+  describe('findOne', () => {
+    it('should return a successful response with tour data', async () => {
+      const mockTourData = {
+        id: 'tour123',
+        title: 'Test tour',
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Tour fetched successfully.',
+        data: mockTour,
+      }
+
+      mockTourService.findOne.mockResolvedValue(mockTourData)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      const result = await controller.findOne('tour123')
+
+      expect(tourService.findOne).toHaveBeenCalledWith('tour123')
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Tour fetched successfully.',
+        },
+        { data: mockTourData }
+      )
+      expect(result).toBe(mockResponse)
+    })
+  })
+
+  describe('buyTourTicket', () => {
+    it('should buy a tour ticket successfully', async () => {
+      // Mock data
+      const tourId = 'tour123'
+      const user = { id: 'user123', email: 'test@example.com' }
+      const buyTourTicketDto: BuyTourTicketDTO = {
+        tourDate: new Date(),
+        quantity: 2,
+        customer: {
+          title: TITLE.MR,
+          firstName: 'John',
+          lastName: 'Doe',
+          phoneNumber: '1234567890',
+          email: 'john.doe@example.com',
+        },
+        visitors: [
+          {
+            title: TITLE.MR,
+            firstName: 'John',
+            lastName: 'Doe',
+            phoneNumber: '1234567890',
+            email: 'john.doe@example.com',
+          },
+          {
+            title: TITLE.MRS,
+            firstName: 'Jane',
+            lastName: 'Doe',
+            phoneNumber: '0987654321',
+            email: 'jane.doe@example.com',
+          },
+        ],
+      }
+
+      const mockTicket = {
+        id: 'ticket123',
+        tourId,
+        userId: user.id,
+        quantity: buyTourTicketDto.quantity,
+        status: 'PAID',
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.CREATED,
+        message: 'Tour ticket purchased successfully',
+        data: mockTicket,
+      }
+
+      // Setup mocks
+      mockTourService.buyTourTicket = jest.fn().mockResolvedValue(mockTicket)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      // Call the method
+      const result = await controller.buyTourTicket(
+        tourId,
+        buyTourTicketDto,
+        user as any
+      )
+
+      // Assertions
+      expect(tourService.buyTourTicket).toHaveBeenCalledWith(
+        tourId,
+        buyTourTicketDto,
+        user
+      )
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.CREATED,
+          message: 'Tour ticket purchased successfully',
+        },
+        mockTicket
+      )
+      expect(result).toBe(mockResponse)
+    })
+  })
+
+  describe('payTourTicket', () => {
+    it('should process tour ticket payment successfully', async () => {
+      // Mock data
+      const orderId = 'order123'
+      const user = { id: 'user123', email: 'test@example.com' }
+
+      const mockTicket = {
+        id: 'ticket123',
+        orderId,
+        userId: user.id,
+        status: 'PAID',
+        amount: 199.99,
+        paymentDate: new Date(),
+      }
+
+      const mockResponse = {
+        statusCode: HttpStatus.OK,
+        message: 'Tour ticket payment successful',
+        data: { tourTicket: mockTicket },
+      }
+
+      // Setup mocks
+      mockTourService.payTourTicket = jest.fn().mockResolvedValue(mockTicket)
+      mockResponseUtil.response.mockReturnValue(mockResponse)
+
+      // Call the method
+      const result = await controller.payTourTicket(orderId, user as any)
+
+      // Assertions
+      expect(tourService.payTourTicket).toHaveBeenCalledWith(orderId, user)
+      expect(responseUtil.response).toHaveBeenCalledWith(
+        {
+          statusCode: HttpStatus.OK,
+          message: 'Tour ticket payment successful',
+        },
+        { tourTicket: mockTicket }
+      )
+      expect(result).toBe(mockResponse)
     })
   })
 })
