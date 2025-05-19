@@ -1195,5 +1195,69 @@ describe('AuthService', () => {
         InternalServerErrorException
       )
     })
+
+    it('should use existing admin instance when apps.length > 0', async () => {
+      // 1. Set up spy on initFirebaseAdmin FIRST
+      const initFirebaseAdminSpy = jest.spyOn(
+        firebaseModule,
+        'initFirebaseAdmin'
+      )
+      initFirebaseAdminSpy.mockClear() // Clear any previous calls
+
+      // 2. Mock data
+      const mockTokenData = {
+        email: 'firebase@example.com',
+        uid: 'firebase-uid-123',
+        name: 'Firebase User',
+      }
+
+      // 3. Mock the verifyIdToken function
+      const mockVerifyIdToken = jest.fn().mockResolvedValue(mockTokenData)
+
+      // 4. Mock the auth function
+      const mockAuth = jest.fn().mockReturnValue({
+        verifyIdToken: mockVerifyIdToken,
+      })
+
+      // 5. Spy on admin.auth and mock its implementation
+      const authSpy = jest.spyOn(admin, 'auth').mockImplementation(mockAuth)
+
+      // 6. Mock admin.apps to simulate Firebase is already initialized
+      const appsSpy = jest
+        .spyOn(admin, 'apps', 'get')
+        .mockReturnValue([{} as admin.app.App])
+
+      try {
+        // 7. Create test data
+        const googleAuthDTO = { firebaseToken: 'mock-firebase-token' }
+
+        // 8. Ensure spy hasn't been called yet
+        expect(initFirebaseAdminSpy).not.toHaveBeenCalled()
+
+        // 9. Call the method
+        const result = await service.verifyFirebaseToken(googleAuthDTO)
+
+        // 10. Verify initFirebaseAdmin was NOT called during verifyFirebaseToken execution
+        expect(initFirebaseAdminSpy).not.toHaveBeenCalled()
+
+        // 11. Verify auth was called on admin directly
+        expect(authSpy).toHaveBeenCalled()
+
+        // 12. Verify verifyIdToken was called with correct token
+        expect(mockVerifyIdToken).toHaveBeenCalledWith('mock-firebase-token')
+
+        // 13. Verify correct data is returned
+        expect(result).toEqual({
+          email: 'firebase@example.com',
+          firebaseUid: 'firebase-uid-123',
+          name: 'Firebase User',
+        })
+      } finally {
+        // 14. Restore original implementations
+        authSpy.mockRestore()
+        appsSpy.mockRestore()
+        initFirebaseAdminSpy.mockRestore()
+      }
+    })
   })
 })
