@@ -9,7 +9,7 @@ model Tour extends Base {
     maxCapacity      Int
     description      String?
     location         String
-    pricePerTicket   Decimal
+    pricePerTicket   Int
     duration         Int
     durationType     DURATION_TYPE
     availableTickets Int            @default(0)
@@ -34,7 +34,7 @@ model TourTicket extends Base {
     tourId              String
     tourDate            DateTime
     quantity            Int
-    totalPrice          Decimal
+    totalPrice          Int
     status              TICKET_STATUS     @default(PENDING)
     paymentStatus       PAYMENT_STATUS    @default(UNPAID)
 
