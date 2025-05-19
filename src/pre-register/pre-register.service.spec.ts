@@ -94,6 +94,7 @@ describe('PreRegisterService', () => {
         referredById: 'REFERRED_USER_ID',
         loyaltyPoints: 0,
         birthDate: null,
+        firebaseUid: null,
       })
 
       jest.spyOn(service, '_generateTicket').mockResolvedValue({
@@ -147,6 +148,7 @@ describe('PreRegisterService', () => {
         referredById: '',
         loyaltyPoints: 0,
         birthDate: null,
+        firebaseUid: null,
       })
 
       await expect(service.createPreRegister(dto)).rejects.toThrow(
@@ -206,6 +208,7 @@ describe('PreRegisterService', () => {
         referredById: '',
         loyaltyPoints: 0,
         birthDate: null,
+        firebaseUid: null,
       })
       jest.spyOn(service, '_generateTicket').mockResolvedValue({
         updatedAt: new Date(),

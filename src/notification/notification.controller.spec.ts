@@ -26,6 +26,7 @@ describe('NotificationController', () => {
     loyaltyPoints: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
+    firebaseUid: null,
   }
 
   const mockNotificationService = {
