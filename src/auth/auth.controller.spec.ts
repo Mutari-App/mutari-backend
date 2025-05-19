@@ -12,6 +12,7 @@ import { VerifyRegistrationDTO } from './dto/verify-registration.dto'
 import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
 import { VerifyPasswordResetDTO } from './dto/verify-pw-reset.dto'
 import { PasswordResetDTO } from './dto/pw-reset.dto'
+import { GoogleAuthDTO } from './dto/google-auth-dto'
 
 describe('AuthController', () => {
   let controller: AuthController
@@ -36,6 +37,8 @@ describe('AuthController', () => {
             sendPasswordResetVerification: jest.fn(),
             verifyPasswordReset: jest.fn(),
             resetPassword: jest.fn(),
+            googleLogin: jest.fn(),
+            googleRegister: jest.fn(),
           },
         },
         {
@@ -351,6 +354,123 @@ describe('AuthController', () => {
         message: 'Password reset successfully',
         success: true,
       })
+    })
+  })
+
+  describe('googleLogin', () => {
+    it('should return success on successful Google login', async () => {
+      const dto: GoogleAuthDTO = {
+        firebaseToken: 'mock-firebase-token',
+      }
+
+      const mockLoginResponse = {
+        accessToken: 'google-access-token',
+        refreshToken: 'google-refresh-token',
+      }
+
+      jest.spyOn(service, 'googleLogin').mockResolvedValue(mockLoginResponse)
+
+      const result = await controller.googleLogin(dto, mockResponse as Response)
+
+      expect(service.googleLogin).toHaveBeenCalledWith(dto)
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        COOKIE_CONFIG.accessToken.name,
+        mockLoginResponse.accessToken,
+        expect.any(Object)
+      )
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        COOKIE_CONFIG.refreshToken.name,
+        mockLoginResponse.refreshToken,
+        expect.any(Object)
+      )
+      expect(result).toEqual({
+        message: 'Success Login',
+        statusCode: 200,
+        success: true,
+      })
+    })
+
+    it('should throw NotFoundException if user is not found during Google login', async () => {
+      const dto: GoogleAuthDTO = {
+        firebaseToken: 'invalid-firebase-token',
+      }
+
+      jest
+        .spyOn(service, 'googleLogin')
+        .mockRejectedValue(new UnauthorizedException('User not found'))
+
+      await expect(
+        controller.googleLogin(dto, mockResponse as Response)
+      ).rejects.toThrow(UnauthorizedException)
+    })
+  })
+
+  describe('googleRegister', () => {
+    it('should return success on successful Google registration', async () => {
+      const dto: GoogleAuthDTO = {
+        firebaseToken: 'mock-firebase-token',
+      }
+
+      const mockRegisterResponse = {
+        accessToken: 'google-register-access-token',
+        refreshToken: 'google-register-refresh-token',
+      }
+
+      jest
+        .spyOn(service, 'googleRegister')
+        .mockResolvedValue(mockRegisterResponse)
+
+      const result = await controller.googleRegister(
+        dto,
+        mockResponse as Response
+      )
+
+      expect(service.googleRegister).toHaveBeenCalledWith(dto)
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        COOKIE_CONFIG.accessToken.name,
+        mockRegisterResponse.accessToken,
+        expect.any(Object)
+      )
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        COOKIE_CONFIG.refreshToken.name,
+        mockRegisterResponse.refreshToken,
+        expect.any(Object)
+      )
+      expect(result).toEqual({
+        message: 'Success Register',
+        statusCode: 200,
+        success: true,
+      })
+    })
+
+    it('should throw ConflictException if user already exists during Google registration', async () => {
+      const dto: GoogleAuthDTO = {
+        firebaseToken: 'existing-user-token',
+      }
+
+      jest
+        .spyOn(service, 'googleRegister')
+        .mockRejectedValue(new UnauthorizedException('User already exists'))
+
+      await expect(
+        controller.googleRegister(dto, mockResponse as Response)
+      ).rejects.toThrow(UnauthorizedException)
+    })
+
+    it('should throw InternalServerErrorException if Firebase token verification fails', async () => {
+      const dto: GoogleAuthDTO = {
+        firebaseToken: 'invalid-token-format',
+      }
+
+      jest
+        .spyOn(service, 'googleRegister')
+        .mockRejectedValue(
+          new UnauthorizedException('Firebase verification failed')
+        )
+
+      await expect(
+        controller.googleRegister(dto, mockResponse as Response)
+      ).rejects.toThrow(UnauthorizedException)
     })
   })
 })

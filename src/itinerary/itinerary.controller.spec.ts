@@ -34,6 +34,7 @@ describe('ItineraryController', () => {
     loyaltyPoints: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
+    firebaseUid: null,
   }
 
   const mockItineraryService = {
@@ -2907,6 +2908,7 @@ describe('ItineraryController', () => {
         loyaltyPoints: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
+        firebaseUid: null,
       }
 
       mockItineraryService.publishItinerary.mockImplementation(() => {

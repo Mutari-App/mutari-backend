@@ -28,6 +28,7 @@ describe('TourService', () => {
     loyaltyPoints: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
+    firebaseUid: null,
   }
 
   const mockPrismaService = {

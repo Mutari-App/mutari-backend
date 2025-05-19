@@ -51,6 +51,7 @@
     "cookie-parser": "^1.4.7",
     "cron": "3.5.0",
     "crypto-js": "^4.2.0",
+    "firebase-admin": "^13.4.0",
     "jest-mock-extended": "4.0.0-beta1",
     "meilisearch": "^0.50.0",
     "midtrans-client": "^1.4.2",
@@ -140,7 +141,8 @@
       ".guard.ts$",
       "instrument.ts",
       ".constant.ts$",
-      ".template.ts$"
+      ".template.ts$",
+      "firebase.ts"
     ]
   },
   "engines": {

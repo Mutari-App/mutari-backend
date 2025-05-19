@@ -15,6 +15,7 @@ model User extends Base {
     referredById       String?
     loyaltyPoints      Int                 @default(0)
     birthDate          DateTime?           @db.Date()
+    firebaseUid        String?             @unique
 
     referredBy         User?               @relation("Referral", fields: [referredById], references: [id]) // Relasi ke user lain
     referrals          User[]              @relation("Referral")
