@@ -138,7 +138,8 @@
       ".guard.ts$",
       "instrument.ts",
       ".constant.ts$",
-      ".template.ts$"
+      ".template.ts$",
+      "firebase.ts"
     ]
   },
   "engines": {
