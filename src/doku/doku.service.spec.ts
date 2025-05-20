@@ -10,7 +10,7 @@ describe('DokuService', () => {
   const mockedUuid = 'fccaee9c-d613-40cc-a1e4-12a596fad604'
 
   const mockConfigValues = {
-    NODE_ENV: 'development',
+    DOKU_ENV: 'development',
     DOKU_CLIENT_ID: 'test-client-id',
     DOKU_CLIENT_SECRET: 'test-secret-key',
   }
@@ -59,7 +59,7 @@ describe('DokuService', () => {
 
     it('should set baseUrl to production in production environment', async () => {
       jest.spyOn(configService, 'get').mockImplementation((key: string) => {
-        if (key === 'NODE_ENV') return 'production'
+        if (key === 'DOKU_ENV') return 'production'
         return mockConfigValues[key]
       })
 
