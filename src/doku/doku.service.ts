@@ -10,7 +10,7 @@ export class DokuService {
 
   constructor(private readonly configService: ConfigService) {
     this.baseUrl =
-      this.configService.get<string>('NODE_ENV') === 'production'
+      this.configService.get<string>('DOKU_ENV') === 'production'
         ? 'https://api.doku.com'
         : 'https://api-sandbox.doku.com'
     this.clientId = this.configService.get<string>('DOKU_CLIENT_ID')
