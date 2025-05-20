@@ -2,13 +2,14 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common'
 import { EmailService } from 'src/email/email.service'
 import { PrismaService } from 'src/prisma/prisma.service'
 import { customAlphabet } from 'nanoid'
-import { Prisma, User } from '@prisma/client'
+import { Prisma, Ticket, User } from '@prisma/client'
 import { CreateUserDTO } from './dto/create-user.dto'
 import { verificationCodeTemplate } from './templates/verification-code.template'
 import { VerifyRegistrationDTO } from './dto/verify-registration.dto'
@@ -18,6 +19,14 @@ import * as bcrypt from 'bcryptjs'
 import { JwtService } from '@nestjs/jwt'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { LoginDTO } from './dto/login.dto'
+import { RequestPasswordResetDTO } from './dto/request-pw-reset.dto'
+import { resetPasswordTemplate } from './templates/reset-pw-template'
+import { VerifyPasswordResetDTO } from './dto/verify-pw-reset.dto'
+import { PasswordResetDTO } from './dto/pw-reset.dto'
+import { successPasswordResetTemplate } from './templates/success-pw-reset-template'
+import { GoogleAuthDTO } from './dto/google-auth-dto'
+import * as admin from 'firebase-admin'
+import { initFirebaseAdmin } from 'src/firebase/firebase'
 
 @Injectable()
 export class AuthService {
@@ -60,6 +69,132 @@ export class AuthService {
     )
 
     return { accessToken, refreshToken }
+  }
+
+  async verifyFirebaseToken(googleAuth: GoogleAuthDTO) {
+    const { firebaseToken } = googleAuth
+
+    try {
+      const firebaseAdminApp = admin.apps.length ? admin : initFirebaseAdmin()
+
+      const {
+        email,
+        uid: firebaseUid,
+        name,
+      } = await firebaseAdminApp.auth().verifyIdToken(firebaseToken)
+
+      if (!email) {
+        throw new InternalServerErrorException('Verify firebase token failed')
+      }
+
+      return { email, firebaseUid, name }
+    } catch (error) {
+      throw new InternalServerErrorException((error as Error).message)
+    }
+  }
+
+  async googleLogin(googleAuthDTO: GoogleAuthDTO) {
+    const { email, firebaseUid } = await this.verifyFirebaseToken(googleAuthDTO)
+
+    const user = await this.prisma.user.findUnique({
+      where: { email, firebaseUid },
+    })
+
+    if (!user) {
+      throw new NotFoundException('User not found')
+    }
+
+    const accessToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_SECRET,
+        expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
+      }
+    )
+
+    const refreshToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
+      }
+    )
+
+    return { accessToken, refreshToken }
+  }
+
+  async googleRegister(googleAuthDTO: GoogleAuthDTO) {
+    let { email, firebaseUid, name } =
+      await this.verifyFirebaseToken(googleAuthDTO)
+
+    let user = await this.prisma.user.findUnique({
+      where: { email: email, firebaseUid: firebaseUid },
+    })
+
+    if (user) {
+      throw new ConflictException('User already exists')
+    }
+
+    name ??= email.split('@')[0]
+
+    user = await this.prisma.user.upsert({
+      where: { email: email },
+      update: {
+        firebaseUid: firebaseUid,
+        isEmailConfirmed: true,
+      },
+      create: {
+        firstName: name.split(' ')[0],
+        lastName: name.split(' ').slice(1).join(' '),
+        email: email,
+        firebaseUid: firebaseUid,
+        isEmailConfirmed: true,
+      },
+    })
+
+    const accessToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_SECRET,
+        expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
+      }
+    )
+
+    const refreshToken = await this.jwtService.signAsync(
+      { userId: user.id },
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
+      }
+    )
+
+    return { accessToken, refreshToken }
+  }
+
+  async linkAccount(user: User, linkaccountDTO: GoogleAuthDTO) {
+    const { firebaseUid, email } =
+      await this.verifyFirebaseToken(linkaccountDTO)
+
+    if (user.email !== email) {
+      throw new BadRequestException('Invalid email')
+    }
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: email },
+    })
+
+    if (!existingUser) {
+      throw new NotFoundException('User not found')
+    }
+
+    if (existingUser.firebaseUid) {
+      throw new ConflictException('User already linked with another account')
+    }
+
+    await this.prisma.user.update({
+      where: { id: existingUser.id },
+      data: { firebaseUid: firebaseUid },
+    })
   }
 
   private isRefreshTokenBlackListed(refreshToken: string, userId: string) {
@@ -238,6 +373,20 @@ export class AuthService {
     )
   }
 
+  _checkTicketExpiration(ticket: Ticket) {
+    // Check if the ticket has expired
+    const now = new Date().getTime()
+    const ticketCreatedAt = new Date(ticket.createdAt).getTime()
+    const timeDiff = now - ticketCreatedAt
+    const expiresIn = Number(
+      process.env.PRE_REGISTER_TICKET_EXPIRES_IN || 300000
+    )
+
+    if (timeDiff > expiresIn) {
+      throw new BadRequestException('Verification code has expired')
+    }
+  }
+
   async verify(data: VerifyRegistrationDTO) {
     const ticket = await this.prisma.ticket.findUnique({
       where: {
@@ -258,6 +407,8 @@ export class AuthService {
     ) {
       throw new UnauthorizedException('Invalid verification')
     }
+
+    this._checkTicketExpiration(ticket)
   }
 
   async register(data: RegisterDTO) {
@@ -301,5 +452,89 @@ export class AuthService {
       'Register Successful!',
       newUserRegistrationTemplate(data.firstName)
     )
+  }
+
+  async sendPasswordResetVerification(data: RequestPasswordResetDTO) {
+    let user = await this.prisma.user.findUnique({
+      where: {
+        email: data.email,
+        isEmailConfirmed: true,
+      },
+    })
+
+    if (!user) {
+      throw new BadRequestException('Email address is invalid')
+    }
+
+    const verificationCode = await this._generateUniqueVerificationCode(
+      this.prisma,
+      user
+    )
+
+    await this.emailService.sendEmail(
+      data.email,
+      'Please reset your password',
+      resetPasswordTemplate(verificationCode.uniqueCode)
+    )
+  }
+
+  async verifyPasswordReset(data: VerifyPasswordResetDTO) {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: {
+        uniqueCode: data.verificationCode,
+      },
+      include: {
+        user: true,
+      },
+    })
+
+    if (!ticket) {
+      throw new NotFoundException('Verification code not found')
+    }
+
+    if (ticket.user.email !== data.email) {
+      throw new UnauthorizedException('Invalid verification')
+    }
+
+    this._checkTicketExpiration(ticket)
+  }
+
+  async resetPassword(data: PasswordResetDTO) {
+    await this.verifyPasswordReset(data)
+
+    if (data.password != data.confirmPassword) {
+      throw new BadRequestException('Password does not match')
+    }
+
+    const saltOrRounds = bcrypt.genSaltSync(10)
+    const hashedPassword = await bcrypt.hash(data.password, saltOrRounds)
+
+    const user = await this.prisma.user.findUnique({
+      where: {
+        email: data.email,
+      },
+    })
+
+    if (!user) {
+      throw new NotFoundException('User not found')
+    }
+
+    await this.prisma.user.update({
+      where: {
+        email: user.email,
+      },
+      data: {
+        password: hashedPassword,
+      },
+    })
+
+    await Promise.all([
+      this.prisma.ticket.deleteMany({ where: { userId: user.id } }),
+      this.emailService.sendEmail(
+        data.email,
+        'Your password has been reset',
+        successPasswordResetTemplate()
+      ),
+    ])
   }
 }

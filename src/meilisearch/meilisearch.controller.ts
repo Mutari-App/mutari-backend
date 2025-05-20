@@ -27,4 +27,17 @@ export class MeilisearchController {
       message: 'Itineraries synced successfully',
     })
   }
+
+  @Post('sync-tour-search-index')
+  async syncTours(@Headers('x-api-key') apiKey: string) {
+    if (!apiKey || apiKey !== process.env.MEILISEARCH_SYNC_KEY) {
+      throw new UnauthorizedException('Invalid API key')
+    }
+
+    await this.meilisearchService.syncTours()
+    return this.responseUtil.response({
+      statusCode: HttpStatus.OK,
+      message: 'Tours synced successfully',
+    })
+  }
 }

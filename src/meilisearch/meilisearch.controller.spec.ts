@@ -18,6 +18,7 @@ describe('MeilisearchController', () => {
 
     const mockMeilisearchService = {
       syncItineraries: jest.fn().mockResolvedValue(undefined),
+      syncTours: jest.fn().mockResolvedValue(undefined),
     }
 
     const mockResponseUtil = {
@@ -105,6 +106,58 @@ describe('MeilisearchController', () => {
         error
       )
       expect(meilisearchService.syncItineraries).toHaveBeenCalledTimes(1)
+      expect(responseUtil.response).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('syncTours', () => {
+    it('should sync tours when provided with valid API key', async () => {
+      // Arrange
+      const validApiKey = 'test-api-key'
+
+      // Act
+      const result = await controller.syncTours(validApiKey)
+
+      // Assert
+      expect(meilisearchService.syncTours).toHaveBeenCalledTimes(1)
+      expect(responseUtil.response).toHaveBeenCalledWith({
+        statusCode: HttpStatus.OK,
+        message: 'Tours synced successfully',
+      })
+      expect(result).toEqual({
+        statusCode: HttpStatus.OK,
+        message: 'Tours synced successfully',
+      })
+    })
+
+    it('should throw UnauthorizedException when provided with invalid API key', async () => {
+      // Arrange
+      const invalidApiKey = 'invalid-api-key'
+
+      // Act & Assert
+      await expect(controller.syncTours(invalidApiKey)).rejects.toThrow(
+        UnauthorizedException
+      )
+      expect(meilisearchService.syncTours).not.toHaveBeenCalled()
+    })
+
+    it('should throw UnauthorizedException when API key is missing', async () => {
+      // Act & Assert
+      await expect(controller.syncTours(undefined)).rejects.toThrow(
+        UnauthorizedException
+      )
+      expect(meilisearchService.syncTours).not.toHaveBeenCalled()
+    })
+
+    it('should handle service errors properly', async () => {
+      // Arrange
+      const validApiKey = 'test-api-key'
+      const error = new Error('Database connection failed')
+      jest.spyOn(meilisearchService, 'syncTours').mockRejectedValueOnce(error)
+
+      // Act & Assert
+      await expect(controller.syncTours(validApiKey)).rejects.toThrow(error)
+      expect(meilisearchService.syncTours).toHaveBeenCalledTimes(1)
       expect(responseUtil.response).not.toHaveBeenCalled()
     })
   })

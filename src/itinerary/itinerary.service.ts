@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common'
 import { CreateItineraryDto } from './dto/create-itinerary.dto'
 import { UpdateItineraryDto } from './dto/update-itinerary.dto'
@@ -169,7 +170,7 @@ export class ItineraryService {
       }
 
       if (itinerary.isPublished) {
-        await this.meilisearchService.addOrUpdateItinerary(itinerary)
+        this.meilisearchService.addOrUpdateItinerary(itinerary)
       }
 
       return itinerary
@@ -314,10 +315,10 @@ export class ItineraryService {
       }
 
       if (updatedItinerary.isPublished) {
-        await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+        this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
       } else {
         // If unpublished, remove from search index
-        await this.meilisearchService.deleteItinerary(id)
+        this.meilisearchService.deleteItinerary(id)
       }
 
       return updatedItinerary
@@ -986,7 +987,7 @@ export class ItineraryService {
     const result = await this.prisma.itinerary.delete({
       where: { id },
     })
-    await this.meilisearchService.deleteItinerary(id)
+    this.meilisearchService.deleteItinerary(id)
     return result
   }
 
@@ -1604,6 +1605,25 @@ export class ItineraryService {
   async createViewItinerary(itineraryId: string, user: User) {
     const userId = user.id
 
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: itineraryId },
+    })
+
+    if (!itinerary) {
+      throw new NotFoundException('Itinerary not found')
+    }
+
+    const itineraryAccess = await this.prisma.itineraryAccess.findMany({
+      where: { itineraryId },
+      select: { userId: true },
+    })
+
+    const hasAccess = itineraryAccess.some((access) => access.userId === userId)
+
+    if (itinerary.userId != userId && !itinerary.isPublished && !hasAccess) {
+      throw new UnauthorizedException('You have no access to this itinerary')
+    }
+
     const userViews = await this.prisma.itineraryView.findMany({
       where: { userId },
       orderBy: { viewedAt: 'desc' },
@@ -1689,15 +1709,10 @@ export class ItineraryService {
           photoProfile: itinerary.user.photoProfile ?? null,
         },
         tags: itinerary.tags ?? [],
-        daysCount: Math.max(
-          1,
-          Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-        ),
+        daysCount: Math.max(1, Math.ceil(end.getDate() - start.getDate() + 1)),
         likes: itinerary._count.likes ?? 0,
       }
     })
-
-    console.log('format views', formattedViews)
 
     return formattedViews
   }
@@ -1714,23 +1729,39 @@ export class ItineraryService {
       data: {
         isPublished,
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            photoProfile: true,
-          },
-        },
-      },
     })
 
     if (updatedItinerary.isPublished) {
-      await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+      const completeItinerary = await this.prisma.itinerary.findUnique({
+        where: { id: itineraryId },
+        include: {
+          sections: {
+            where: {
+              contingencyPlanId: null,
+            },
+            include: {
+              blocks: true,
+            },
+          },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              photoProfile: true,
+            },
+          },
+          likes: true,
+        },
+      })
+      this.meilisearchService.addOrUpdateItinerary(completeItinerary)
     } else {
-      // If unpublished, remove from search index
-      await this.meilisearchService.deleteItinerary(itineraryId)
+      this.meilisearchService.deleteItinerary(itineraryId)
     }
 
     return { updatedItinerary }
@@ -1791,6 +1822,19 @@ export class ItineraryService {
       where: { id: itineraryId },
       include: {
         likes: true,
+        sections: {
+          where: {
+            contingencyPlanId: null,
+          },
+          include: {
+            blocks: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -1802,7 +1846,9 @@ export class ItineraryService {
       },
     })
 
-    await this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+    if (updatedItinerary.isPublished) {
+      this.meilisearchService.addOrUpdateItinerary(updatedItinerary)
+    }
   }
 
   async batchCheckUserSavedItinerary(itineraryIds: string[], user: User) {
@@ -1825,58 +1871,41 @@ export class ItineraryService {
     return itineraryLike !== null
   }
 
-  async findTrendingItineraries() {
-    const trendingItineraries = await this.prisma.itinerary.findMany({
-      where: {
-        isPublished: true,
-      },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        coverImage: true,
-        startDate: true,
-        endDate: true,
-        likes: true,
-        user: {
-          select: {
-            photoProfile: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-      orderBy: {
-        likes: {
-          _count: 'desc',
-        },
-      },
-      take: 10,
-    })
-
-    return trendingItineraries.map((itinerary) => {
-      const { likes, ...itineraryWIthoutLikes } = itinerary
-      return { ...itineraryWIthoutLikes, likesCount: likes.length }
-    })
-  }
-
   async findItinerariesByLatestTags(user: User) {
-    const latestItinerary = await this.prisma.itinerary.findFirst({
+    const latestItineraries = await this.prisma.itinerary.findMany({
       where: {
         userId: user.id,
       },
       orderBy: {
         updatedAt: 'desc',
       },
+      take: 3,
     })
 
-    if (!latestItinerary) {
+    const recentViewedItineraries = await this.prisma.itineraryView.findMany({
+      where: {
+        userId: user.id,
+      },
+      orderBy: { viewedAt: 'desc' },
+      select: {
+        itinerary: true,
+      },
+      take: 3,
+    })
+
+    const combinedItineraries = recentViewedItineraries
+      .map((view) => view.itinerary)
+      .concat(latestItineraries)
+
+    if (combinedItineraries.length === 0) {
       return []
     }
 
     const latestTags = await this.prisma.itineraryTag.findMany({
       where: {
-        itineraryId: latestItinerary.id,
+        itineraryId: {
+          in: combinedItineraries.map((itinerary) => itinerary.id),
+        },
       },
       select: {
         tag: {
@@ -1886,10 +1915,9 @@ export class ItineraryService {
           },
         },
       },
-      take: 3,
     })
 
-    if (!latestTags) return []
+    if (!latestTags || latestTags.length === 0) return []
 
     const mappedTags = latestTags.map((tag) => `"${tag.tag.id.toString()}"`)
 
