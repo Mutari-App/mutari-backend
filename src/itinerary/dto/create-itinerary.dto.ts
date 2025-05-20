@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsArray,
   IsObject,
+  IsBoolean,
 } from 'class-validator'
 
 import { CreateSectionDto } from './create-section.dto'
@@ -39,4 +40,8 @@ export class CreateItineraryDto {
   @IsOptional()
   @IsArray()
   sections: CreateSectionDto[]
+
+  @IsBoolean()
+  @IsOptional()
+  isPublished?: boolean
 }

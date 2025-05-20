@@ -69,6 +69,7 @@ export class ItineraryService {
           coverImage: data.coverImage,
           startDate: startDate,
           endDate: endDate,
+          isPublished: data.isPublished,
           tags: data.tags?.length
             ? {
                 create: data.tags.map((tagId) => ({
@@ -173,6 +174,7 @@ export class ItineraryService {
         this.meilisearchService.addOrUpdateItinerary(itinerary)
       }
 
+      console.log(itinerary)
       return itinerary
     })
   }
