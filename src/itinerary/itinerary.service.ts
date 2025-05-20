@@ -174,7 +174,6 @@ export class ItineraryService {
         this.meilisearchService.addOrUpdateItinerary(itinerary)
       }
 
-      console.log(itinerary)
       return itinerary
     })
   }
