@@ -44,12 +44,18 @@ export class AuthService {
     })
 
     if (!user) {
-      throw new UnauthorizedException('Incorrect Email or Password')
+      throw new UnauthorizedException('Email atau Password salah')
+    }
+
+    if (!user.password) {
+      throw new UnauthorizedException(
+        "Belum ada password. Silakan atur password dengan menekan 'Lupa password?'"
+      )
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password)
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Incorrect Email or Password')
+      throw new UnauthorizedException('Email atau Password salah')
     }
 
     const accessToken = await this.jwtService.signAsync(
