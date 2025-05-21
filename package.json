@@ -51,6 +51,7 @@
     "cookie-parser": "^1.4.7",
     "cron": "3.5.0",
     "crypto-js": "^4.2.0",
+    "express": "^5.1.0",
     "firebase-admin": "^13.4.0",
     "jest-mock-extended": "4.0.0-beta1",
     "meilisearch": "^0.50.0",
